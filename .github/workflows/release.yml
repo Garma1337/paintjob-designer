@@ -1,0 +1,131 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from pyproject.toml
+        id: version
+        run: |
+          version=$(python -c "
+          import tomllib
+          with open('pyproject.toml', 'rb') as f:
+              print(tomllib.load(f)['project']['version'])
+          ")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check tag does not already exist
+        run: |
+          if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+            echo "::error::Tag v${{ steps.version.outputs.version }} already exists. Bump the version in pyproject.toml first."
+            exit 1
+          fi
+
+  test:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: pip install PySide6 PyOpenGL numpy pytest
+
+      - name: Run tests
+        run: pytest tests/
+
+  build:
+    needs: [version, test]
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: PaintjobDesigner-windows
+            # PyInstaller's --add-data uses `;` on Windows, `:` elsewhere.
+            sep: ";"
+          - os: ubuntu-latest
+            artifact: PaintjobDesigner-linux
+            sep: ":"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: pip install PySide6 PyOpenGL numpy pyinstaller
+
+      - name: Build executable
+        # --add-data bundles runtime-read data files:
+        #   - config/profiles/*.json: ProfileRegistry resolves via sys._MEIPASS
+        #   - paintjob_designer/exporters/templates/: paintjob.h template
+        #   - paintjob_designer/gui/widget/shaders/: GLSL vert/frag files
+        # Package-relative paths (last two) end up next to their .py files, so
+        # `Path(__file__).parent / "..."` resolves correctly in the frozen
+        # extraction dir.
+        shell: bash
+        run: |
+          pyinstaller --noconsole --name PaintjobDesigner \
+            --add-data "config/profiles${{ matrix.sep }}config/profiles" \
+            --add-data "paintjob_designer/exporters/templates${{ matrix.sep }}paintjob_designer/exporters/templates" \
+            --add-data "paintjob_designer/gui/widget/shaders${{ matrix.sep }}paintjob_designer/gui/widget/shaders" \
+            main.py
+
+      - name: Compress output
+        shell: bash
+        run: cd dist && 7z a -t7z -mx=9 ../PaintjobDesigner.7z PaintjobDesigner/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: PaintjobDesigner.7z
+
+  release:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          cp artifacts/PaintjobDesigner-windows/PaintjobDesigner.7z release/PaintjobDesigner-windows.7z
+          cp artifacts/PaintjobDesigner-linux/PaintjobDesigner.7z release/PaintjobDesigner-linux.7z
+
+      - name: Create tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v${{ needs.version.outputs.version }}"
+          git push origin "v${{ needs.version.outputs.version }}"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.version.outputs.version }}
+          name: Paintjob Designer v${{ needs.version.outputs.version }}
+          generate_release_notes: true
+          files: |
+            release/PaintjobDesigner-windows.7z
+            release/PaintjobDesigner-linux.7z

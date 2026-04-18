@@ -1,0 +1,477 @@
+# coding: utf-8
+
+import ctypes
+from pathlib import Path
+
+import numpy as np
+from OpenGL import GL
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QSurfaceFormat
+from PySide6.QtOpenGLWidgets import QOpenGLWidget
+
+from paintjob_designer.models import AssembledMesh, TextureLayout
+from paintjob_designer.render.atlas_uv_mapper import AtlasUvMapper
+from paintjob_designer.render.orbit_camera import OrbitCamera
+
+# Shaders live as standalone `.vert` / `.frag` files under `shaders/` — kept
+# them out of this module so editors can highlight GLSL properly and the
+# code here stays readable. Loaded at import time: the strings never change
+# between runs and file I/O during `initializeGL` was wasted work.
+#
+# No V-flip in the fragment shader: the atlas buffer already stores row 0 at
+# the top, and GL's texture sampler returns that row at `v = 0`.
+_SHADERS_DIR = Path(__file__).parent / "shaders"
+_VERTEX_SHADER = (_SHADERS_DIR / "kart.vert").read_text(encoding="utf-8")
+_FRAGMENT_SHADER = (_SHADERS_DIR / "kart.frag").read_text(encoding="utf-8")
+
+
+class KartViewer(QOpenGLWidget):
+    """Textured 3D preview of the current kart mesh.
+
+    Orbit camera: left-drag rotates yaw/pitch, wheel zooms in/out. The mesh and
+    atlas are staged via `set_mesh` / `set_atlas` and uploaded on the next paint
+    so the caller never needs to make the GL context current.
+
+    Emits `gl_init_failed(reason)` if the first `initializeGL` call can't bring
+    up the shader program / VBOs (missing OpenGL 3.3, broken driver, etc.).
+    The main window swaps this widget out for a placeholder label in that case
+    so the rest of the app stays usable.
+
+    v1 scope: flat-shaded textured triangles, no lighting, no materials. That
+    matches the PSX GPU's fill style for karts and keeps the shader trivial.
+    """
+
+    gl_init_failed = Signal(str)
+
+    _ZOOM_STEP = 1.15
+
+    def __init__(self, uv_mapper: AtlasUvMapper, parent=None) -> None:
+        fmt = QSurfaceFormat()
+        fmt.setVersion(3, 3)
+        fmt.setProfile(QSurfaceFormat.OpenGLContextProfile.CoreProfile)
+        fmt.setDepthBufferSize(24)
+        fmt.setSamples(4)
+
+        super().__init__(parent)
+        self.setFormat(fmt)
+        self.setMouseTracking(True)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+        self._uv_mapper = uv_mapper
+        self._camera = OrbitCamera()
+
+        self._viewport_w = 1
+        self._viewport_h = 1
+        self._last_mouse_pos = None
+
+        # GL resources (created in initializeGL).
+        self._program = 0
+        self._vao = 0
+        self._vbo_pos = 0
+        self._vbo_uv = 0
+        self._vbo_normal = 0
+        self._vbo_highlight = 0
+        self._texture = 0
+        self._uniform_mvp = -1
+        self._uniform_atlas = -1
+        self._uniform_has_focus = -1
+        self._triangle_count = 0
+        self._initialized = False
+
+        # Pending uploads. Applied during the next paintGL.
+        # Tuple of (positions, uvs, normals) for the mesh.
+        self._pending_mesh: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None
+        self._pending_atlas: tuple[bytes, int, int] | None = None
+        self._pending_atlas_region: tuple[bytes, int, int, int, int, int, int] | None = None
+        self._pending_highlight: np.ndarray | None = None
+
+        # UVs from the last `set_mesh` call, kept around so `set_frame_positions`
+        # can build new pending meshes even after `paintGL` has consumed the
+        # previous one (it clears `_pending_mesh` on upload).
+        self._base_uvs: np.ndarray | None = None
+
+        # Whether any slot is currently focused. The fragment shader reads this
+        # as `u_has_focus`; when 0, all triangles render normally regardless of
+        # the per-vertex highlight attribute.
+        self._has_focus = False
+
+    def set_mesh(
+        self,
+        assembled: AssembledMesh,
+        texture_layouts: list[TextureLayout],
+    ) -> None:
+        if assembled.triangle_count == 0:
+            self._pending_mesh = (
+                np.zeros((0, 3), dtype=np.float32),
+                np.zeros((0, 2), dtype=np.float32),
+                np.zeros((0, 3), dtype=np.float32),
+            )
+            self._base_uvs = None
+            self._pending_highlight = np.zeros((0,), dtype=np.float32)
+        else:
+            positions = np.asarray(assembled.positions, dtype=np.float32)
+            uvs = np.asarray(
+                self._uv_mapper.map(assembled, texture_layouts),
+                dtype=np.float32,
+            )
+            normals = self._compute_flat_normals(positions)
+
+            self._pending_mesh = (positions, uvs, normals)
+            self._base_uvs = uvs
+            # Default highlight = everything-highlighted; paired with
+            # `_has_focus=False` the shader will render normally.
+            self._pending_highlight = np.ones(len(positions), dtype=np.float32)
+            self._has_focus = False
+            self._camera.fit_to_bounds(positions)
+
+        self.update()
+
+    def set_highlighted_triangles(self, triangle_indices: list[int] | None) -> None:
+        """Focus the render on a subset of triangles by dimming the rest.
+
+        Passing `None` or an empty list clears focus and all triangles render
+        normally. Indices refer to the triangle ordering in the last
+        `set_mesh` call (same order as `AssembledMesh.texture_layout_indices`).
+        """
+        if self._base_uvs is None:
+            return
+
+        total_vertices = len(self._base_uvs)
+        highlight = np.zeros(total_vertices, dtype=np.float32)
+
+        if not triangle_indices:
+            # No focus → set everything to 1.0 so `_has_focus=False` renders
+            # normally and any residual attribute values from before don't
+            # leak if the flag is toggled.
+            highlight[:] = 1.0
+            self._has_focus = False
+        else:
+            for tri_idx in triangle_indices:
+                base = tri_idx * 3
+                if 0 <= base <= total_vertices - 3:
+                    highlight[base:base + 3] = 1.0
+
+            self._has_focus = True
+
+        self._pending_highlight = highlight
+        self.update()
+
+    @staticmethod
+    def _compute_flat_normals(positions: np.ndarray) -> np.ndarray:
+        """Per-triangle normals (cross of two edges), replicated across the 3
+        vertices of each triangle so flat shading lands without an index buffer.
+        """
+        triangles = positions.reshape(-1, 3, 3)
+        edge_a = triangles[:, 1] - triangles[:, 0]
+        edge_b = triangles[:, 2] - triangles[:, 0]
+        face_normals = np.cross(edge_a, edge_b)
+
+        lengths = np.linalg.norm(face_normals, axis=1, keepdims=True)
+        # Guard against degenerate triangles (zero-area faces produce NaN
+        # after the divide). Treat them as "face up" so they still shade.
+        safe = np.where(lengths > 1e-8, lengths, 1.0)
+        face_normals = face_normals / safe
+        face_normals = np.where(
+            lengths > 1e-8, face_normals, np.array([0.0, 1.0, 0.0], dtype=np.float32),
+        )
+
+        # Repeat each face normal across its three vertices.
+        return np.repeat(face_normals, 3, axis=0).astype(np.float32)
+
+    def set_atlas(self, rgba: bytes | bytearray, width: int, height: int) -> None:
+        self._pending_atlas = (bytes(rgba), width, height)
+        # A full re-upload supersedes any pending region upload — no point
+        # shipping a sub-rect of the old atlas if the whole thing is about to
+        # be overwritten anyway.
+        self._pending_atlas_region = None
+        self.update()
+
+    def set_atlas_region(
+        self,
+        rgba: bytes | bytearray,
+        atlas_width: int,
+        atlas_height: int,
+        x: int, y: int, w: int, h: int,
+    ) -> None:
+        """Upload only a rectangle of the atlas (glTexSubImage2D path).
+
+        `rgba` is still the full atlas buffer; we slice the requested rect in
+        `paintGL`. This is the fast path for color edits, which only dirty
+        one slot's VRAM regions — re-uploading all 4096×512 RGBA on every
+        swatch click is wasteful when only a few hundred pixels changed.
+
+        If the texture hasn't been created yet (no prior `set_atlas` call),
+        this is dropped — sub-uploads to a non-existent texture have nothing
+        to patch.
+        """
+        if self._pending_atlas is not None:
+            # A full re-upload is already queued; it'll write the region too.
+            return
+
+        if self._texture == 0:
+            return
+
+        self._pending_atlas_region = (bytes(rgba), atlas_width, atlas_height, x, y, w, h)
+        self.update()
+
+    def set_frame_positions(
+        self,
+        positions: np.ndarray,
+    ) -> None:
+        """Upload a new positions buffer (and a fresh set of flat normals) for
+        the current mesh without touching UVs or refitting the camera.
+
+        Intended for animation playback: the triangle topology and per-vertex
+        UVs don't change between frames, only the world-space positions do.
+        """
+        if self._base_uvs is None:
+            return
+
+        uvs = self._base_uvs
+
+        if positions.size == 0 or len(positions) != len(uvs):
+            # Animation frame's vertex count differs from the base mesh —
+            # leave the last valid frame on screen rather than crashing.
+            return
+
+        normals = self._compute_flat_normals(positions)
+        self._pending_mesh = (positions.astype(np.float32), uvs, normals)
+        self.update()
+
+    def reset_camera(self) -> None:
+        self._camera.reset()
+        self.update()
+
+    def initializeGL(self) -> None:
+        # Wrap the whole bring-up in a try/except: shader compile/link can
+        # fail on older drivers, and `glGenBuffers` etc. raise if the context
+        # didn't come up at the 3.3 core profile we asked for. Tell the host
+        # window so it can swap us for a placeholder.
+        try:
+            GL.glClearColor(0.15, 0.16, 0.18, 1.0)
+            GL.glEnable(GL.GL_DEPTH_TEST)
+            # Backface culling stays off: PSX faces are commonly double-sided and
+            # the assembler's winding varies with flip_normal + batch-reverse, so
+            # culling would swallow roughly half the kart.
+            GL.glDisable(GL.GL_CULL_FACE)
+
+            self._program = self._build_shader_program()
+            self._uniform_mvp = GL.glGetUniformLocation(self._program, "u_mvp")
+            self._uniform_atlas = GL.glGetUniformLocation(self._program, "u_atlas")
+            self._uniform_has_focus = GL.glGetUniformLocation(self._program, "u_has_focus")
+
+            self._vao = GL.glGenVertexArrays(1)
+            self._vbo_pos = GL.glGenBuffers(1)
+            self._vbo_uv = GL.glGenBuffers(1)
+            self._vbo_normal = GL.glGenBuffers(1)
+            self._vbo_highlight = GL.glGenBuffers(1)
+            self._texture = GL.glGenTextures(1)
+
+            self._configure_vao()
+            self._configure_texture_defaults()
+
+            self._initialized = True
+        except Exception as exc:
+            self._initialized = False
+            self.gl_init_failed.emit(str(exc))
+
+    def resizeGL(self, w: int, h: int) -> None:
+        self._viewport_w = max(1, w)
+        self._viewport_h = max(1, h)
+        GL.glViewport(0, 0, self._viewport_w, self._viewport_h)
+
+    def paintGL(self) -> None:
+        if not self._initialized:
+            # Post-failure path: host window should have swapped us out, but
+            # if it hasn't yet (signal delivery isn't instant) just clear to
+            # the background so we don't issue GL calls on broken state.
+            try:
+                GL.glClear(GL.GL_COLOR_BUFFER_BIT)
+            except Exception:
+                pass
+
+            return
+
+        if self._pending_mesh is not None:
+            self._upload_mesh(*self._pending_mesh)
+            self._pending_mesh = None
+
+        if self._pending_highlight is not None:
+            self._upload_highlight(self._pending_highlight)
+            self._pending_highlight = None
+
+        if self._pending_atlas is not None:
+            self._upload_atlas(*self._pending_atlas)
+            self._pending_atlas = None
+
+        if self._pending_atlas_region is not None:
+            self._upload_atlas_region(*self._pending_atlas_region)
+            self._pending_atlas_region = None
+
+        GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
+
+        if self._triangle_count == 0:
+            return
+
+        GL.glUseProgram(self._program)
+
+        aspect = self._viewport_w / self._viewport_h
+        mvp = self._camera.projection_matrix(aspect) @ self._camera.view_matrix()
+        GL.glUniformMatrix4fv(self._uniform_mvp, 1, GL.GL_TRUE, mvp.astype(np.float32))
+        GL.glUniform1i(self._uniform_has_focus, 1 if self._has_focus else 0)
+
+        GL.glActiveTexture(GL.GL_TEXTURE0)
+        GL.glBindTexture(GL.GL_TEXTURE_2D, self._texture)
+        GL.glUniform1i(self._uniform_atlas, 0)
+
+        GL.glBindVertexArray(self._vao)
+        GL.glDrawArrays(GL.GL_TRIANGLES, 0, self._triangle_count * 3)
+        GL.glBindVertexArray(0)
+        GL.glUseProgram(0)
+
+    def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._last_mouse_pos = event.position()
+
+    def mouseMoveEvent(self, event) -> None:
+        if self._last_mouse_pos is None:
+            return
+
+        delta = event.position() - self._last_mouse_pos
+        self._last_mouse_pos = event.position()
+
+        self._camera.rotate(d_yaw=-delta.x() * 0.01, d_pitch=delta.y() * 0.01)
+        self.update()
+
+    def mouseReleaseEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._last_mouse_pos = None
+
+    def wheelEvent(self, event) -> None:
+        factor = 1.0 / self._ZOOM_STEP if event.angleDelta().y() > 0 else self._ZOOM_STEP
+        if self._camera.zoom(factor):
+            self.update()
+
+    def _build_shader_program(self) -> int:
+        vert = self._compile(GL.GL_VERTEX_SHADER, _VERTEX_SHADER)
+        frag = self._compile(GL.GL_FRAGMENT_SHADER, _FRAGMENT_SHADER)
+
+        program = GL.glCreateProgram()
+        GL.glAttachShader(program, vert)
+        GL.glAttachShader(program, frag)
+        GL.glLinkProgram(program)
+
+        if GL.glGetProgramiv(program, GL.GL_LINK_STATUS) != GL.GL_TRUE:
+            log = GL.glGetProgramInfoLog(program).decode("utf-8", errors="replace")
+            raise RuntimeError(f"Shader link failed: {log}")
+
+        GL.glDeleteShader(vert)
+        GL.glDeleteShader(frag)
+        return program
+
+    def _compile(self, stage: int, source: str) -> int:
+        shader = GL.glCreateShader(stage)
+        GL.glShaderSource(shader, source)
+        GL.glCompileShader(shader)
+
+        if GL.glGetShaderiv(shader, GL.GL_COMPILE_STATUS) != GL.GL_TRUE:
+            log = GL.glGetShaderInfoLog(shader).decode("utf-8", errors="replace")
+            raise RuntimeError(f"Shader compile failed: {log}")
+
+        return shader
+
+    def _configure_vao(self) -> None:
+        GL.glBindVertexArray(self._vao)
+
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self._vbo_pos)
+        GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, ctypes.c_void_p(0))
+        GL.glEnableVertexAttribArray(0)
+
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self._vbo_uv)
+        GL.glVertexAttribPointer(1, 2, GL.GL_FLOAT, GL.GL_FALSE, 0, ctypes.c_void_p(0))
+        GL.glEnableVertexAttribArray(1)
+
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self._vbo_normal)
+        GL.glVertexAttribPointer(2, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, ctypes.c_void_p(0))
+        GL.glEnableVertexAttribArray(2)
+
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self._vbo_highlight)
+        GL.glVertexAttribPointer(3, 1, GL.GL_FLOAT, GL.GL_FALSE, 0, ctypes.c_void_p(0))
+        GL.glEnableVertexAttribArray(3)
+
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, 0)
+        GL.glBindVertexArray(0)
+
+    def _configure_texture_defaults(self) -> None:
+        GL.glBindTexture(GL.GL_TEXTURE_2D, self._texture)
+        GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_NEAREST)
+        GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_NEAREST)
+        GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP_TO_EDGE)
+        GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP_TO_EDGE)
+        GL.glBindTexture(GL.GL_TEXTURE_2D, 0)
+
+    def _upload_mesh(
+        self,
+        positions: np.ndarray,
+        uvs: np.ndarray,
+        normals: np.ndarray,
+    ) -> None:
+        self._triangle_count = len(positions) // 3
+
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self._vbo_pos)
+        GL.glBufferData(GL.GL_ARRAY_BUFFER, positions.nbytes, positions, GL.GL_STATIC_DRAW)
+
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self._vbo_uv)
+        GL.glBufferData(GL.GL_ARRAY_BUFFER, uvs.nbytes, uvs, GL.GL_STATIC_DRAW)
+
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self._vbo_normal)
+        GL.glBufferData(GL.GL_ARRAY_BUFFER, normals.nbytes, normals, GL.GL_STATIC_DRAW)
+
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, 0)
+
+    def _upload_highlight(self, highlight: np.ndarray) -> None:
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self._vbo_highlight)
+        GL.glBufferData(GL.GL_ARRAY_BUFFER, highlight.nbytes, highlight, GL.GL_DYNAMIC_DRAW)
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, 0)
+
+    def _upload_atlas(self, rgba: bytes, width: int, height: int) -> None:
+        GL.glBindTexture(GL.GL_TEXTURE_2D, self._texture)
+        GL.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1)
+        GL.glTexImage2D(
+            GL.GL_TEXTURE_2D, 0, GL.GL_RGBA,
+            width, height, 0,
+            GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, rgba,
+        )
+        GL.glBindTexture(GL.GL_TEXTURE_2D, 0)
+
+    def _upload_atlas_region(
+        self,
+        rgba: bytes,
+        atlas_width: int,
+        atlas_height: int,
+        x: int, y: int, w: int, h: int,
+    ) -> None:
+        # Clip to the atlas bounds so bad input from the caller can't issue
+        # an out-of-range glTexSubImage2D (which crashes rather than errors).
+        x = max(0, min(x, atlas_width))
+        y = max(0, min(y, atlas_height))
+        w = max(0, min(w, atlas_width - x))
+        h = max(0, min(h, atlas_height - y))
+
+        if w == 0 or h == 0:
+            return
+
+        # Slice out a contiguous copy of the dirty rectangle — simpler than
+        # setting GL_UNPACK_ROW_LENGTH and works reliably with PyOpenGL.
+        arr = np.frombuffer(rgba, dtype=np.uint8).reshape(atlas_height, atlas_width, 4)
+        sub = np.ascontiguousarray(arr[y:y + h, x:x + w])
+
+        GL.glBindTexture(GL.GL_TEXTURE_2D, self._texture)
+        GL.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1)
+        GL.glTexSubImage2D(
+            GL.GL_TEXTURE_2D, 0,
+            x, y, w, h,
+            GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, sub,
+        )
+        GL.glBindTexture(GL.GL_TEXTURE_2D, 0)
+

@@ -1,0 +1,10 @@
+.claude/
+.idea/
+.venv/
+.vs/
+__pycache__/
+.pytest_cache/
+paintjob-designer.spec
+build/
+dist/
+*.egg-info/
