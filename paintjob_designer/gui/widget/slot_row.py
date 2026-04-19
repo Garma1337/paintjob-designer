@@ -10,21 +10,23 @@ FOCUSED_STYLE = "QFrame { border-left: 3px solid #3fa9f5; background: #2a2d33; }
 
 
 class SlotRow(QFrame):
-    """QFrame that reports its own clicks.
+    """QFrame that reports right-click context requests.
 
     We subclass instead of hooking an eventFilter so child widgets (swatches,
-    Reset button) still swallow their own clicks naturally — `mousePressEvent`
-    here only fires when the user clicks the row chrome itself.
+    Highlight / Reset buttons) still swallow their own clicks naturally —
+    `mousePressEvent` here only fires when the user right-clicks the row
+    chrome itself (for the Transform Colors context menu).
 
-    Extracted from `slot_editor.py` so the row's click/focus semantics can be
-    exercised independently of the whole grid.
+    Left-clicks on the row chrome are intentionally ignored: slot highlight
+    is an explicit opt-in via the row's Highlight button, not something the
+    user triggers by clicking near a swatch.
     """
 
-    clicked = Signal()
+    right_clicked = Signal()
 
     def mousePressEvent(self, event) -> None:
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.clicked.emit()
+        if event.button() == Qt.MouseButton.RightButton:
+            self.right_clicked.emit()
 
         super().mousePressEvent(event)
 

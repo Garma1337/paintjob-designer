@@ -51,6 +51,40 @@ class ColorHandler:
         paintjob.characters[character_id].slots[slot.slot_name].colors[color_index] = new_color
         self._atlas.render_slot(rgba_buffer, vram, paintjob, character_id, slot)
 
+    def apply_edits(
+        self,
+        iso_root: str | Path,
+        rgba_buffer: bytearray,
+        paintjob: Paintjob,
+        character_id: str,
+        slot: SlotRegions,
+        edits: list[tuple[int, PsxColor]],
+    ) -> None:
+        """Apply multiple color changes to one slot in a single pass.
+
+        `apply_edit` re-renders the slot's atlas region after every single
+        color write, which is wasteful when a bulk transform touches 10+
+        colors in the same slot. This collapses the same operation into one
+        render by mutating the paintjob's 16-color CLUT entry in place and
+        then calling `render_slot` exactly once.
+        """
+        if not edits:
+            return
+
+        vram = self._vram_cache.get(iso_root)
+        self._ensure_slot_populated(paintjob, character_id, slot, vram)
+
+        slot_colors = paintjob.characters[character_id].slots[slot.slot_name].colors
+        for color_index, new_color in edits:
+            if color_index < 0 or color_index >= SlotColors.SIZE:
+                raise IndexError(
+                    f"color_index {color_index} out of range (0..{SlotColors.SIZE - 1})"
+                )
+
+            slot_colors[color_index] = new_color
+
+        self._atlas.render_slot(rgba_buffer, vram, paintjob, character_id, slot)
+
     def default_slot_colors(
         self,
         iso_root: str | Path,

@@ -23,20 +23,27 @@ from PySide6.QtWidgets import (
 )
 
 from paintjob_designer.color.converter import ColorConverter
+from paintjob_designer.color.transform import ColorTransformer
 from paintjob_designer.config.iso_root_validator import IsoRootValidator
 from paintjob_designer.config.store import AppConfig, ConfigStore
 from paintjob_designer.ctr.vertex_assembler import VertexAssembler
 from paintjob_designer.exporters.binary_exporter import BinaryExporter
 from paintjob_designer.exporters.source_code_exporter import SourceCodeExporter
-from paintjob_designer.gui.command.paintjob_edit_commands import (
-    ResetSlotCommand,
-    SetSlotColorCommand,
+from paintjob_designer.gui.command.bulk_transform_command import (
+    BulkTransformCommand,
 )
+from paintjob_designer.gui.command.reset_slot_command import ResetSlotCommand
+from paintjob_designer.gui.command.set_slot_color_command import SetSlotColorCommand
 from paintjob_designer.gui.dialog.profile_picker_dialog import (
     ProfilePickerDialog,
 )
 from paintjob_designer.gui.dialog.source_code_export_options_dialog import (
     SourceCodeExportOptionsDialog,
+)
+from paintjob_designer.gui.dialog.transform_colors_dialog import (
+    TransformCandidate,
+    TransformColorsDialog,
+    TransformScope,
 )
 from paintjob_designer.gui.handler.character_handler import (
     BroughtUpCharacter,
@@ -92,6 +99,7 @@ class MainWindow(QMainWindow):
         color_picker: PsxColorPicker,
         vertex_assembler: VertexAssembler,
         atlas_uv_mapper: AtlasUvMapper,
+        color_transformer: ColorTransformer,
     ) -> None:
         super().__init__()
         self._config_store = config_store
@@ -106,6 +114,7 @@ class MainWindow(QMainWindow):
         self._color_picker = color_picker
         self._vertex_assembler = vertex_assembler
         self._atlas_uv_mapper = atlas_uv_mapper
+        self._color_transformer = color_transformer
 
         self._config: AppConfig = self._config_store.load()
         self._profile: Profile | None = None
@@ -253,6 +262,7 @@ class MainWindow(QMainWindow):
         self._slot_editor.color_edit_requested.connect(self._on_color_edit_requested)
         self._slot_editor.slot_reset_requested.connect(self._on_slot_reset_requested)
         self._slot_editor.slot_focus_changed.connect(self._on_slot_focus_changed)
+        self._slot_editor.context_requested.connect(self._on_slot_editor_context)
 
         splitter.addWidget(sidebar_container)
         splitter.addWidget(self._kart_viewer)
@@ -299,6 +309,17 @@ class MainWindow(QMainWindow):
 
         self._action_export_all_binary = toolbar.addAction(
             "Export as Binary", self._on_export_all_binary,
+        )
+
+        toolbar.addSeparator()
+
+        self._action_transform_all = toolbar.addAction(
+            "Transform Colors...",
+            lambda: self._open_transform_dialog(
+                scope=TransformScope.ENTIRE_KART,
+                slot_name=None,
+                match_color=None,
+            ),
         )
 
         toolbar.addSeparator()
@@ -925,6 +946,307 @@ class MainWindow(QMainWindow):
             slot,
             old_colors,
         ))
+
+    def _on_slot_editor_context(self, slot_name: str, color_index: int, global_pos) -> None:
+        """Right-click on a swatch (color_index >= 0) or slot-row chrome (color_index == -1).
+
+        Pops a small menu whose only entry today is "Transform colors..." — but
+        keeping it as a menu rather than a bare action leaves room for future
+        per-swatch extras (copy hex, paste hex, etc.) without yanking the
+        primary entry elsewhere.
+        """
+        if self._current_bundle is None or self._current_character is None:
+            return
+
+        slot = self._current_bundle.slot_regions.slots.get(slot_name)
+        if slot is None:
+            return
+
+        match_color: PsxColor | None = None
+        if color_index >= 0:
+            match_color = self._current_color(slot, color_index)
+
+        menu = QMenu(self)
+        menu.addAction(
+            "Transform colors...",
+            lambda: self._open_transform_dialog(
+                scope=TransformScope.THIS_SLOT,
+                slot_name=slot_name,
+                match_color=match_color,
+            ),
+        )
+        menu.exec(global_pos)
+
+    def _open_transform_dialog(
+        self,
+        scope: TransformScope,
+        slot_name: str | None,
+        match_color: PsxColor | None,
+    ) -> None:
+        if self._current_bundle is None or self._current_character is None:
+            QMessageBox.information(
+                self,
+                "Transform Colors",
+                "Load a character before running a bulk color transform.",
+            )
+            return
+
+        slot_candidates: list[TransformCandidate] = []
+        if slot_name is not None:
+            target_slot = self._current_bundle.slot_regions.slots.get(slot_name)
+            if target_slot is not None:
+                slot_candidates = self._build_transform_candidates([target_slot])
+
+        kart_candidates = self._build_transform_candidates(
+            list(self._current_bundle.slot_regions.slots.values()),
+        )
+
+        # Snapshot every slot the dialog could touch. Needed because the
+        # Preview button pushes the current transform into the paintjob + 3D
+        # view — on Cancel we roll back to snapshot, on Apply we roll back
+        # then re-apply the final edit set so the committed state matches
+        # what Apply's `resulting_edits` describes (user may have tweaked
+        # sliders between the last Preview and Apply).
+        preview_snapshot = self._snapshot_slots_for_preview(kart_candidates)
+        dirty_slots: set[tuple[str, str]] = set()
+
+        dialog = TransformColorsDialog(
+            slot_candidates=slot_candidates,
+            kart_candidates=kart_candidates,
+            color_transformer=self._color_transformer,
+            color_converter=self._color_converter,
+            initial_scope=scope,
+            initial_match_color=match_color,
+            initial_slot_label=slot_name or "",
+            parent=self,
+        )
+        dialog.preview_requested.connect(
+            lambda edits: self._apply_transform_preview(
+                preview_snapshot, dirty_slots, edits,
+            ),
+        )
+
+        if dialog.exec() != dialog.DialogCode.Accepted:
+            self._restore_transform_snapshot(preview_snapshot, dirty_slots)
+            return
+
+        edits = dialog.resulting_edits()
+        if not edits:
+            self._restore_transform_snapshot(preview_snapshot, dirty_slots)
+            return
+
+        # Roll back any preview state first, then apply the final edit set
+        # from a clean baseline. Without the restore, residue from an earlier
+        # preview that touched different slots/indices than the final Apply
+        # would stay in the paintjob (applying new edits only overwrites the
+        # colors they touch; earlier preview colors at other indices would
+        # stick around).
+        self._restore_transform_snapshot(preview_snapshot, dirty_slots)
+        self.apply_bulk_edits_from_command(
+            [(e.character_id, e.slot, e.color_index, e.new_color) for e in edits],
+        )
+
+        label = (
+            f"Transform {len(edits)} color{'s' if len(edits) != 1 else ''} "
+            f"({'slot ' + slot_name if scope == TransformScope.THIS_SLOT and slot_name else 'entire kart'})"
+        )
+        self._undo_stack.push(BulkTransformCommand(self, label, edits))
+
+    def _snapshot_slots_for_preview(
+        self, candidates: list[TransformCandidate],
+    ) -> dict[tuple[str, str], tuple[object, SlotColors | None]]:
+        """Capture per-slot paintjob state for every unique slot in `candidates`.
+
+        Value is (slot, colors). `colors` is None when the slot hadn't been
+        touched yet, so revert deletes the paintjob entry — same semantics as
+        `ResetSlotCommand.undo`'s None-means-untouched branch.
+        """
+        snapshot: dict[tuple[str, str], tuple[object, SlotColors | None]] = {}
+        for cand in candidates:
+            key = (cand.character_id, cand.slot.slot_name)
+            if key in snapshot:
+                continue
+
+            snapshot[key] = (
+                cand.slot,
+                self._snapshot_slot_colors(cand.character_id, cand.slot.slot_name),
+            )
+
+        return snapshot
+
+    def _apply_transform_preview(
+        self,
+        snapshot: dict[tuple[str, str], tuple[object, SlotColors | None]],
+        dirty_slots: set[tuple[str, str]],
+        edits: list,
+    ) -> None:
+        """Push a preview edit set into the paintjob + 3D view.
+
+        Reverts everything to snapshot first (clearing residue from a prior
+        Preview click that might have touched different slots/indices), then
+        applies the new edits grouped by slot, then does one full-atlas GL
+        upload. Per-slot `set_atlas_region` can't be used here — the viewer's
+        pending-region field is a single tuple, so multiple region uploads
+        within one paintGL cycle would drop all but the last one.
+        """
+        if self._current_bundle is None:
+            return
+
+        new_dirty = {(e.character_id, e.slot.slot_name) for e in edits}
+
+        for key in dirty_slots | new_dirty:
+            slot, colors = snapshot[key]
+            restored = self._color_handler.restore_slot(
+                self._config.iso_root,
+                self._current_bundle.atlas_rgba,
+                self._paintjob,
+                key[0],
+                slot,
+                colors,
+            )
+            self._slot_editor.set_slot_colors(slot.slot_name, restored)
+
+        by_slot: dict[tuple[str, str], list] = {}
+        slot_for_key: dict[tuple[str, str], object] = {}
+
+        for edit in edits:
+            key = (edit.character_id, edit.slot.slot_name)
+            by_slot.setdefault(key, []).append(edit)
+            slot_for_key[key] = edit.slot
+
+        for key, slot_edits in by_slot.items():
+            slot = slot_for_key[key]
+            self._color_handler.apply_edits(
+                self._config.iso_root,
+                self._current_bundle.atlas_rgba,
+                self._paintjob,
+                key[0],
+                slot,
+                [(e.color_index, e.new_color) for e in slot_edits],
+            )
+
+            for e in slot_edits:
+                self._slot_editor.update_color(
+                    slot.slot_name, e.color_index, e.new_color,
+                )
+
+        self._kart_viewer.set_atlas(
+            self._current_bundle.atlas_rgba,
+            AtlasRenderer.ATLAS_WIDTH,
+            AtlasRenderer.ATLAS_HEIGHT,
+        )
+
+        dirty_slots.clear()
+        dirty_slots.update(new_dirty)
+
+    def _restore_transform_snapshot(
+        self,
+        snapshot: dict[tuple[str, str], tuple[object, SlotColors | None]],
+        dirty_slots: set[tuple[str, str]],
+    ) -> None:
+        """Revert every slot that diverged during preview back to snapshot state."""
+        if self._current_bundle is None or not dirty_slots:
+            dirty_slots.clear()
+            return
+
+        for key in dirty_slots:
+            slot, colors = snapshot[key]
+            restored = self._color_handler.restore_slot(
+                self._config.iso_root,
+                self._current_bundle.atlas_rgba,
+                self._paintjob,
+                key[0],
+                slot,
+                colors,
+            )
+            self._slot_editor.set_slot_colors(slot.slot_name, restored)
+
+        self._kart_viewer.set_atlas(
+            self._current_bundle.atlas_rgba,
+            AtlasRenderer.ATLAS_WIDTH,
+            AtlasRenderer.ATLAS_HEIGHT,
+        )
+
+        dirty_slots.clear()
+
+    def apply_bulk_edits_from_command(
+        self,
+        operations: list[tuple[str, object, int, PsxColor]],
+    ) -> None:
+        """Apply N (character, slot, color_index, color) changes as one batch.
+
+        Used by the Transform Colors Accept path AND by `BulkTransformCommand`
+        redo/undo. Groups by slot so each slot takes one paintjob mutation +
+        one atlas render, and finishes with a single full-atlas GL upload.
+        Per-edit `apply_color_edit_from_command` would queue one
+        `set_atlas_region` per edit, but the viewer keeps only the latest
+        pending region — all earlier uploads get dropped before `paintGL`
+        runs, so a multi-slot transform would leave most slots un-updated on
+        the GPU.
+        """
+        if self._current_bundle is None or not operations:
+            return
+
+        by_slot: dict[tuple[str, str], list[tuple[int, PsxColor]]] = {}
+        slot_for_key: dict[tuple[str, str], object] = {}
+        for character_id, slot, color_index, color in operations:
+            key = (character_id, slot.slot_name)
+            by_slot.setdefault(key, []).append((color_index, color))
+            slot_for_key[key] = slot
+
+        for key, slot_ops in by_slot.items():
+            slot = slot_for_key[key]
+            self._color_handler.apply_edits(
+                self._config.iso_root,
+                self._current_bundle.atlas_rgba,
+                self._paintjob,
+                key[0],
+                slot,
+                slot_ops,
+            )
+
+            for color_index, new_color in slot_ops:
+                self._slot_editor.update_color(
+                    slot.slot_name, color_index, new_color,
+                )
+
+        self._kart_viewer.set_atlas(
+            self._current_bundle.atlas_rgba,
+            AtlasRenderer.ATLAS_WIDTH,
+            AtlasRenderer.ATLAS_HEIGHT,
+        )
+
+    def _build_transform_candidates(self, slots) -> list[TransformCandidate]:
+        """Resolve (slot, color_index) → effective color for every color in `slots`.
+
+        "Effective" = paintjob override if the user has touched this slot,
+        else the VRAM default. That matches what the swatches visually show
+        and what Replace-matches uses as its before value.
+        """
+        if self._current_character is None:
+            return []
+
+        character_id = self._current_character.id
+        character_paintjob = self._paintjob.characters.get(character_id)
+
+        result: list[TransformCandidate] = []
+        for slot in slots:
+            if character_paintjob is not None and slot.slot_name in character_paintjob.slots:
+                colors = character_paintjob.slots[slot.slot_name].colors
+            else:
+                colors = self._color_handler.default_slot_colors(
+                    self._config.iso_root, slot,
+                )
+
+            for i, color in enumerate(colors):
+                result.append(TransformCandidate(
+                    character_id=character_id,
+                    slot=slot,
+                    color_index=i,
+                    current_color=PsxColor(value=color.value),
+                ))
+
+        return result
 
     def apply_color_edit_from_command(
         self,

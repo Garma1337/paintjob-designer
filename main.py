@@ -23,6 +23,7 @@ if __name__ == "__main__":
         color_picker=container.resolve("psx_color_picker"),
         vertex_assembler=container.resolve("vertex_assembler"),
         atlas_uv_mapper=container.resolve("atlas_uv_mapper"),
+        color_transformer=container.resolve("color_transformer"),
     )
 
     window.show()

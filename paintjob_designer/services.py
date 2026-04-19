@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from paintjob_designer.color.converter import ColorConverter
+from paintjob_designer.color.transform import ColorTransformer
 from paintjob_designer.config.iso_root_validator import IsoRootValidator
 from paintjob_designer.config.store import ConfigStore
 from paintjob_designer.core import Container
@@ -42,6 +43,7 @@ container = Container()
 container.register("config_store", lambda c: ConfigStore(_default_config_path()))
 container.register("iso_root_validator", lambda c: IsoRootValidator())
 container.register("color_converter", lambda c: ColorConverter())
+container.register("color_transformer", lambda c: ColorTransformer())
 container.register("profile_reader", lambda c: ProfileReader())
 container.register("profile_registry", lambda c: ProfileRegistry(c.resolve("profile_reader")))
 container.register("animation_decoder", lambda c: AnimationDecoder())

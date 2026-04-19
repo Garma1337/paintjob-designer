@@ -1,6 +1,7 @@
 # coding: utf-8
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Signal
+from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -36,6 +37,9 @@ class SlotEditor(QScrollArea):
     color_edit_requested = Signal(str, int)
     slot_reset_requested = Signal(str)
     slot_focus_changed = Signal(object)
+    # Right-click context requests. Payload: (slot_name, color_index | -1, global_pos).
+    # `color_index == -1` means the right-click landed on the row chrome, not a swatch.
+    context_requested = Signal(str, int, object)
 
     def __init__(self, color_converter: ColorConverter, parent=None) -> None:
         super().__init__(parent)
@@ -52,6 +56,7 @@ class SlotEditor(QScrollArea):
 
         self._rows: dict[str, SlotRow] = {}
         self._swatches: dict[tuple[str, int], ColorSwatch] = {}
+        self._highlight_buttons: dict[str, QPushButton] = {}
         self._focused_slot: str | None = None
 
     def set_slots(self, slot_names: list[str]) -> None:
@@ -92,20 +97,30 @@ class SlotEditor(QScrollArea):
 
         self._rows.clear()
         self._swatches.clear()
+        self._highlight_buttons.clear()
 
     def _build_slot_row(self, slot_name: str) -> SlotRow:
         row = SlotRow()
         row.setFrameShape(QFrame.Shape.StyledPanel)
-        row.setCursor(Qt.CursorShape.PointingHandCursor)
-        row.setToolTip("Click to highlight this slot's regions in the 3D view and atlas.")
-        row.clicked.connect(lambda name=slot_name: self._on_row_clicked(name))
-        layout = QHBoxLayout(row)
-        layout.setContentsMargins(6, 4, 6, 4)
+        row.right_clicked.connect(
+            lambda name=slot_name: self.context_requested.emit(name, -1, QCursor.pos()),
+        )
+
+        # Two-row layout: label + swatch grid on top, action buttons below.
+        # Keeping buttons under the swatches instead of beside them stops the
+        # grid from shrinking when the window narrows — the swatches get the
+        # full row width and the button strip is right-aligned underneath.
+        row_layout = QVBoxLayout(row)
+        row_layout.setContentsMargins(6, 4, 6, 4)
+        row_layout.setSpacing(4)
+
+        top = QHBoxLayout()
+        top.setContentsMargins(0, 0, 0, 0)
 
         label = QLabel(slot_name)
         label.setMinimumWidth(80)
         label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-        layout.addWidget(label)
+        top.addWidget(label)
 
         grid = QGridLayout()
         grid.setSpacing(2)
@@ -119,17 +134,40 @@ class SlotEditor(QScrollArea):
                 swatch.mark_as_transparency_index()
 
             swatch.clicked.connect(self._emit_edit(slot_name, i))
+            swatch.right_clicked.connect(self._emit_context(slot_name, i))
             grid.addWidget(swatch, 0, i)
             self._swatches[(slot_name, i)] = swatch
 
-        layout.addLayout(grid)
-        layout.addStretch()
+        top.addLayout(grid)
+        top.addStretch()
+        row_layout.addLayout(top)
+
+        bottom = QHBoxLayout()
+        bottom.setContentsMargins(0, 0, 0, 0)
+        bottom.addStretch()
+
+        # Checkable "Highlight" toggle — explicit, so opening a color picker
+        # doesn't accidentally dim the rest of the kart. Only one slot can be
+        # highlighted at a time; clicking an already-highlighted row's button
+        # clears focus.
+        highlight_button = QPushButton("Highlight")
+        highlight_button.setCheckable(True)
+        highlight_button.setToolTip(
+            "Dim every kart face that doesn't sample this slot, so you can "
+            "see exactly where these 16 colors land on the model.",
+        )
+        highlight_button.setFixedHeight(22)
+        highlight_button.clicked.connect(self._emit_highlight_toggle(slot_name))
+        bottom.addWidget(highlight_button)
+        self._highlight_buttons[slot_name] = highlight_button
 
         reset_button = QPushButton("Reset")
         reset_button.setToolTip("Revert this slot to the default CLUT colors from the ISO.")
         reset_button.setFixedHeight(22)
         reset_button.clicked.connect(self._emit_reset(slot_name))
-        layout.addWidget(reset_button)
+        bottom.addWidget(reset_button)
+
+        row_layout.addLayout(bottom)
 
         return row
 
@@ -147,14 +185,23 @@ class SlotEditor(QScrollArea):
 
         return handler
 
-    def _on_row_clicked(self, slot_name: str) -> None:
-        # Toggle: clicking the currently-focused row clears focus so the user
-        # can get back to the un-highlighted view without hunting for an
-        # "unfocus" target.
-        if self._focused_slot == slot_name:
-            self._set_focus(None)
-        else:
-            self._set_focus(slot_name)
+    def _emit_context(self, slot_name: str, color_index: int):
+        def handler():
+            self.context_requested.emit(slot_name, color_index, QCursor.pos())
+
+        return handler
+
+    def _emit_highlight_toggle(self, slot_name: str):
+        def handler():
+            # Toggle: clicking an already-highlighted row's button clears focus
+            # so the user can get back to the un-dimmed view without hunting
+            # for an "unfocus" target.
+            if self._focused_slot == slot_name:
+                self._set_focus(None)
+            else:
+                self._set_focus(slot_name)
+
+        return handler
 
     def _set_focus(self, slot_name: str | None) -> None:
         if slot_name == self._focused_slot:
@@ -168,9 +215,17 @@ class SlotEditor(QScrollArea):
             if previous_row is not None:
                 previous_row.set_focused(False)
 
+            previous_button = self._highlight_buttons.get(previous)
+            if previous_button is not None:
+                previous_button.setChecked(False)
+
         if slot_name is not None:
             current_row = self._rows.get(slot_name)
             if current_row is not None:
                 current_row.set_focused(True)
+
+            current_button = self._highlight_buttons.get(slot_name)
+            if current_button is not None:
+                current_button.setChecked(True)
 
         self.slot_focus_changed.emit(slot_name)

@@ -24,6 +24,7 @@ class ColorSwatch(QFrame):
     """
 
     clicked = Signal()
+    right_clicked = Signal()
 
     _SIZE = 22
 
@@ -83,5 +84,9 @@ class ColorSwatch(QFrame):
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit()
+        elif event.button() == Qt.MouseButton.RightButton:
+            # Right-click opens a "Transform colors..." context menu handled by
+            # the owning SlotEditor; the swatch itself stays dumb about it.
+            self.right_clicked.emit()
 
         super().mousePressEvent(event)
