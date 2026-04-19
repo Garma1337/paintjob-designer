@@ -2,7 +2,7 @@
 
 import pytest
 
-pytest.importorskip("PySide6")
+pytest.importorskip("PySide6.QtGui")
 
 from paintjob_designer.gui.command.bulk_transform_command import (
     BulkColorEdit,

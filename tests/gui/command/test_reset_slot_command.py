@@ -2,7 +2,7 @@
 
 import pytest
 
-pytest.importorskip("PySide6")
+pytest.importorskip("PySide6.QtGui")
 
 from paintjob_designer.gui.command.reset_slot_command import ResetSlotCommand
 from paintjob_designer.models import Paintjob, PsxColor, SlotColors, SlotRegions
