@@ -4,7 +4,8 @@ import colorsys
 from dataclasses import dataclass
 from enum import Enum
 
-from paintjob_designer.models import PsxColor
+from paintjob_designer.color.converter import ColorConverter
+from paintjob_designer.models import PsxColor, Rgb888
 
 
 class TransformMode(Enum):
@@ -44,13 +45,22 @@ class ColorTransformer:
     """Applies a `TransformParams` to a single `PsxColor`.
 
     Quantizes back to the PSX 5-bit grid on the way out, preserving the stp
-    (transparency) bit from the input color. Entries whose full u16 value is 0
-    are the PSX transparency sentinel — they're passed through untouched so
-    that HSV shifts don't silently promote a row's transparent index to a
-    solid-colored pixel (the CLUT would stop rendering as transparent in-game).
+    (transparency) bit from the input color. Entries whose full u16 value
+    is 0 are the PSX transparency sentinel — they're passed through
+    untouched so that HSV shifts don't silently promote a row's transparent
+    index to a solid-colored pixel (the CLUT would stop rendering as
+    transparent in-game).
+
+    Delegates 5-5-5 ↔ 8-8-8 conversion + u16 packing to the injected
+    `ColorConverter`: that class owns the authoritative PSX-grid math, and
+    duplicating it here made the two implementations drift whenever one of
+    them was fixed.
     """
 
     _TRANSPARENT_SENTINEL = 0
+
+    def __init__(self, color_converter: ColorConverter) -> None:
+        self._converter = color_converter
 
     def transform(self, color: PsxColor, params: TransformParams) -> PsxColor:
         if color.value == self._TRANSPARENT_SENTINEL:
@@ -59,8 +69,8 @@ class ColorTransformer:
         if params.mode == TransformMode.REPLACE_MATCHES:
             return self._replace(color, params)
 
-        r, g, b = self._unpack_rgb(color)
-        stp = color.stp
+        rgb = self._converter.psx_to_rgb(color)
+        r, g, b = rgb.r, rgb.g, rgb.b
 
         if params.mode == TransformMode.RGB_DELTA:
             r = _clamp_u8(r + params.rgb_delta_r)
@@ -79,7 +89,7 @@ class ColorTransformer:
             r_f, g_f, b_f = colorsys.hsv_to_rgb(h, s, v)
             r, g, b = round(r_f * 255), round(g_f * 255), round(b_f * 255)
 
-        return self._pack(r, g, b, stp)
+        return self._converter.rgb_to_psx(Rgb888(r=r, g=g, b=b), stp=color.stp)
 
     def _replace(self, color: PsxColor, params: TransformParams) -> PsxColor:
         if params.match_color is None or params.replace_with is None:
@@ -89,26 +99,6 @@ class ColorTransformer:
             return params.replace_with
 
         return color
-
-    def _unpack_rgb(self, color: PsxColor) -> tuple[int, int, int]:
-        # Bit-replication 5→8 matches `ColorConverter._expand_5_to_8` — we don't
-        # inject the converter because the transform module must stay headless /
-        # pure-Python for tests and to avoid a DI dependency on a trivial helper.
-        return (
-            _expand_5_to_8(color.r5),
-            _expand_5_to_8(color.g5),
-            _expand_5_to_8(color.b5),
-        )
-
-    def _pack(self, r: int, g: int, b: int, stp: int) -> PsxColor:
-        r5 = (r >> 3) & 0x1F
-        g5 = (g >> 3) & 0x1F
-        b5 = (b >> 3) & 0x1F
-        return PsxColor(value=((stp & 0x1) << 15) | (b5 << 10) | (g5 << 5) | r5)
-
-
-def _expand_5_to_8(v5: int) -> int:
-    return ((v5 << 3) | (v5 >> 2)) & 0xFF
 
 
 def _clamp_u8(v: int) -> int:

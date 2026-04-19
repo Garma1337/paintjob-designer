@@ -7,31 +7,38 @@ from paintjob_designer.color.transform import (
     TransformMode,
     TransformParams,
 )
-from paintjob_designer.models import PsxColor
-
-
-def _psx(r: int, g: int, b: int, stp: int = 0) -> PsxColor:
-    r5 = (r >> 3) & 0x1F
-    g5 = (g >> 3) & 0x1F
-    b5 = (b >> 3) & 0x1F
-    return PsxColor(value=((stp & 0x1) << 15) | (b5 << 10) | (g5 << 5) | r5)
+from paintjob_designer.models import PsxColor, Rgb888
 
 
 @pytest.fixture
-def transformer():
-    return ColorTransformer()
+def transformer(color_converter):
+    return ColorTransformer(color_converter)
+
+
+@pytest.fixture
+def psx(color_converter):
+    """Build a PSX color from 8-bit RGB using the real converter.
+
+    Avoids the previous `_psx()` test helper that re-implemented
+    `ColorConverter.rgb_to_psx` by hand, which is the kind of drift-prone
+    duplication we want to keep out of the test suite.
+    """
+    def _build(r: int, g: int, b: int, stp: int = 0) -> PsxColor:
+        return color_converter.rgb_to_psx(Rgb888(r=r, g=g, b=b), stp=stp)
+
+    return _build
 
 
 class TestTransparencySentinel:
 
-    def test_u16_zero_is_preserved_for_every_mode(self, transformer):
+    def test_u16_zero_is_preserved_for_every_mode(self, transformer, psx):
         sentinel = PsxColor(value=0)
 
         for mode in TransformMode:
             params = TransformParams(
                 mode=mode,
                 match_color=sentinel,
-                replace_with=_psx(255, 0, 0),
+                replace_with=psx(255, 0, 0),
                 hue_shift_degrees=90,
                 brightness_shift=0.5,
                 saturation_shift=-0.5,
@@ -61,9 +68,9 @@ class TestTransparencySentinel:
 
 class TestReplaceMatches:
 
-    def test_replaces_exact_u16_match(self, transformer):
-        red = _psx(255, 0, 0)
-        blue = _psx(0, 0, 255)
+    def test_replaces_exact_u16_match(self, transformer, psx):
+        red = psx(255, 0, 0)
+        blue = psx(0, 0, 255)
         params = TransformParams(
             mode=TransformMode.REPLACE_MATCHES,
             match_color=red,
@@ -72,10 +79,10 @@ class TestReplaceMatches:
 
         assert transformer.transform(red, params).value == blue.value
 
-    def test_leaves_non_matching_colors_alone(self, transformer):
-        red = _psx(255, 0, 0)
-        green = _psx(0, 255, 0)
-        blue = _psx(0, 0, 255)
+    def test_leaves_non_matching_colors_alone(self, transformer, psx):
+        red = psx(255, 0, 0)
+        green = psx(0, 255, 0)
+        blue = psx(0, 0, 255)
         params = TransformParams(
             mode=TransformMode.REPLACE_MATCHES,
             match_color=red,
@@ -84,7 +91,7 @@ class TestReplaceMatches:
 
         assert transformer.transform(green, params).value == green.value
 
-    def test_stp_bit_is_part_of_the_match(self, transformer):
+    def test_stp_bit_is_part_of_the_match(self, transformer, psx):
         # Two colors with the same RGB but different stp bits must not collide
         # — matching by full u16 preserves the CTR in-game distinction between
         # transparent-black and opaque-black.
@@ -93,13 +100,13 @@ class TestReplaceMatches:
         params = TransformParams(
             mode=TransformMode.REPLACE_MATCHES,
             match_color=stp0_red,
-            replace_with=_psx(0, 255, 0),
+            replace_with=psx(0, 255, 0),
         )
 
         assert transformer.transform(stp1_red, params).value == stp1_red.value
 
-    def test_noop_when_params_incomplete(self, transformer):
-        red = _psx(255, 0, 0)
+    def test_noop_when_params_incomplete(self, transformer, psx):
+        red = psx(255, 0, 0)
         params = TransformParams(mode=TransformMode.REPLACE_MATCHES)
 
         # Neither match_color nor replace_with provided -> pass through.
@@ -108,8 +115,8 @@ class TestReplaceMatches:
 
 class TestShiftHue:
 
-    def test_180_degree_shift_flips_red_to_cyan(self, transformer):
-        red = _psx(248, 0, 0)  # PSX-snapped red
+    def test_180_degree_shift_flips_red_to_cyan(self, transformer, psx):
+        red = psx(248, 0, 0)  # PSX-snapped red
         params = TransformParams(
             mode=TransformMode.SHIFT_HUE,
             hue_shift_degrees=180.0,
@@ -123,8 +130,8 @@ class TestShiftHue:
         assert result.g5 > 24
         assert result.b5 > 24
 
-    def test_hue_shift_wraps_at_360(self, transformer):
-        red = _psx(248, 0, 0)
+    def test_hue_shift_wraps_at_360(self, transformer, psx):
+        red = psx(248, 0, 0)
         once = transformer.transform(red, TransformParams(
             mode=TransformMode.SHIFT_HUE, hue_shift_degrees=90,
         ))
@@ -145,8 +152,8 @@ class TestShiftHue:
 
 class TestShiftBrightness:
 
-    def test_positive_shift_brightens(self, transformer):
-        dim = _psx(64, 64, 64)
+    def test_positive_shift_brightens(self, transformer, psx):
+        dim = psx(64, 64, 64)
         params = TransformParams(
             mode=TransformMode.SHIFT_BRIGHTNESS, brightness_shift=0.5,
         )
@@ -157,8 +164,8 @@ class TestShiftBrightness:
         assert result.g5 > dim.g5
         assert result.b5 > dim.b5
 
-    def test_negative_shift_dims(self, transformer):
-        bright = _psx(200, 200, 200)
+    def test_negative_shift_dims(self, transformer, psx):
+        bright = psx(200, 200, 200)
         params = TransformParams(
             mode=TransformMode.SHIFT_BRIGHTNESS, brightness_shift=-0.5,
         )
@@ -169,9 +176,9 @@ class TestShiftBrightness:
         assert result.g5 < bright.g5
         assert result.b5 < bright.b5
 
-    def test_clamps_at_full_brightness(self, transformer):
+    def test_clamps_at_full_brightness(self, transformer, psx):
         # An already-bright color pushed further must not overflow past max.
-        bright = _psx(248, 248, 248)
+        bright = psx(248, 248, 248)
         params = TransformParams(
             mode=TransformMode.SHIFT_BRIGHTNESS, brightness_shift=0.9,
         )
@@ -185,8 +192,8 @@ class TestShiftBrightness:
 
 class TestShiftSaturation:
 
-    def test_negative_shift_desaturates_toward_grey(self, transformer):
-        orange = _psx(255, 128, 0)
+    def test_negative_shift_desaturates_toward_grey(self, transformer, psx):
+        orange = psx(255, 128, 0)
         params = TransformParams(
             mode=TransformMode.SHIFT_SATURATION, saturation_shift=-0.8,
         )
@@ -198,8 +205,8 @@ class TestShiftSaturation:
         spread_after = max(result.r5, result.g5, result.b5) - min(result.r5, result.g5, result.b5)
         assert spread_after < spread_before
 
-    def test_full_desaturation_produces_grey(self, transformer):
-        orange = _psx(255, 128, 0)
+    def test_full_desaturation_produces_grey(self, transformer, psx):
+        orange = psx(255, 128, 0)
         params = TransformParams(
             mode=TransformMode.SHIFT_SATURATION, saturation_shift=-1.0,
         )
@@ -211,8 +218,8 @@ class TestShiftSaturation:
 
 class TestRgbDelta:
 
-    def test_adds_independently_per_channel(self, transformer):
-        color = _psx(100, 100, 100)
+    def test_adds_independently_per_channel(self, transformer, psx):
+        color = psx(100, 100, 100)
         params = TransformParams(
             mode=TransformMode.RGB_DELTA,
             rgb_delta_r=50, rgb_delta_g=-50, rgb_delta_b=0,
@@ -225,8 +232,8 @@ class TestRgbDelta:
         # Blue unchanged modulo PSX quantization — allow 1 LSB of wobble.
         assert abs(result.b5 - color.b5) <= 1
 
-    def test_clamps_to_0_255(self, transformer):
-        color = _psx(200, 200, 200)
+    def test_clamps_to_0_255(self, transformer, psx):
+        color = psx(200, 200, 200)
         params = TransformParams(
             mode=TransformMode.RGB_DELTA,
             rgb_delta_r=200, rgb_delta_g=-500, rgb_delta_b=0,
@@ -240,16 +247,16 @@ class TestRgbDelta:
 
 class TestQuantization:
 
-    def test_output_snaps_to_psx_grid(self, transformer):
+    def test_output_snaps_to_psx_grid(self, transformer, psx):
         # Every returned PsxColor must be PSX-representable — i.e. already
         # constrained to the 5-bit-per-component grid. Implicit from the
         # constructor, but assert that no quantization junk leaks out.
-        color = _psx(123, 45, 67)
+        color = psx(123, 45, 67)
         for mode in TransformMode:
             params = TransformParams(
                 mode=mode,
                 match_color=color,
-                replace_with=_psx(200, 100, 50),
+                replace_with=psx(200, 100, 50),
                 hue_shift_degrees=37,
                 brightness_shift=0.13,
                 saturation_shift=-0.27,

@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from paintjob_designer.color.converter import ColorConverter
+from paintjob_designer.color.gradient import GradientGenerator
 from paintjob_designer.color.transform import ColorTransformer
 from paintjob_designer.config.iso_root_validator import IsoRootValidator
 from paintjob_designer.config.store import ConfigStore
@@ -22,6 +23,7 @@ from paintjob_designer.profile.reader import ProfileReader
 from paintjob_designer.profile.registry import ProfileRegistry
 from paintjob_designer.render.atlas_renderer import AtlasRenderer
 from paintjob_designer.render.atlas_uv_mapper import AtlasUvMapper
+from paintjob_designer.render.ray_picker import RayTrianglePicker
 from paintjob_designer.render.slot_region_deriver import SlotRegionDeriver
 from paintjob_designer.vram.cache import VramCache
 from paintjob_designer.vram.reader import VramReader
@@ -43,7 +45,9 @@ container = Container()
 container.register("config_store", lambda c: ConfigStore(_default_config_path()))
 container.register("iso_root_validator", lambda c: IsoRootValidator())
 container.register("color_converter", lambda c: ColorConverter())
-container.register("color_transformer", lambda c: ColorTransformer())
+container.register("color_transformer", lambda c: ColorTransformer(c.resolve("color_converter")))
+container.register("gradient_generator", lambda c: GradientGenerator(c.resolve("color_converter")))
+container.register("ray_triangle_picker", lambda c: RayTrianglePicker())
 container.register("profile_reader", lambda c: ProfileReader())
 container.register("profile_registry", lambda c: ProfileRegistry(c.resolve("profile_reader")))
 container.register("animation_decoder", lambda c: AnimationDecoder())

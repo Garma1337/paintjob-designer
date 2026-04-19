@@ -11,15 +11,21 @@ This guide covers internal behaviors and details that are not immediately obviou
 - [Character Sidebar](#character-sidebar)
 - [Slot Editor](#slot-editor)
   - [CLUT Index 0 Is Transparent](#clut-index-0-is-transparent)
+  - [Highlight Button](#highlight-button)
   - [Reset vs Undo](#reset-vs-undo)
 - [3D Preview](#3d-preview)
   - [Orbit Camera Controls](#orbit-camera-controls)
   - [Reset Camera and the Pivot Point](#reset-camera-and-the-pivot-point)
-  - [Click-to-Highlight a Slot](#click-to-highlight-a-slot)
-  - [Grey Polygons Are Not Bugs](#grey-polygons-are-not-bugs)
+  - [Eyedropper (Right-Click)](#eyedropper-right-click)
+  - [Gouraud + PSX Texture Modulation](#gouraud--psx-texture-modulation)
   - [GL Init Failure](#gl-init-failure)
 - [Animation Playback](#animation-playback)
 - [Color Picker](#color-picker)
+- [Transform Colors](#transform-colors)
+  - [Modes](#modes)
+  - [Scope](#scope)
+  - [Preview vs Apply](#preview-vs-apply)
+- [Gradient Fill](#gradient-fill)
 - [Undo / Redo](#undo--redo)
 - [Import / Export](#import--export)
   - [Right-Click Targets a Single Character](#right-click-targets-a-single-character)
@@ -68,18 +74,31 @@ The active character is always visible on the left. Clicking a row loads the cha
 
 ## Slot Editor
 
-Each row shows a slot's 16-color CLUT plus a **Reset** button. Clicking a swatch opens the color picker; changes apply immediately and stream into the 3D preview.
+Each row shows a slot's 16-color CLUT across its top, plus **Highlight** and **Reset** buttons right-aligned underneath. Clicking a swatch opens the color picker; changes apply immediately and stream into the 3D preview.
+
+Right-click a swatch for the per-color context menu (**Transform colors...** scoped to this slot, prefilled with the clicked swatch as the match color). Right-click the slot row itself (outside any swatch) for the whole-slot menu — **Transform colors...** and **Gradient fill...**
 
 ### CLUT Index 0 Is Transparent
 
 The first swatch of every row has an **orange border** and a tooltip explaining that CLUT index 0 is the PSX per-pixel transparency sentinel. Pixels that sample index 0 render fully transparent regardless of the RGB you set — editing this slot almost never does what you'd expect. The marker is a warning, not a lock; you can still edit it if you mean to.
 
+### Highlight Button
+
+Each slot row has a checkable **Highlight** button. Clicking it focuses that slot:
+
+- In the 3D preview, every triangle not in the slot dims to 22% of its lit color.
+- Clicking the same button again (or another row's button) clears / moves the focus.
+- Switching to a different character clears focus.
+- Focus is per-session UI state — it doesn't affect the exported data.
+
+The triangle→slot mapping is built from `SlotRegion.texture_layout_indices`; faces with no slot binding (wheel rims, shared driver geometry) never light up under any slot's focus.
+
 ### Reset vs Undo
 
 - **Reset button** — replaces every color in that slot with the VRAM defaults read directly from the `.vrm`. Pushes a `ResetSlotCommand` onto the undo stack, so Ctrl+Z un-resets cleanly.
-- **Ctrl+Z** — reverses the most recent edit (color pick or reset), regardless of whether it was on the current character.
+- **Ctrl+Z** — reverses the most recent edit (color pick, reset, gradient fill, or transform), regardless of whether it was on the current character.
 
-The undo stack is session-wide and never auto-clears across character switches. It does clear when you import a paintjob file (the imported slots aren't reachable through the edit commands).
+The undo stack is session-wide and never auto-clears across character switches. It does clear when you import a paintjob file (the imported slots aren't reachable through the edit commands). Bulk operations (Transform Colors, Gradient Fill) collapse into a single undo entry — one Ctrl+Z reverts the whole batch.
 
 ## 3D Preview
 
@@ -93,20 +112,26 @@ The undo stack is session-wide and never auto-clears across character switches. 
 
 Reset restores the camera to the pose it had right after the current character loaded — *not* world origin. The orbit pivot is the kart's bounding-box center, snapshotted by `OrbitCamera.fit_to_bounds` when the mesh was uploaded. This matters because `paintGL` drops the vertex buffer after upload; a naïve reset would have no bounds to fit and would pivot on (0, 0, 0), which is often far from the kart.
 
-### Click-to-Highlight a Slot
+### Eyedropper (Right-Click)
 
-Clicking a slot row in the editor **focuses** that slot:
+**Right-click any surface on the 3D kart** to sample the slot + CLUT index under the cursor. The tool:
 
-- In the 3D preview, every triangle not in that slot dims to 22% of its lit color
-- Clicking the same row again clears focus
-- Switching to a different character clears focus
-- Focus is per-session UI state — it doesn't affect the exported data
+1. Ray-picks the triangle under the click (`paintjob_designer/render/ray_picker.py` — Möller–Trumbore against the flat triangle list).
+2. Interpolates the hit's byte-space UV from the three vertex UVs via the hit's barycentric weights.
+3. Maps the triangle's texture layout to its paintjob slot (via `SlotRegion.texture_layout_indices`).
+4. Samples the atlas at the hit pixel and matches the RGB back to one of the slot's 16 PsxColors.
+5. Opens the color picker pre-loaded with that color so one right-click + one picker pick → the color is changed.
 
-The triangle→slot mapping is built from `SlotRegion.texture_layout_indices`; faces with no slot binding (wheel rims, shared driver geometry) never light up under any slot's focus.
+If the click lands on an untextured face (Gouraud-only, wheel, or otherwise not paintjob-editable), the status bar reports that the face isn't bound to any slot and no picker opens. Rotation and zoom still work with left-drag / wheel in either case — there's no eyedropper mode to toggle.
 
-### Grey Polygons Are Not Bugs
+### Gouraud + PSX Texture Modulation
 
-Some faces render as flat mid-gray. These are untextured CTR polygons — faces whose draw command has `tex_index == 0`, meaning the original renderer used Gouraud vertex colors instead of a palette texture. The tool doesn't currently sample per-vertex colors, so they fall back to `vec3(0.55)` in the fragment shader. The paintjob isn't wrong; these triangles genuinely aren't affected by any CLUT.
+Character meshes mix two face types:
+
+- **Textured faces** sample a VRAM CLUT through a `TextureLayout` — these are the ones the paintjob edits.
+- **Untextured faces** (`draw.tex_index == 0`) carry per-vertex **Gouraud colors** baked into the `.ctr`. They're not paintjob-editable but are rendered in their authored colors (Crash's red pants, Pura's orange fur, etc.) via the fragment shader's per-vertex color attribute.
+
+Textured faces on PSX are modulated by `2 × vertex_color` (128/255 = "neutral / show texture as-authored"). A lot of CTR meshes ship greyscale texture templates that rely on that modulation to come out skin/fur-colored at runtime. The editor applies the same `clamp(texture × vcolor × 2, 0, 1)` in its fragment shader so the preview matches what the PS1 GPU would draw — without it, those faces show up as literal grey.
 
 ### GL Init Failure
 
@@ -127,6 +152,49 @@ The picker is `QColorDialog` with `DontUseNativeDialog` set (the native Windows 
 Any color you pick is **snapped to the PSX 15-bit grid** before being written back: 5 bits per channel, so 32 levels each. What you see in the swatch after picking is exactly what the game will display. The snap is lossy; `#FF7F3A` going in might come back as `#FF7F38`.
 
 The `stp` bit of the original color is preserved when possible (see [JSON Colors Preserve the Full u16](#json-colors-preserve-the-full-u16)).
+
+## Transform Colors
+
+The **Transform Colors...** action (top toolbar, or right-click menus on swatches and slot rows) opens a dialog for bulk edits. Every change the dialog makes is bundled into a single `BulkTransformCommand`, so Ctrl+Z reverts the whole batch.
+
+### Modes
+
+- **Replace matching color** — pick a "Match" and a "Replace with" color; every CLUT entry in scope whose *full u16 value* equals "Match" gets rewritten. Matching by u16 means stp=0 and stp=1 variants of the same RGB don't collide (a transparent-sentinel black never gets promoted to opaque black by accident).
+- **Shift hue** — slider in degrees (−180°..+180°). Converts each color to HSV, rotates hue, converts back. Wraps cleanly around the hue wheel.
+- **Shift brightness / saturation** — sliders in percent. Additive on HSV V/S, clamped to [0, 1].
+- **RGB delta** — three sliders in RGB units (−255..+255). Additive per channel, clamped to [0, 255].
+
+All modes preserve the stp bit of each edited color. The PSX transparency sentinel (u16 value `0`) is never touched by any mode — it's a structural marker, not a real color.
+
+### Scope
+
+- **Just this slot** — transforms the 16 colors of the clicked slot.
+- **Entire kart** — transforms all slots of the current character (8 × 16 = 128 entries).
+
+Entry points pre-fill the scope and, for Replace mode, the Match color:
+
+- Right-click a **swatch** → dialog opens with scope = this slot, Match = the clicked color.
+- Right-click a **slot row** → dialog opens with scope = this slot, no Match prefill.
+- Toolbar **Transform Colors...** → dialog opens with scope = entire kart.
+
+You can always switch scope inside the dialog.
+
+### Preview vs Apply
+
+The dialog's inline swatch strip shows before → after for every CLUT entry that *would* change — that updates as you move any control.
+
+The **Preview** button pushes the current transform into the real paintjob + 3D view. Rotate the kart, check how it looks, tweak the sliders, click Preview again. The paintjob is kept in a "what the transform would commit" state until you close the dialog. Cancel reverts everything the previews ever touched. Apply commits the final transform as one undo entry; the live state from your last Preview click is re-applied from a clean snapshot first, so residue from previous Preview clicks that touched different indices can't leak in.
+
+Performance: bulk updates batch per slot (one atlas render + one full-atlas GL upload per Preview / Apply) — an entire-kart hue shift of 100+ colors across 8 slots lands in a single frame.
+
+## Gradient Fill
+
+Right-click a slot row → **Gradient fill...** fills a contiguous index range with a linear interpolation between two endpoint colors.
+
+- **Color space** — `RGB (linear per channel)` or `HSV (short arc on hue wheel)`. RGB is predictable but can wash out at midpoints (e.g. red → blue passes through desaturated grey). HSV picks the shorter arc around the hue wheel, so red → blue goes through magenta instead.
+- **From / To index** — the contiguous range to fill. Defaults skip index 0 (the transparency sentinel).
+- **Endpoints** — both are preserved exactly; intermediate colors are PSX-quantized to the 5-5-5 grid. All output colors inherit the start endpoint's stp bit.
+- Result is pushed as one `BulkTransformCommand` — one Ctrl+Z reverts the whole fill.
 
 ## Undo / Redo
 
@@ -202,8 +270,6 @@ Drag a `.json` file onto the main window to apply it to the currently-selected c
 
 ## Known Limitations
 
-- **One mesh only.** The tool reads `model.meshes[0]` of the character's `.ctr` — the high-LOD body. Kart bodies and wheels live in separate `.ctr` files that aren't referenced by the profile and aren't rendered. What you see in the 3D view is the driver figure, not the full racing kart.
-- **No kart / character composition.** See above. Adding it would require profile-level `wheels_source` entries and a composite-mesh render path.
-- **Gouraud vertex colors ignored.** Untextured polygons fall back to flat gray (see [Grey Polygons Are Not Bugs](#grey-polygons-are-not-bugs)).
+- **One mesh only.** The tool reads `model.meshes[0]` of the character's `.ctr` — the high-LOD body. Wheels and flame/plume effects live outside the character's `.ctr` (wheels are sprite icons from `iconGroup[0]`, flames are separate model IDs) and aren't rendered here.
 - **Animation framerates are guessed.** No clip metadata carries an intended FPS; 30 is a preview default.
 - **Binary export doesn't backfill un-edited characters.** See [Binary Export Zero-Pads](#binary-export-zero-pads-un-edited-characters).

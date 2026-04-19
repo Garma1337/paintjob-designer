@@ -12,6 +12,7 @@ from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from paintjob_designer.models import AssembledMesh, TextureLayout
 from paintjob_designer.render.atlas_uv_mapper import AtlasUvMapper
 from paintjob_designer.render.orbit_camera import OrbitCamera
+from paintjob_designer.render.ray_picker import RayTrianglePicker
 
 # Shaders live as standalone `.vert` / `.frag` files under `shaders/` — kept
 # them out of this module so editors can highlight GLSL properly and the
@@ -42,10 +43,22 @@ class KartViewer(QOpenGLWidget):
     """
 
     gl_init_failed = Signal(str)
+    # Emitted on Alt+Click with:
+    #   tex_layout_index  1-based index into the mesh's texture_layouts (0 = an
+    #                     untextured draw, no slot/CLUT to pick from)
+    #   byte_u, byte_v    interpolated byte-space UV (0..255) at the hit point
+    # The main window maps the TextureLayout's CLUT coords to a paintjob slot
+    # and samples the atlas at (u, v) to find the exact color_index.
+    eyedropper_picked = Signal(int, float, float)
 
     _ZOOM_STEP = 1.15
 
-    def __init__(self, uv_mapper: AtlasUvMapper, parent=None) -> None:
+    def __init__(
+        self,
+        uv_mapper: AtlasUvMapper,
+        ray_picker: RayTrianglePicker,
+        parent=None,
+    ) -> None:
         fmt = QSurfaceFormat()
         fmt.setVersion(3, 3)
         fmt.setProfile(QSurfaceFormat.OpenGLContextProfile.CoreProfile)
@@ -58,6 +71,7 @@ class KartViewer(QOpenGLWidget):
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         self._uv_mapper = uv_mapper
+        self._ray_picker = ray_picker
         self._camera = OrbitCamera()
 
         self._viewport_w = 1
@@ -94,6 +108,13 @@ class KartViewer(QOpenGLWidget):
         self._base_uvs: np.ndarray | None = None
         self._base_colors: np.ndarray | None = None
 
+        # Most-recent world-space positions + byte-space UVs for ray-picking
+        # (eyedropper). Updated on every `set_mesh` / `set_frame_positions`
+        # so picking uses the same geometry the user is looking at.
+        self._pick_positions: np.ndarray | None = None
+        self._pick_uvs: np.ndarray | None = None
+        self._pick_texture_layout_indices: list[int] | None = None
+
         # Whether any slot is currently focused. The fragment shader reads this
         # as `u_has_focus`; when 0, all triangles render normally regardless of
         # the per-vertex highlight attribute.
@@ -113,6 +134,9 @@ class KartViewer(QOpenGLWidget):
             )
             self._base_uvs = None
             self._base_colors = None
+            self._pick_positions = None
+            self._pick_uvs = None
+            self._pick_texture_layout_indices = None
             self._pending_highlight = np.zeros((0,), dtype=np.float32)
         else:
             positions = np.asarray(assembled.positions, dtype=np.float32)
@@ -131,6 +155,12 @@ class KartViewer(QOpenGLWidget):
             self._pending_mesh = (positions, uvs, normals, colors)
             self._base_uvs = uvs
             self._base_colors = colors
+            # Eyedropper picking needs the raw world positions + byte-space
+            # UVs per vertex, not the atlas-mapped UVs stored in `_base_uvs`.
+            # Stored aligned with `texture_layout_indices` (one per triangle).
+            self._pick_positions = positions.copy()
+            self._pick_uvs = np.asarray(assembled.uvs, dtype=np.float32)
+            self._pick_texture_layout_indices = list(assembled.texture_layout_indices)
             # Default highlight = everything-highlighted; paired with
             # `_has_focus=False` the shader will render normally.
             self._pending_highlight = np.ones(len(positions), dtype=np.float32)
@@ -253,7 +283,11 @@ class KartViewer(QOpenGLWidget):
             return
 
         normals = self._compute_flat_normals(positions)
-        self._pending_mesh = (positions.astype(np.float32), uvs, normals, colors)
+        pick_positions = positions.astype(np.float32)
+        self._pending_mesh = (pick_positions, uvs, normals, colors)
+        # Pick buffer follows the animation frame so the eyedropper hits
+        # whatever geometry the user actually sees.
+        self._pick_positions = pick_positions.copy()
         self.update()
 
     def reset_camera(self) -> None:
@@ -351,6 +385,10 @@ class KartViewer(QOpenGLWidget):
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
             self._last_mouse_pos = event.position()
+        elif event.button() == Qt.MouseButton.RightButton:
+            # Right-click = eyedropper pick. Left-drag stays dedicated to
+            # orbit, so artists can rotate and pick without switching tools.
+            self._handle_eyedropper_pick(event)
 
     def mouseMoveEvent(self, event) -> None:
         if self._last_mouse_pos is None:
@@ -370,6 +408,54 @@ class KartViewer(QOpenGLWidget):
         factor = 1.0 / self._ZOOM_STEP if event.angleDelta().y() > 0 else self._ZOOM_STEP
         if self._camera.zoom(factor):
             self.update()
+
+    def _handle_eyedropper_pick(self, event) -> None:
+        """Ray-pick the triangle under the cursor and emit `eyedropper_picked`.
+
+        Interpolates the hit point's byte-space UV from the three vertex UVs
+        via the hit's barycentric weights. The main window combines that
+        `(triangle_index, u, v)` with the current mesh's texture layouts and
+        slot regions to resolve the exact (slot, color_index) the pixel
+        samples from.
+        """
+        if (
+            self._pick_positions is None
+            or self._pick_uvs is None
+            or self._pick_texture_layout_indices is None
+        ):
+            return
+
+        pos = event.position()
+        hit = self._ray_picker.pick(
+            self._pick_positions,
+            self._camera,
+            pos.x(),
+            pos.y(),
+            self._viewport_w,
+            self._viewport_h,
+        )
+
+        if hit is None:
+            return
+
+        base = hit.triangle_index * 3
+        if base + 2 >= len(self._pick_uvs):
+            return
+
+        tex_layout_index = self._pick_texture_layout_indices[hit.triangle_index]
+        if tex_layout_index == 0:
+            # Untextured face (Gouraud-shaded only); no CLUT to pick from.
+            # Silently ignore — artist clicked a face that isn't paintjobable.
+            return
+
+        w0, w1, w2 = hit.barycentric
+        uv0 = self._pick_uvs[base]
+        uv1 = self._pick_uvs[base + 1]
+        uv2 = self._pick_uvs[base + 2]
+        u = float(w0 * uv0[0] + w1 * uv1[0] + w2 * uv2[0])
+        v = float(w0 * uv0[1] + w1 * uv1[1] + w2 * uv2[1])
+
+        self.eyedropper_picked.emit(tex_layout_index, u, v)
 
     def _build_shader_program(self) -> int:
         vert = self._compile(GL.GL_VERTEX_SHADER, _VERTEX_SHADER)

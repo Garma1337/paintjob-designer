@@ -24,6 +24,8 @@ if __name__ == "__main__":
         vertex_assembler=container.resolve("vertex_assembler"),
         atlas_uv_mapper=container.resolve("atlas_uv_mapper"),
         color_transformer=container.resolve("color_transformer"),
+        gradient_generator=container.resolve("gradient_generator"),
+        ray_picker=container.resolve("ray_triangle_picker"),
     )
 
     window.show()

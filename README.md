@@ -9,29 +9,28 @@ Not tied to any specific CTR mod — works against base CTR (NTSC-U) out of the 
 ### Editing
 
 - **Per-character CLUT editing** — click any of the 8 × 16 color swatches to open a PSX-quantized color picker; edits snap to the PS1 5-5-5 color grid as you pick
-- **Hover-to-highlight** — clicking a slot row dims the 3D kart except for the faces that sample that slot, so you always know what a color change will actually affect
+- **Highlight button per slot** — click the row's **Highlight** button to dim the 3D kart except for the faces that sample that slot, so you always know what a color change will actually affect. Click again (or another row) to move the highlight.
+- **Transform Colors...** — bulk-edit tool with five modes (replace matches, shift hue, shift brightness, shift saturation, RGB delta) scoped to just one slot or the entire kart; Preview button pushes the transform into the 3D view before you commit, Apply bundles the whole set into a single undo.
+- **Gradient fill** — right-click a slot row → "Gradient fill..." to fill a contiguous index range with a linear gradient between two endpoints (RGB linear or HSV short-arc on the hue wheel).
 - **Animation playback** — if the loaded kart has animation frames, pick a clip and scrub through them at a configurable FPS to see how the paintjob looks across the full motion range
-- **Undo / redo** — one session-wide stack that spans character switches (Ctrl+Z / Ctrl+Shift+Z)
 - **Reset slot** — one-click revert of any slot to the vanilla VRAM colors
 
 ### 3D preview
 
 - **Orbit camera** — left-drag to rotate, wheel to zoom, **R** to recenter
-- **Flat-shaded textured kart** — half-Lambert shading, UV-mapped atlas, live re-upload when you edit a color
-- **Incremental atlas updates** — only the edited slot's VRAM region is re-uploaded on each pick, not the full 4096×512 atlas
-- **Graceful GL fallback** — if OpenGL 3.3 isn't available, the 3D pane is replaced with a placeholder and the rest of the editor keeps working
+- **Eyedropper** — **right-click** any surface on the kart to sample its slot + CLUT index and open the color picker pre-loaded with that color. Works alongside orbit without a mode switch.
+- **Full Gouraud + textured shading** — PSX-accurate rendering: untextured faces use their authored per-vertex colors; textured faces modulate by `2 × vertex_color` like the real PS1 GPU (so greyscale texture templates tint correctly).
+- **Half-Lambert soft-light** — UV-mapped atlas, live re-upload when you edit a color.
 
 ### Profiles
 
 - **Ships with `vanilla-ntsc-u`** (base CTR) and a `saphi` stub
 - **Switch Profile** action on the top toolbar (and File menu)
 - **Profile drives everything** downstream: which characters appear in the sidebar, which CLUT coordinates are read, and how the binary export orders its entries
-- **Active profile is always visible** in the window title and status bar
 
 ### Import / export
 
 - **Right-click a character** → Import Paintjob from JSON, Export as JSON, Export as Code (.c)
-- **Top toolbar** → Export All as JSON / Code / Binary (batch over every character the session has touched)
 - **JSON** is character-agnostic — just slot names × 16 colors — so a paintjob designed for one character can be imported onto another
 - **C source export** produces a plug-and-play `.c` + `paintjob.h` pair
 - **Binary export** emits a `N × 256-byte` CLUT dump in profile character order, suitable for base-CTR patchers with fixed offsets
@@ -40,8 +39,6 @@ Not tied to any specific CTR mod — works against base CTR (NTSC-U) out of the 
 
 - **Drag-and-drop** — drop a paintjob `.json` onto the window to apply it to the currently-selected character
 - **Transparency-slot indicator** — an orange border on the first color of each row warns that index 0 is the PSX transparency sentinel
-- **Schema migration** — older paintjob files keep loading as the format evolves; newer-than-supported files are rejected with a clear message
-- **Round-trip safety** — colors roundtrip as the full PSX u16 (including the stp bit), so black opaque samples don't collapse to transparent on reimport
 
 ## Requirements
 
@@ -98,7 +95,7 @@ The output is in `dist/PaintjobDesigner/`.
 pytest
 ```
 
-~240 tests, all headless — no GL context or ISO needed.
+~275 tests, all headless — no GL context or ISO needed.
 
 ## Project Structure
 
@@ -109,7 +106,10 @@ config/
 paintjob_designer/
     core/                   DI container, binary / bitstream readers
     models/                 Plain-dataclass domain types (PsxColor, CtrMesh, Paintjob, Profile, ...)
-    color/                  PSX15 <-> RGB888 conversion, hex formatting
+    color/
+        converter           PSX15 <-> RGB888 conversion, hex formatting
+        transform           Single-color bulk transforms (replace / hue / brightness / saturation / RGB delta)
+        gradient            Two-endpoint linear gradients in RGB or HSV space
     profile/                ProfileReader + ProfileRegistry (loads bundled profile JSON)
     paintjob/               SinglePaintjobReader / Writer (.json import/export with schema migration)
     vram/                   VramReader (.vrm + TIM decode), VramCache
@@ -121,6 +121,7 @@ paintjob_designer/
         slot_region_deriver Groups mesh faces by CLUT into SlotRegions
         atlas_uv_mapper     Byte-space TextureLayout UVs -> normalized atlas UVs
         orbit_camera        Yaw/pitch camera + bbox fit + view/projection matrices
+        ray_picker          Möller-Trumbore ray/triangle picker for the eyedropper
     exporters/
         source_code_exporter    .c / paintjob.h pair
         binary_exporter         Flat CLUT blob
@@ -129,9 +130,9 @@ paintjob_designer/
         main_window.py      Orchestrator
         widget/             KartViewer (GL), SlotEditor, SlotRow, CharacterSidebar, ColorSwatch, ColorPicker
             shaders/        GLSL vert/frag
-        dialog/             ProfilePicker, SourceCodeExportOptions
+        dialog/             ProfilePicker, SourceCodeExportOptions, TransformColors, GradientFill
         handler/            Character / Color / Project handlers
-        command/            Undo commands (SetSlotColor, ResetSlot)
+        command/            Undo commands — one class per file (SetSlotColor, ResetSlot, BulkTransform)
     services.py             DI container wiring
 
 .github/
@@ -140,4 +141,4 @@ paintjob_designer/
 
 ## Documentation
 
-- **[User Guide](documentation/user-guide.md)** — Non-obvious behaviors: transparency sentinel, profile switching, import scope, atlas roundtrip, highlight toggling, animation framerate, export scope, VRAM cache, batch export conventions, PyInstaller data bundling
+- **[User Guide](documentation/user-guide.md)** — Non-obvious behaviors: transparency sentinel, profile switching, import scope, etc.

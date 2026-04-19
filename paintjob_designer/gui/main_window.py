@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from paintjob_designer.color.converter import ColorConverter
+from paintjob_designer.color.gradient import GradientGenerator
 from paintjob_designer.color.transform import ColorTransformer
 from paintjob_designer.config.iso_root_validator import IsoRootValidator
 from paintjob_designer.config.store import AppConfig, ConfigStore
@@ -30,6 +31,7 @@ from paintjob_designer.ctr.vertex_assembler import VertexAssembler
 from paintjob_designer.exporters.binary_exporter import BinaryExporter
 from paintjob_designer.exporters.source_code_exporter import SourceCodeExporter
 from paintjob_designer.gui.command.bulk_transform_command import (
+    BulkColorEdit,
     BulkTransformCommand,
 )
 from paintjob_designer.gui.command.reset_slot_command import ResetSlotCommand
@@ -40,6 +42,7 @@ from paintjob_designer.gui.dialog.profile_picker_dialog import (
 from paintjob_designer.gui.dialog.source_code_export_options_dialog import (
     SourceCodeExportOptionsDialog,
 )
+from paintjob_designer.gui.dialog.gradient_fill_dialog import GradientFillDialog
 from paintjob_designer.gui.dialog.transform_colors_dialog import (
     TransformCandidate,
     TransformColorsDialog,
@@ -65,6 +68,7 @@ from paintjob_designer.models import (
 from paintjob_designer.profile.registry import ProfileRegistry
 from paintjob_designer.render.atlas_renderer import AtlasRenderer
 from paintjob_designer.render.atlas_uv_mapper import AtlasUvMapper
+from paintjob_designer.render.ray_picker import RayTrianglePicker
 
 _PAINTJOB_EXT = ".json"
 _SOURCE_CODE_EXT = ".c"
@@ -100,6 +104,8 @@ class MainWindow(QMainWindow):
         vertex_assembler: VertexAssembler,
         atlas_uv_mapper: AtlasUvMapper,
         color_transformer: ColorTransformer,
+        gradient_generator: GradientGenerator,
+        ray_picker: RayTrianglePicker,
     ) -> None:
         super().__init__()
         self._config_store = config_store
@@ -115,6 +121,8 @@ class MainWindow(QMainWindow):
         self._vertex_assembler = vertex_assembler
         self._atlas_uv_mapper = atlas_uv_mapper
         self._color_transformer = color_transformer
+        self._gradient_generator = gradient_generator
+        self._ray_picker = ray_picker
 
         self._config: AppConfig = self._config_store.load()
         self._profile: Profile | None = None
@@ -255,8 +263,9 @@ class MainWindow(QMainWindow):
         sidebar_layout.addWidget(self._sidebar)
         sidebar_layout.addWidget(self._build_animation_panel())
 
-        self._kart_viewer = KartViewer(self._atlas_uv_mapper)
+        self._kart_viewer = KartViewer(self._atlas_uv_mapper, self._ray_picker)
         self._kart_viewer.gl_init_failed.connect(self._on_gl_init_failed)
+        self._kart_viewer.eyedropper_picked.connect(self._on_eyedropper_picked)
 
         self._slot_editor = SlotEditor(self._color_converter)
         self._slot_editor.color_edit_requested.connect(self._on_color_edit_requested)
@@ -921,6 +930,7 @@ class MainWindow(QMainWindow):
         self.apply_color_edit_from_command(
             self._current_character.id, slot, color_index, new_color,
         )
+
         self._undo_stack.push(SetSlotColorCommand(
             self,
             self._current_character.id,
@@ -946,6 +956,157 @@ class MainWindow(QMainWindow):
             slot,
             old_colors,
         ))
+
+    def _on_eyedropper_picked(
+        self, tex_layout_index: int, byte_u: float, byte_v: float,
+    ) -> None:
+        """Resolve an Alt+Click 3D pick to a (slot, color_index) and reveal it.
+
+        The viewer gives us a 1-based texture_layout index + the interpolated
+        byte-space UV at the hit. We map that to:
+          * a paintjob slot — by finding which `SlotRegions` has this layout
+            index in its `texture_layout_indices` list,
+          * a color_index — by sampling the atlas at the hit's pixel and
+            matching the RGB back to one of the slot's 16 PsxColors.
+
+        On success we open the color picker pre-loaded with the hit color so
+        Alt+Click → pick-new-color is a two-click flow. On "this isn't on a
+        paintjob-editable slot" we post a status-bar message rather than a
+        dialog; the tool already has enough modal popups.
+        """
+        if self._current_bundle is None or self._current_character is None:
+            return
+
+        mesh = self._current_bundle.mesh
+        layout_index = tex_layout_index - 1
+        if layout_index < 0 or layout_index >= len(mesh.texture_layouts):
+            return
+
+        slot_name = self._find_slot_for_texture_layout(layout_index)
+        if slot_name is None:
+            self.statusBar().showMessage(
+                "Eyedropper: this face isn't assigned to a paintjob slot "
+                "(shared asset, wheel, or other non-editable region).",
+                4000,
+            )
+            return
+
+        slot = self._current_bundle.slot_regions.slots.get(slot_name)
+        if slot is None:
+            return
+
+        tl = mesh.texture_layouts[layout_index]
+        atlas_x = int(round(tl.page_x * 256 + byte_u))
+        atlas_y = int(round(tl.page_y * 256 + byte_v))
+        atlas_w = AtlasRenderer.ATLAS_WIDTH
+        atlas_h = AtlasRenderer.ATLAS_HEIGHT
+        if not (0 <= atlas_x < atlas_w and 0 <= atlas_y < atlas_h):
+            return
+
+        offset = (atlas_y * atlas_w + atlas_x) * 4
+        if offset + 4 > len(self._current_bundle.atlas_rgba):
+            return
+
+        hit_r = self._current_bundle.atlas_rgba[offset + 0]
+        hit_g = self._current_bundle.atlas_rgba[offset + 1]
+        hit_b = self._current_bundle.atlas_rgba[offset + 2]
+        hit_a = self._current_bundle.atlas_rgba[offset + 3]
+
+        color_index = self._match_atlas_pixel_to_slot_color(
+            slot, hit_r, hit_g, hit_b, hit_a,
+        )
+
+        if color_index is None:
+            self.statusBar().showMessage(
+                f"Eyedropper: sampled ({hit_r},{hit_g},{hit_b}) in "
+                f"slot '{slot_name}' but couldn't match it to any of the 16 CLUT entries.",
+                4000,
+            )
+            return
+
+        hex_text = self._color_converter.psx_to_u16_hex(
+            self._current_color(slot, color_index),
+        )
+
+        self.statusBar().showMessage(
+            f"Eyedropper: {slot_name}[{color_index}] = {hex_text}. "
+            f"Opening color picker — Cancel to leave unchanged.",
+            5000,
+        )
+
+        # Pop the color picker pre-loaded with the picked color. If the user
+        # changes it, that's a normal slot edit (goes through the regular
+        # undo path); Cancel leaves everything alone.
+        self._edit_color_at(slot, color_index)
+
+    def _edit_color_at(self, slot, color_index: int) -> None:
+        """Programmatic equivalent of the user clicking that slot's swatch.
+
+        Centralizes the color-picker → apply → undo-push flow so both the
+        swatch-click handler and the eyedropper drive the same pipeline.
+        """
+        if self._current_bundle is None or self._current_character is None:
+            return
+
+        old_color = self._current_color(slot, color_index)
+        new_color = self._color_picker.pick(old_color, parent=self)
+        if new_color is None or new_color.value == old_color.value:
+            return
+
+        self.apply_color_edit_from_command(
+            self._current_character.id, slot, color_index, new_color,
+        )
+
+        self._undo_stack.push(SetSlotColorCommand(
+            self,
+            self._current_character.id,
+            slot,
+            color_index,
+            old_color,
+            new_color,
+        ))
+
+    def _find_slot_for_texture_layout(self, layout_index: int) -> str | None:
+        """Reverse-lookup: which paintjob slot owns this 0-based texture layout?
+
+        `SlotRegionDeriver` stores layout indices per region when it groups
+        layouts by CLUT; iterating the map is fast enough for the per-click
+        path (slots are ~8, regions per slot rarely > 3).
+        """
+        if self._current_bundle is None:
+            return None
+
+        for slot_name, slot in self._current_bundle.slot_regions.slots.items():
+            for region in slot.regions:
+                if layout_index in region.texture_layout_indices:
+                    return slot_name
+
+        return None
+
+    def _match_atlas_pixel_to_slot_color(
+        self, slot, r: int, g: int, b: int, a: int,
+    ) -> int | None:
+        """Find which of a slot's 16 CLUT entries was sampled at the hit pixel.
+
+        PSX CLUT value 0 is the transparency sentinel — it renders with alpha
+        zero, so a zero-alpha pixel means that sentinel (usually index 0).
+        Opaque pixels are compared against each non-sentinel entry's
+        snapped-RGB representation, which is how the atlas renderer produced
+        them in the first place (no fuzzy matching needed).
+        """
+        for i in range(SlotColors.SIZE):
+            color = self._current_color(slot, i)
+            if color.value == 0:
+                if a == 0:
+                    return i
+
+                continue
+
+            rgb = self._color_converter.psx_to_rgb(color)
+            if rgb.r == r and rgb.g == g and rgb.b == b:
+                return i
+
+        return None
 
     def _on_slot_editor_context(self, slot_name: str, color_index: int, global_pos) -> None:
         """Right-click on a swatch (color_index >= 0) or slot-row chrome (color_index == -1).
@@ -975,7 +1136,62 @@ class MainWindow(QMainWindow):
                 match_color=match_color,
             ),
         )
+        # Gradient fill only makes sense on a whole slot — offer it from the
+        # row-chrome context menu, not individual swatches.
+        if color_index < 0:
+            menu.addAction(
+                "Gradient fill...",
+                lambda: self._open_gradient_fill_dialog(slot_name),
+            )
+
         menu.exec(global_pos)
+
+    def _open_gradient_fill_dialog(self, slot_name: str) -> None:
+        if self._current_bundle is None or self._current_character is None:
+            return
+
+        slot = self._current_bundle.slot_regions.slots.get(slot_name)
+        if slot is None:
+            return
+
+        current_colors = [
+            self._current_color(slot, i) for i in range(SlotColors.SIZE)
+        ]
+
+        dialog = GradientFillDialog(
+            slot_name=slot_name,
+            current_colors=current_colors,
+            color_converter=self._color_converter,
+            gradient_generator=self._gradient_generator,
+            parent=self,
+        )
+
+        if dialog.exec() != dialog.DialogCode.Accepted:
+            return
+
+        replacements = dialog.resulting_replacements()
+        if not replacements:
+            return
+
+        edits = [
+            BulkColorEdit(
+                character_id=self._current_character.id,
+                slot=slot,
+                color_index=ci,
+                old_color=current_colors[ci],
+                new_color=new_color,
+            )
+            for ci, new_color in replacements
+        ]
+
+        self.apply_bulk_edits_from_command(
+            [(e.character_id, e.slot, e.color_index, e.new_color) for e in edits],
+        )
+
+        lo = replacements[0][0]
+        hi = replacements[-1][0]
+        label = f"Gradient fill {slot_name}[{lo}..{hi}]"
+        self._undo_stack.push(BulkTransformCommand(self, label, edits))
 
     def _open_transform_dialog(
         self,
