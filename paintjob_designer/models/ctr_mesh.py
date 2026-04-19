@@ -215,10 +215,16 @@ class AssembledMesh:
     `texture_layout_indices` list is 1-based into `CtrMesh.texture_layouts` (0 =
     untextured). UVs are in the original 0..255 byte space of the source TextureLayout,
     not yet normalized to the TL's bounding box — renderers apply that transform.
+
+    `gouraud_colors` carries the per-vertex Gouraud color (normalized 0..1 RGB).
+    Textured triangles ignore it in the shader; untextured triangles use it as
+    their base color so the faces render with the mesh's baked-in colors instead
+    of a flat placeholder grey.
     """
     positions: list[tuple[float, float, float]] = field(default_factory=list)
     uvs: list[tuple[int, int]] = field(default_factory=list)
     texture_layout_indices: list[int] = field(default_factory=list)
+    gouraud_colors: list[tuple[float, float, float]] = field(default_factory=list)
 
     @property
     def triangle_count(self) -> int:

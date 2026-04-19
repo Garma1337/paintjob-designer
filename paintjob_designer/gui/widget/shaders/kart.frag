@@ -6,6 +6,7 @@
 in vec2 v_uv;
 in vec3 v_normal;
 in float v_highlight;
+in vec3 v_vcolor;
 
 uniform sampler2D u_atlas;
 uniform int u_has_focus;
@@ -24,19 +25,25 @@ vec3 apply_shade(vec3 base) {
     return base * factor;
 }
 
-// Untextured triangles carry the sentinel UV (-1, -1) from AtlasUvMapper.
-// Render them as a flat mid-gray (still shaded) instead of sampling the atlas.
+// Untextured triangles carry the sentinel UV (-1, -1) from AtlasUvMapper and
+// render using the per-vertex Gouraud color directly.
+//
+// Textured triangles get the PSX GPU's texture-modulation: `final = 2 * vcolor
+// * texture`, where vcolor = 0.5 (128/255) is the neutral tint that displays
+// the texture as-authored. Many CTR meshes store greyscale texture templates
+// that rely on this modulation to come out fur/skin-colored at runtime — with
+// a flat passthrough those polys show up as literal grey.
 void main() {
     vec3 base;
     float alpha;
 
     if (v_uv.x < 0.0) {
-        base = vec3(0.55);
+        base = v_vcolor;
         alpha = 1.0;
     } else {
         vec4 c = texture(u_atlas, v_uv);
         if (c.a < 0.1) discard;
-        base = c.rgb;
+        base = clamp(c.rgb * v_vcolor * 2.0, 0.0, 1.0);
         alpha = c.a;
     }
 

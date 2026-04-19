@@ -71,6 +71,7 @@ class KartViewer(QOpenGLWidget):
         self._vbo_uv = 0
         self._vbo_normal = 0
         self._vbo_highlight = 0
+        self._vbo_color = 0
         self._texture = 0
         self._uniform_mvp = -1
         self._uniform_atlas = -1
@@ -79,16 +80,19 @@ class KartViewer(QOpenGLWidget):
         self._initialized = False
 
         # Pending uploads. Applied during the next paintGL.
-        # Tuple of (positions, uvs, normals) for the mesh.
-        self._pending_mesh: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None
+        # Tuple of (positions, uvs, normals, colors) for the mesh.
+        self._pending_mesh: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None = None
         self._pending_atlas: tuple[bytes, int, int] | None = None
         self._pending_atlas_region: tuple[bytes, int, int, int, int, int, int] | None = None
         self._pending_highlight: np.ndarray | None = None
 
-        # UVs from the last `set_mesh` call, kept around so `set_frame_positions`
-        # can build new pending meshes even after `paintGL` has consumed the
-        # previous one (it clears `_pending_mesh` on upload).
+        # UVs and per-vertex Gouraud colors from the last `set_mesh` call, kept
+        # around so `set_frame_positions` can build new pending meshes even after
+        # `paintGL` has consumed the previous one (it clears `_pending_mesh` on
+        # upload). Both are mesh-intrinsic: animation frames only move vertices,
+        # so these stay the same across the whole clip.
         self._base_uvs: np.ndarray | None = None
+        self._base_colors: np.ndarray | None = None
 
         # Whether any slot is currently focused. The fragment shader reads this
         # as `u_has_focus`; when 0, all triangles render normally regardless of
@@ -105,8 +109,10 @@ class KartViewer(QOpenGLWidget):
                 np.zeros((0, 3), dtype=np.float32),
                 np.zeros((0, 2), dtype=np.float32),
                 np.zeros((0, 3), dtype=np.float32),
+                np.zeros((0, 3), dtype=np.float32),
             )
             self._base_uvs = None
+            self._base_colors = None
             self._pending_highlight = np.zeros((0,), dtype=np.float32)
         else:
             positions = np.asarray(assembled.positions, dtype=np.float32)
@@ -115,9 +121,16 @@ class KartViewer(QOpenGLWidget):
                 dtype=np.float32,
             )
             normals = self._compute_flat_normals(positions)
+            colors = np.asarray(assembled.gouraud_colors, dtype=np.float32)
+            if len(colors) != len(positions):
+                # Fall back to white if the assembler didn't emit colors
+                # (older pipelines or empty gouraud tables) — keeps shader happy
+                # without changing appearance for textured faces.
+                colors = np.ones((len(positions), 3), dtype=np.float32)
 
-            self._pending_mesh = (positions, uvs, normals)
+            self._pending_mesh = (positions, uvs, normals, colors)
             self._base_uvs = uvs
+            self._base_colors = colors
             # Default highlight = everything-highlighted; paired with
             # `_has_focus=False` the shader will render normally.
             self._pending_highlight = np.ones(len(positions), dtype=np.float32)
@@ -228,6 +241,11 @@ class KartViewer(QOpenGLWidget):
             return
 
         uvs = self._base_uvs
+        colors = (
+            self._base_colors
+            if self._base_colors is not None
+            else np.ones((len(uvs), 3), dtype=np.float32)
+        )
 
         if positions.size == 0 or len(positions) != len(uvs):
             # Animation frame's vertex count differs from the base mesh —
@@ -235,7 +253,7 @@ class KartViewer(QOpenGLWidget):
             return
 
         normals = self._compute_flat_normals(positions)
-        self._pending_mesh = (positions.astype(np.float32), uvs, normals)
+        self._pending_mesh = (positions.astype(np.float32), uvs, normals, colors)
         self.update()
 
     def reset_camera(self) -> None:
@@ -265,6 +283,7 @@ class KartViewer(QOpenGLWidget):
             self._vbo_uv = GL.glGenBuffers(1)
             self._vbo_normal = GL.glGenBuffers(1)
             self._vbo_highlight = GL.glGenBuffers(1)
+            self._vbo_color = GL.glGenBuffers(1)
             self._texture = GL.glGenTextures(1)
 
             self._configure_vao()
@@ -399,6 +418,10 @@ class KartViewer(QOpenGLWidget):
         GL.glVertexAttribPointer(3, 1, GL.GL_FLOAT, GL.GL_FALSE, 0, ctypes.c_void_p(0))
         GL.glEnableVertexAttribArray(3)
 
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self._vbo_color)
+        GL.glVertexAttribPointer(4, 3, GL.GL_FLOAT, GL.GL_FALSE, 0, ctypes.c_void_p(0))
+        GL.glEnableVertexAttribArray(4)
+
         GL.glBindBuffer(GL.GL_ARRAY_BUFFER, 0)
         GL.glBindVertexArray(0)
 
@@ -415,6 +438,7 @@ class KartViewer(QOpenGLWidget):
         positions: np.ndarray,
         uvs: np.ndarray,
         normals: np.ndarray,
+        colors: np.ndarray,
     ) -> None:
         self._triangle_count = len(positions) // 3
 
@@ -426,6 +450,9 @@ class KartViewer(QOpenGLWidget):
 
         GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self._vbo_normal)
         GL.glBufferData(GL.GL_ARRAY_BUFFER, normals.nbytes, normals, GL.GL_STATIC_DRAW)
+
+        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self._vbo_color)
+        GL.glBufferData(GL.GL_ARRAY_BUFFER, colors.nbytes, colors, GL.GL_STATIC_DRAW)
 
         GL.glBindBuffer(GL.GL_ARRAY_BUFFER, 0)
 

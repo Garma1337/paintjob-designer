@@ -51,6 +51,7 @@ class VertexAssembler:
         temp_pos: list[tuple[float, float, float]] = [(0.0, 0.0, 0.0)] * _RING_SIZE
         temp_uv: list[tuple[int, int]] = [(0, 0)] * _RING_SIZE
         temp_tex: list[int] = [0] * _RING_SIZE
+        temp_color: list[tuple[float, float, float]] = [(1.0, 1.0, 1.0)] * _RING_SIZE
 
         vertex_index = 0
         strip_length = 0
@@ -74,16 +75,20 @@ class VertexAssembler:
             temp_tex[0], temp_tex[1], temp_tex[2] = temp_tex[1], temp_tex[2], temp_tex[3]
             temp_tex[3] = draw.tex_index
 
+            temp_color[0], temp_color[1], temp_color[2] = temp_color[1], temp_color[2], temp_color[3]
+            temp_color[3] = self._color_for_draw(mesh, draw)
+
             if draw.swap_vertex:
                 temp_pos[1] = temp_pos[0]
                 temp_uv[1] = temp_uv[0]
                 temp_tex[1] = temp_tex[0]
+                temp_color[1] = temp_color[0]
 
             if draw.new_tristrip:
                 strip_length = 0
 
             if strip_length >= 2:
-                self._emit_triangle(result, temp_pos, mesh, draw)
+                self._emit_triangle(result, temp_pos, temp_color, mesh, draw)
 
             strip_length += 1
 
@@ -108,6 +113,7 @@ class VertexAssembler:
         self,
         result: AssembledMesh,
         temp_pos: list[tuple[float, float, float]],
+        temp_color: list[tuple[float, float, float]],
         mesh: CtrMesh,
         draw,
     ) -> None:
@@ -116,6 +122,7 @@ class VertexAssembler:
         # that here so the final output order is `[reversed → [1,2,3]]` for normal and
         # `[reversed → [2,1,3]]` for flip_normal.
         positions = [temp_pos[z + 1] for z in (2, 1, 0)]
+        colors = [temp_color[z + 1] for z in (2, 1, 0)]
 
         if draw.tex_index != 0:
             tl = mesh.texture_layouts[draw.tex_index - 1]
@@ -128,13 +135,28 @@ class VertexAssembler:
         if draw.flip_normal:
             positions[1], positions[2] = positions[2], positions[1]
             uvs[1], uvs[2] = uvs[2], uvs[1]
+            colors[1], colors[2] = colors[2], colors[1]
 
         positions.reverse()
         uvs.reverse()
+        colors.reverse()
 
         result.positions.extend(positions)
         result.uvs.extend(uvs)
         result.texture_layout_indices.append(draw.tex_index)
+        result.gouraud_colors.extend(colors)
+
+    def _color_for_draw(self, mesh: CtrMesh, draw) -> tuple[float, float, float]:
+        """Normalized RGB for `draw.color_index` into the mesh's Gouraud table.
+
+        Falls back to white (1,1,1) when the index is out of range — some .ctr
+        files set color_index on draws whose mesh has no color table.
+        """
+        if draw.color_index >= len(mesh.gouraud_colors):
+            return 1.0, 1.0, 1.0
+
+        c = mesh.gouraud_colors[draw.color_index]
+        return c.r / 255.0, c.g / 255.0, c.b / 255.0
 
     def _decompress_vertices(
         self,

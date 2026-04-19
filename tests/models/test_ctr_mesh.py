@@ -1,6 +1,7 @@
 # coding: utf-8
 
 from paintjob_designer.models import (
+    AssembledMesh,
     BitDepth,
     BlendingMode,
     CtrDraw,
@@ -87,3 +88,12 @@ class TestModelsInstantiate:
         model = CtrModel()
 
         assert model.meshes == []
+
+    def test_assembled_mesh(self):
+        assembled = AssembledMesh()
+
+        assert assembled.positions == []
+        assert assembled.uvs == []
+        assert assembled.texture_layout_indices == []
+        assert assembled.gouraud_colors == []
+        assert assembled.triangle_count == 0
