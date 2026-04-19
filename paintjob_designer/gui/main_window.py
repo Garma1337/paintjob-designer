@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QSpinBox,
     QSplitter,
     QVBoxLayout,
-    QWidget,
+    QWidget, QInputDialog,
 )
 
 from paintjob_designer.color.converter import ColorConverter
@@ -27,6 +27,7 @@ from paintjob_designer.color.gradient import GradientGenerator
 from paintjob_designer.color.transform import ColorTransformer
 from paintjob_designer.config.iso_root_validator import IsoRootValidator
 from paintjob_designer.config.store import AppConfig, ConfigStore
+from paintjob_designer.core import Slugifier
 from paintjob_designer.ctr.vertex_assembler import VertexAssembler
 from paintjob_designer.exporters.binary_exporter import BinaryExporter
 from paintjob_designer.exporters.source_code_exporter import SourceCodeExporter
@@ -36,13 +37,13 @@ from paintjob_designer.gui.command.bulk_transform_command import (
 )
 from paintjob_designer.gui.command.reset_slot_command import ResetSlotCommand
 from paintjob_designer.gui.command.set_slot_color_command import SetSlotColorCommand
+from paintjob_designer.gui.dialog.gradient_fill_dialog import GradientFillDialog
 from paintjob_designer.gui.dialog.profile_picker_dialog import (
     ProfilePickerDialog,
 )
 from paintjob_designer.gui.dialog.source_code_export_options_dialog import (
     SourceCodeExportOptionsDialog,
 )
-from paintjob_designer.gui.dialog.gradient_fill_dialog import GradientFillDialog
 from paintjob_designer.gui.dialog.transform_colors_dialog import (
     TransformCandidate,
     TransformColorsDialog,
@@ -54,13 +55,14 @@ from paintjob_designer.gui.handler.character_handler import (
 )
 from paintjob_designer.gui.handler.color_handler import ColorHandler
 from paintjob_designer.gui.handler.project_handler import ProjectHandler
-from paintjob_designer.gui.widget.character_sidebar import CharacterSidebar
 from paintjob_designer.gui.widget.color_picker import PsxColorPicker
 from paintjob_designer.gui.widget.kart_viewer import KartViewer
+from paintjob_designer.gui.widget.paintjob_library_sidebar import PaintjobLibrarySidebar
 from paintjob_designer.gui.widget.slot_editor import SlotEditor
 from paintjob_designer.models import (
     CharacterProfile,
     Paintjob,
+    PaintjobLibrary,
     Profile,
     PsxColor,
     SlotColors,
@@ -106,6 +108,7 @@ class MainWindow(QMainWindow):
         color_transformer: ColorTransformer,
         gradient_generator: GradientGenerator,
         ray_picker: RayTrianglePicker,
+        slugifier: Slugifier,
     ) -> None:
         super().__init__()
         self._config_store = config_store
@@ -123,13 +126,21 @@ class MainWindow(QMainWindow):
         self._color_transformer = color_transformer
         self._gradient_generator = gradient_generator
         self._ray_picker = ray_picker
+        self._slugifier = slugifier
 
         self._config: AppConfig = self._config_store.load()
         self._profile: Profile | None = None
 
-        # Session edits keyed by character id.
-        self._paintjob = Paintjob()
+        # Paintjob library — ordered list of all paintjobs the user is
+        # editing. The sidebar shows this library directly; `_current_paintjob`
+        # is whichever entry the user clicked.
+        self._library = PaintjobLibrary()
+        self._current_paintjob: Paintjob | None = None
 
+        # `_current_character` is the PREVIEW character — the mesh the 3D
+        # viewer shows and the VRAM we sample defaults from. It's driven by
+        # the preview-character combo at the top of the viewer pane, NOT
+        # the sidebar (which lists paintjobs now).
         self._current_character: CharacterProfile | None = None
         self._current_bundle: BroughtUpCharacter | None = None
 
@@ -170,10 +181,7 @@ class MainWindow(QMainWindow):
 
         event.acceptProposedAction()
 
-        if not self._require_character():
-            return
-
-        self._apply_paintjob_file_to(self._current_character, path)
+        self._apply_paintjob_file_to_library(path)
 
     def _drop_path(self, event) -> Path | None:
         mime = event.mimeData()
@@ -201,6 +209,21 @@ class MainWindow(QMainWindow):
 
         self._add_action(
             file_menu, "Switch &Profile...", self._on_switch_profile,
+        )
+
+        file_menu.addSeparator()
+        self._add_action(
+            file_menu, "&Open Library...", self._on_open_library,
+            shortcut=QKeySequence("Ctrl+O"),
+        )
+
+        self._add_action(
+            file_menu, "&Save Library As...", self._on_save_library_as,
+            shortcut=QKeySequence("Ctrl+Shift+S"),
+        )
+
+        self._add_action(
+            file_menu, "&Import Paintjob...", self._on_import_paintjob,
         )
 
         file_menu.addSeparator()
@@ -243,10 +266,10 @@ class MainWindow(QMainWindow):
     def _refresh_action_state(self) -> None:
         has_iso = self._is_iso_ready()
 
-        # The export-all toolbar is built after the menu bar, so this method
+        # The library toolbar is built after the menu bar, so this method
         # gets called once before the actions exist — guard accordingly.
-        if hasattr(self, "_action_export_all_json"):
-            self._action_export_all_json.setEnabled(has_iso)
+        if hasattr(self, "_action_save_library"):
+            self._action_save_library.setEnabled(has_iso)
             self._action_export_all_code.setEnabled(has_iso)
             self._action_export_all_binary.setEnabled(has_iso)
 
@@ -256,16 +279,41 @@ class MainWindow(QMainWindow):
         sidebar_container = QWidget()
         sidebar_layout = QVBoxLayout(sidebar_container)
         sidebar_layout.setContentsMargins(8, 8, 8, 8)
-        sidebar_layout.addWidget(QLabel("Characters"))
-        self._sidebar = CharacterSidebar()
-        self._sidebar.character_selected.connect(self._on_character_selected)
-        self._sidebar.character_context_requested.connect(self._on_sidebar_context)
+        sidebar_layout.addWidget(QLabel("Paintjobs"))
+        self._sidebar = PaintjobLibrarySidebar()
+        self._sidebar.paintjob_selected.connect(self._on_paintjob_selected)
+        self._sidebar.paintjob_context_requested.connect(self._on_sidebar_context)
+        self._sidebar.new_paintjob_requested.connect(self._on_new_paintjob)
+        self._sidebar.delete_paintjob_requested.connect(self._on_delete_paintjob)
+        self._sidebar.paintjobs_reordered.connect(self._on_paintjobs_reordered)
         sidebar_layout.addWidget(self._sidebar)
         sidebar_layout.addWidget(self._build_animation_panel())
+
+        viewer_container = QWidget()
+        viewer_layout = QVBoxLayout(viewer_container)
+        viewer_layout.setContentsMargins(0, 0, 0, 0)
+        viewer_layout.setSpacing(0)
+
+        # Preview-character selector sits above the 3D viewer so the
+        # "which mesh am I seeing this paintjob on?" question is
+        # answered at a glance. Paintjobs themselves are character-
+        # agnostic in the new model; this dropdown just picks the
+        # preview context (mesh + VRAM defaults).
+        preview_strip = QWidget()
+        preview_strip_layout = QHBoxLayout(preview_strip)
+        preview_strip_layout.setContentsMargins(8, 4, 8, 4)
+        preview_strip_layout.addWidget(QLabel("Preview on:"))
+        self._preview_character_combo = QComboBox()
+        self._preview_character_combo.currentIndexChanged.connect(
+            self._on_preview_character_changed,
+        )
+        preview_strip_layout.addWidget(self._preview_character_combo, 1)
+        viewer_layout.addWidget(preview_strip)
 
         self._kart_viewer = KartViewer(self._atlas_uv_mapper, self._ray_picker)
         self._kart_viewer.gl_init_failed.connect(self._on_gl_init_failed)
         self._kart_viewer.eyedropper_picked.connect(self._on_eyedropper_picked)
+        viewer_layout.addWidget(self._kart_viewer, 1)
 
         self._slot_editor = SlotEditor(self._color_converter)
         self._slot_editor.color_edit_requested.connect(self._on_color_edit_requested)
@@ -274,13 +322,17 @@ class MainWindow(QMainWindow):
         self._slot_editor.context_requested.connect(self._on_slot_editor_context)
 
         splitter.addWidget(sidebar_container)
-        splitter.addWidget(self._kart_viewer)
+        splitter.addWidget(viewer_container)
         splitter.addWidget(self._slot_editor)
 
         # Stored so `_on_gl_init_failed` can swap the viewer for a placeholder
-        # without having to re-walk the splitter hierarchy.
+        # without having to re-walk the splitter hierarchy. The viewer lives
+        # inside the viewer-container widget now (so the preview-character
+        # combo can sit above it), so the placeholder replaces the inner
+        # widget rather than a splitter pane.
         self._splitter = splitter
-        self._kart_viewer_index = 1
+        self._viewer_container = viewer_container
+        self._viewer_container_layout = viewer_layout
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
         splitter.setStretchFactor(2, 0)
@@ -299,17 +351,12 @@ class MainWindow(QMainWindow):
         self._refresh_action_state()
 
     def _build_export_all_toolbar(self) -> None:
-        """Top toolbar with the batch-export actions.
-
-        Per-character exports live on the sidebar context menu (right-click a
-        character) — the distinction is: toolbar = "everything I've edited",
-        context menu = "this one character".
-        """
-        toolbar = self.addToolBar("Export All")
+        """Top toolbar — library-level exports + bulk-edit shortcut."""
+        toolbar = self.addToolBar("Library")
         toolbar.setMovable(False)
 
-        self._action_export_all_json = toolbar.addAction(
-            "Export as JSON", self._on_export_all_json,
+        self._action_save_library = toolbar.addAction(
+            "Save Library", self._on_save_library_as,
         )
 
         self._action_export_all_code = toolbar.addAction(
@@ -317,7 +364,7 @@ class MainWindow(QMainWindow):
         )
 
         self._action_export_all_binary = toolbar.addAction(
-            "Export as Binary", self._on_export_all_binary,
+            "Export PAINTALL.bin", self._on_export_all_binary,
         )
 
         toolbar.addSeparator()
@@ -397,10 +444,41 @@ class MainWindow(QMainWindow):
 
         self._update_window_title()
 
-        # Populating the sidebar auto-selects row 0 and emits the signal, so
-        # the first character loads immediately without a second click.
-        self._sidebar.set_profile(self._profile)
+        # Populate the preview-character combo from the profile. Setting the
+        # first item fires currentIndexChanged, which triggers the initial
+        # mesh/VRAM/atlas load.
+        self._populate_preview_character_combo()
+
+        # Rebuild the sidebar from the (possibly empty) library. Sidebar
+        # selection is None at this point — the user has to either create a
+        # new paintjob or load one from disk to start editing.
+        self._sidebar.set_library(self._library, selected_index=None)
         self._refresh_action_state()
+
+    def _populate_preview_character_combo(self) -> None:
+        """Fill the preview-character combo from the active profile.
+
+        Signals are blocked during the rebuild so clearing + adding doesn't
+        spam `_on_preview_character_changed`; we fire it once explicitly
+        after the combo is populated so the first character loads.
+        """
+        self._preview_character_combo.blockSignals(True)
+        self._preview_character_combo.clear()
+
+        if self._profile is not None:
+            for character in self._profile.characters:
+                self._preview_character_combo.addItem(
+                    character.display_name or character.id,
+                    character.id,
+                )
+
+        self._preview_character_combo.blockSignals(False)
+
+        if self._preview_character_combo.count() > 0:
+            self._preview_character_combo.setCurrentIndex(0)
+        else:
+            self._current_character = None
+            self._current_bundle = None
 
     def _profile_display_name(self) -> str:
         """Human-readable label for the active profile, or `"(none)"`."""
@@ -422,13 +500,19 @@ class MainWindow(QMainWindow):
     def _is_iso_ready(self) -> bool:
         return self._validator.validate(self._config.iso_root).ok and self._profile is not None
 
-    def _require_character(self) -> bool:
-        if self._current_character is not None:
+    def _require_active_paintjob(self) -> bool:
+        """Gate for actions that need a selected paintjob in the library.
+
+        Creating a new paintjob / loading one from JSON both satisfy this —
+        the user just has to pick one before they can edit slots.
+        """
+        if self._current_paintjob is not None:
             return True
 
         QMessageBox.information(
-            self, "Pick a character first",
-            "Select a character on the left before performing this action.",
+            self, "No paintjob selected",
+            "Create a paintjob (sidebar → New) or import one from JSON "
+            "before performing this action.",
         )
 
         return False
@@ -456,68 +540,97 @@ class MainWindow(QMainWindow):
         self._config_store.save(self._config)
         self._character_handler.invalidate_vram_cache()
 
-        # A fresh ISO wipes any in-flight edits — they were keyed to characters
-        # from the previous ISO's profile and wouldn't make sense against the new
-        # one. Undo history goes with them.
-        self._paintjob = Paintjob()
+        # A fresh ISO wipes any in-flight edits — they were keyed to
+        # characters from the previous ISO's profile and wouldn't make
+        # sense against the new one. Undo history goes with them.
+        self._library = PaintjobLibrary()
+        self._current_paintjob = None
         self._current_character = None
         self._current_bundle = None
         self._undo_stack.clear()
 
         self._load_profile(self._config.last_profile_id)
-        self.statusBar().showMessage("ISO loaded. Pick a character to begin.")
+        self.statusBar().showMessage(
+            "ISO loaded. Create a paintjob (sidebar → New) or import one to begin.",
+        )
 
-    def _apply_paintjob_file_to(self, character: CharacterProfile, path: Path) -> None:
+    def _apply_paintjob_file_to_library(self, path: Path) -> None:
+        """Load a paintjob JSON from disk and add it as a new library entry."""
         try:
-            standalone = self._project_handler.open_standalone(path)
+            loaded = self._project_handler.load(path)
         except (OSError, ValueError) as exc:
             QMessageBox.critical(self, "Import failed", str(exc))
             return
 
-        self._project_handler.apply_standalone_to_character(
-            self._paintjob, character.id, standalone,
-        )
+        new_index = self._library.add(loaded)
 
-        # Opening from file isn't reversible through the existing edit
-        # commands (their captured state refers to the pre-open slots), so
-        # clear the stack rather than leaving stale entries in it.
+        # Imports clear undo — the commands' captured paintjob refs point
+        # at pre-import objects that may no longer be in the library.
         self._undo_stack.clear()
 
-        # Reload so the atlas/3D/slot-editor all pick up the new slots.
-        self._on_character_selected(character.id)
-        self.statusBar().showMessage(
-            f"Imported {path.name} onto {character.display_name}",
-        )
+        self._sidebar.set_library(self._library, selected_index=new_index)
+        self.statusBar().showMessage(f"Imported {path.name}")
 
-    def _on_sidebar_context(self, character_id: str, global_pos: QPoint) -> None:
-        """Show the per-character import/export menu next to the right-clicked row."""
-        character = self._find_character(character_id)
-        if character is None:
+    def _replace_paintjob_from_file(self, index: int, path: Path) -> None:
+        """Replace the paintjob at `index` with one loaded from `path`."""
+        if index < 0 or index >= self._library.count():
             return
+
+        try:
+            loaded = self._project_handler.load(path)
+        except (OSError, ValueError) as exc:
+            QMessageBox.critical(self, "Import failed", str(exc))
+            return
+
+        self._library.paintjobs[index] = loaded
+        self._undo_stack.clear()
+        self._sidebar.set_library(self._library, selected_index=index)
+        self.statusBar().showMessage(f"Replaced with {path.name}")
+
+    def _on_sidebar_context(self, index: int, global_pos: QPoint) -> None:
+        """Per-paintjob context menu (sidebar right-click)."""
+        if index < 0 or index >= self._library.count():
+            return
+
+        paintjob = self._library.paintjobs[index]
 
         menu = QMenu(self)
         menu.addAction(
-            "Import Paintjob from JSON...",
-            lambda: self._on_import_json_for(character),
+            "Rename...",
+            lambda: self._on_rename_paintjob(index),
+        )
+        menu.addAction(
+            "Change base character...",
+            lambda: self._on_change_base_character(index),
         )
         menu.addSeparator()
         menu.addAction(
-            "Export Paintjob as JSON...",
-            lambda: self._on_export_json_for(character),
+            "Export as JSON...",
+            lambda: self._on_export_json_for_paintjob(paintjob),
         )
         menu.addAction(
-            "Export Paintjob as Code...",
-            lambda: self._on_export_code_for(character),
+            "Export as Code...",
+            lambda: self._on_export_code_for_paintjob(paintjob, index),
+        )
+        menu.addSeparator()
+        menu.addAction(
+            "Replace from JSON...",
+            lambda: self._on_replace_paintjob_from_file(index),
+        )
+        menu.addSeparator()
+        menu.addAction(
+            "Delete",
+            lambda: self._on_delete_paintjob(index),
         )
         menu.exec(global_pos)
 
-    def _on_import_json_for(self, character: CharacterProfile) -> None:
-        """Load a paintjob JSON from disk and apply it to `character`."""
-        if not self._ensure_character_loaded(character):
+    def _on_import_paintjob(self) -> None:
+        """Load a paintjob JSON and append it to the library."""
+        if self._profile is None:
             return
 
         path_str, _ = QFileDialog.getOpenFileName(
-            self, f"Import paintjob for {character.display_name}",
+            self, "Import paintjob",
             self._config.iso_root or str(Path.home()),
             f"{_PAINTJOB_FILTER};;All files (*)",
         )
@@ -525,36 +638,73 @@ class MainWindow(QMainWindow):
         if not path_str:
             return
 
-        self._apply_paintjob_file_to(character, Path(path_str))
+        self._apply_paintjob_file_to_library(Path(path_str))
 
-    def _find_character(self, character_id: str) -> CharacterProfile | None:
-        if self._profile is None:
-            return None
-
-        for c in self._profile.characters:
-            if c.id == character_id:
-                return c
-
-        return None
-
-    def _ensure_character_loaded(self, character: CharacterProfile) -> bool:
-        """Load the given character's bundle if it isn't the current one.
-
-        The slot-default backfill used by exports reads from `_current_bundle`,
-        so per-character exports via right-click need to warp the sidebar to
-        that row first. Returns True if the bundle is usable afterwards.
-        """
-        if self._current_character is not None and self._current_character.id == character.id:
-            return self._current_bundle is not None
-
-        self._on_character_selected(character.id)
-        return self._current_bundle is not None
-
-    def _on_export_json_for(self, character: CharacterProfile) -> None:
-        if not self._ensure_character_loaded(character):
+    def _on_replace_paintjob_from_file(self, index: int) -> None:
+        if index < 0 or index >= self._library.count():
             return
 
-        default_name = f"{character.id}{_PAINTJOB_EXT}"
+        path_str, _ = QFileDialog.getOpenFileName(
+            self, "Replace paintjob from JSON",
+            self._config.iso_root or str(Path.home()),
+            f"{_PAINTJOB_FILTER};;All files (*)",
+        )
+
+        if not path_str:
+            return
+
+        self._replace_paintjob_from_file(index, Path(path_str))
+
+    def _on_rename_paintjob(self, index: int) -> None:
+        if index < 0 or index >= self._library.count():
+            return
+
+        from PySide6.QtWidgets import QInputDialog
+        paintjob = self._library.paintjobs[index]
+        new_name, ok = QInputDialog.getText(
+            self, "Rename paintjob",
+            "Name:", text=paintjob.name,
+        )
+        if not ok:
+            return
+
+        paintjob.name = new_name.strip()
+        # Preserve selection across the rebuild so the user stays on the
+        # paintjob they just renamed.
+        self._sidebar.set_library(self._library, selected_index=index)
+
+    def _on_change_base_character(self, index: int) -> None:
+        if self._profile is None or index < 0 or index >= self._library.count():
+            return
+
+        paintjob = self._library.paintjobs[index]
+
+        none_label = "(none — unbound)"
+        options = [none_label] + [c.id for c in self._profile.characters]
+
+        current = paintjob.base_character_id or none_label
+        current_index = options.index(current) if current in options else 0
+
+        chosen, ok = QInputDialog.getItem(
+            self, "Change base character",
+            "Base character for this paintjob:",
+            options, current_index, editable=False,
+        )
+
+        if not ok:
+            return
+
+        paintjob.base_character_id = None if chosen == none_label else chosen
+        self._sidebar.set_library(self._library, selected_index=index)
+
+        if paintjob is self._current_paintjob:
+            self._reload_preview()
+
+    def _on_export_json_for_paintjob(self, paintjob: Paintjob) -> None:
+        default_name = (
+            self._paintjob_filename(paintjob, self._library.paintjobs.index(paintjob))
+            + _PAINTJOB_EXT
+        )
         path_str, _ = QFileDialog.getSaveFileName(
             self, "Export paintjob as JSON",
             default_name, _PAINTJOB_FILTER,
@@ -563,27 +713,24 @@ class MainWindow(QMainWindow):
         if not path_str:
             return
 
-        path = Path(path_str)
-        single = self._project_handler.extract_character_as_standalone(
-            self._paintjob, character.id,
-            defaults_by_slot=self._defaults_by_slot_for_current(),
-        )
+        to_save = self._paintjob_with_backfilled_defaults(paintjob)
 
         try:
-            self._project_handler.save_standalone(path, single)
+            self._project_handler.save(Path(path_str), to_save)
         except OSError as exc:
             QMessageBox.critical(self, "Export failed", str(exc))
             return
 
-        self.statusBar().showMessage(f"Exported {path.name}")
+        self.statusBar().showMessage(f"Exported {Path(path_str).name}")
 
-    def _on_export_code_for(self, character: CharacterProfile) -> None:
-        if not self._ensure_character_loaded(character):
-            return
+    def _on_export_code_for_paintjob(
+        self, paintjob: Paintjob, index: int,
+    ) -> None:
+        default_identifier = self._paintjob_filename(paintjob, index)
 
         dialog = SourceCodeExportOptionsDialog(
-            default_identifier=character.id,
-            default_paint_index=self._character_paint_index(character.id),
+            default_identifier=default_identifier,
+            default_paint_index=index + 1,
             parent=self,
         )
 
@@ -604,14 +751,11 @@ class MainWindow(QMainWindow):
         if not path_str:
             return
 
-        single = self._project_handler.extract_character_as_standalone(
-            self._paintjob, character.id,
-            defaults_by_slot=self._defaults_by_slot_for_current(),
-        )
+        to_save = self._paintjob_with_backfilled_defaults(paintjob)
 
         try:
-            self._source_code_exporter.export_single(
-                single, Path(path_str),
+            self._source_code_exporter.export(
+                to_save, Path(path_str),
                 identifier=options.identifier,
                 paint_index=options.paint_index,
             )
@@ -621,53 +765,115 @@ class MainWindow(QMainWindow):
 
         self.statusBar().showMessage(f"Exported {Path(path_str).name}")
 
-    def _on_export_all_json(self) -> None:
+    def _paintjob_with_backfilled_defaults(self, paintjob: Paintjob) -> Paintjob:
+        """Return `paintjob` with unedited slots backfilled from the preview
+        character's VRAM defaults.
+
+        Ensures a saved file carries every slot the profile knows about,
+        not just the ones the user touched — so reimporting it is a
+        complete paintjob rather than a sparse patch.
+        """
+        defaults = self._defaults_by_slot_for_current()
+        if not defaults:
+            return paintjob
+
+        return self._project_handler.with_backfilled_defaults(paintjob, defaults)
+
+    def _on_open_library(self) -> None:
+        """Replace the current library with every JSON under a chosen folder.
+
+        Intended for reopening a previously-saved library; the files load
+        in sorted-filename order so the `NN_<name>.json` convention
+        `save_library` writes round-trips the paintjob indexing.
+        """
         if self._profile is None:
             return
 
-        if not self._paintjob.characters:
-            QMessageBox.information(
-                self, "Nothing to export",
-                "No characters have been edited yet. Pick a character and "
-                "change at least one color before running a batch export.",
-            )
-            return
-
         dir_str = QFileDialog.getExistingDirectory(
-            self, "Export all paintjobs (JSON)",
+            self, "Open paintjob library",
             str(Path.home()),
         )
 
         if not dir_str:
             return
 
-        dest = Path(dir_str)
-        saved = 0
-        for character_id in self._paintjob.characters:
-            single = self._project_handler.extract_character_as_standalone(
-                self._paintjob, character_id,
+        try:
+            library = self._project_handler.load_library(Path(dir_str))
+        except (OSError, ValueError) as exc:
+            QMessageBox.critical(self, "Open library failed", str(exc))
+            return
+
+        self._library = library
+        self._current_paintjob = None
+        self._undo_stack.clear()
+
+        # Select the first paintjob if any; selection fires
+        # `_on_paintjob_selected` which reloads the preview.
+        initial = 0 if library.count() > 0 else None
+        self._sidebar.set_library(self._library, selected_index=initial)
+        if initial is None:
+            self._reload_preview()
+
+        self.statusBar().showMessage(
+            f"Loaded {library.count()} paintjob(s) from {dir_str}",
+        )
+
+    def _on_save_library_as(self) -> None:
+        """Write every paintjob in the library to a chosen folder."""
+        if self._profile is None:
+            return
+
+        if self._library.count() == 0:
+            QMessageBox.information(
+                self, "Nothing to save",
+                "The paintjob library is empty — create or import at "
+                "least one paintjob before saving.",
             )
+            return
 
-            try:
-                self._project_handler.save_standalone(
-                    dest / f"{character_id}{_PAINTJOB_EXT}", single,
-                )
-            except OSError as exc:
-                QMessageBox.critical(self, "Export failed", str(exc))
-                return
+        dir_str = QFileDialog.getExistingDirectory(
+            self, "Save paintjob library",
+            str(Path.home()),
+        )
 
-            saved += 1
+        if not dir_str:
+            return
 
-        self.statusBar().showMessage(f"Exported {saved} paintjob(s) to {dir_str}")
+        try:
+            written = self._project_handler.save_library(
+                Path(dir_str), self._library, self._paintjob_library_filename,
+            )
+        except OSError as exc:
+            QMessageBox.critical(self, "Save library failed", str(exc))
+            return
+
+        self.statusBar().showMessage(
+            f"Saved {len(written)} paintjob(s) to {dir_str}",
+        )
+
+    def _paintjob_library_filename(
+        self, paintjob: Paintjob, index: int,
+    ) -> str:
+        """Filename used when saving a paintjob as part of a library.
+
+        The `NN_` prefix pins the filesystem sort order to the library
+        index so `load_library` round-trips the ordering. The slug part
+        prefers the authored paintjob name so the file is recognisable
+        at a glance, falling back to `base_character_id` and then a
+        numbered placeholder only when the artist hasn't named it.
+        """
+        slug = self._slugifier.slugify(paintjob.name) or paintjob.base_character_id or "paintjob"
+        return f"{index:02d}_{slug}{_PAINTJOB_EXT}"
+
 
     def _on_export_all_code(self) -> None:
         if self._profile is None:
             return
 
-        if not self._paintjob.characters:
+        if self._library.count() == 0:
             QMessageBox.information(
                 self, "Nothing to export",
-                "No characters have been edited yet. Pick a character and "
+                "No paintjobs in the library yet. Pick a character and "
                 "change at least one color before running a batch export.",
             )
             return
@@ -680,45 +886,155 @@ class MainWindow(QMainWindow):
         if not dir_str:
             return
 
-        paint_index_by_character = {
-            c.id: i + 1 for i, c in enumerate(self._profile.characters)
-        }
+        dest_dir = Path(dir_str)
 
         try:
-            self._source_code_exporter.export_set(
-                self._paintjob, Path(dir_str),
-                paint_index_by_character=paint_index_by_character,
-            )
+            for i, paintjob in enumerate(self._library.paintjobs):
+                identifier = self._paintjob_filename(paintjob, i)
+                self._source_code_exporter.export(
+                    paintjob,
+                    dest_dir / f"{identifier}{_SOURCE_CODE_EXT}",
+                    identifier=identifier,
+                    paint_index=i + 1,
+                )
         except (OSError, ValueError) as exc:
             QMessageBox.critical(self, "Export failed", str(exc))
             return
 
         self.statusBar().showMessage(
-            f"Exported {len(self._paintjob.characters)} paintjob(s) to {dir_str}",
+            f"Exported {self._library.count()} paintjob(s) to {dir_str}",
         )
+
+    def _paintjob_filename(self, paintjob: Paintjob, index: int) -> str:
+        """Filesystem-safe slug for one library paintjob.
+
+        Used by single-paintjob exports (the right-click "Export as JSON"
+        / "Export as Code" menu entries) where the filename is shown to
+        the user in a save dialog. The authored paintjob name wins; the
+        home-character binding is only the fallback for unnamed entries.
+        """
+        return self._slugifier.slugify(paintjob.name) or paintjob.base_character_id or f"paintjob_{index:02d}"
 
     def _on_export_all_binary(self) -> None:
         if self._profile is None:
             return
 
-        default_name = f"paintjobs{_BINARY_EXT}"
+        if not self._config.iso_root:
+            QMessageBox.warning(
+                self, "No ISO loaded",
+                "PAINTALL.BIN export backfills unedited paintjob slots from "
+                "each paintjob's home character's VRAM defaults — load an "
+                "ISO via File → Load ISO... before exporting.",
+            )
+            return
+
         path_str, _ = QFileDialog.getSaveFileName(
-            self, "Export all paintjobs (binary)",
-            default_name, _BINARY_FILTER,
+            self, "Export PAINTALL.BIN",
+            "PAINTALL.bin", _BINARY_FILTER,
         )
 
         if not path_str:
             return
 
         try:
+            paintjob_colors = self._resolve_library_colors_for_export()
             self._binary_exporter.export(
-                self._paintjob, self._profile, Path(path_str),
+                paintjob_colors, self._profile, Path(path_str),
             )
+        except ValueError as exc:
+            QMessageBox.critical(self, "Export failed", str(exc))
+            return
         except OSError as exc:
             QMessageBox.critical(self, "Export failed", str(exc))
             return
 
         self.statusBar().showMessage(f"Exported {Path(path_str).name}")
+
+    def _resolve_library_colors_for_export(self) -> list[dict[str, SlotColors]]:
+        """Build the per-paintjob color map `BinaryExporter.export` consumes.
+
+        One entry per library paintjob, in library order, with each of the
+        8 canonical slot names resolved to a fully-populated `SlotColors`:
+          - Paintjob override if the user authored that slot.
+          - Else VRAM default from the paintjob's "home" character — the
+            `default_character_id` declared in the matching
+            `profile.paintjob_slots[i]` entry, falling back to the
+            paintjob's own `base_character_id` if the slot binding is null.
+
+        Paintjobs with no resolvable home character AND no authored slot
+        end up with missing entries for that slot; `BinaryExporter` then
+        raises a validation error listing them, so the user gets a
+        specific message instead of zero-padded junk in the output.
+        """
+        result: list[dict[str, SlotColors]] = []
+        if self._profile is None:
+            return result
+
+        for i, paintjob in enumerate(self._library.paintjobs):
+            home_character = self._resolve_home_character(paintjob, i)
+            per_slot: dict[str, SlotColors] = {}
+
+            for slot_name in self._binary_exporter.CANONICAL_SLOT_ORDER:
+                override = paintjob.slots.get(slot_name)
+                if override is not None:
+                    per_slot[slot_name] = SlotColors(colors=[
+                        PsxColor(value=c.value) for c in override.colors
+                    ])
+
+                    continue
+
+                if home_character is None:
+                    # No character to fall back on — leave the slot unset
+                    # so the exporter's validator flags it by name.
+                    continue
+
+                home_slot = next(
+                    (s for s in home_character.slots if s.name == slot_name),
+                    None,
+                )
+
+                if home_slot is None:
+                    continue
+
+                defaults = self._color_handler.default_slot_colors_at(
+                    self._config.iso_root, home_slot.clut.x, home_slot.clut.y,
+                )
+                per_slot[slot_name] = SlotColors(colors=list(defaults))
+
+            result.append(per_slot)
+
+        return result
+
+    def _resolve_home_character(
+        self, paintjob: Paintjob, index: int,
+    ) -> CharacterProfile | None:
+        """Which character's VRAM backfills this paintjob's unedited slots?
+
+        Prefers the profile's declared binding (`paintjob_slots[i]`) so
+        the exported binary matches the mod's intended paintjob-index →
+        character mapping. Falls back to the paintjob's own
+        `base_character_id` for paintjobs the profile doesn't bind to a
+        specific character (e.g. shared/unlockable palettes authored
+        against Crash).
+        """
+        if self._profile is None:
+            return None
+
+        home_character_id: str | None = None
+        if index < len(self._profile.paintjob_slots):
+            home_character_id = self._profile.paintjob_slots[index].default_character_id
+
+        if home_character_id is None:
+            home_character_id = paintjob.base_character_id
+
+        if home_character_id is None:
+            return None
+
+        for c in self._profile.characters:
+            if c.id == home_character_id:
+                return c
+
+        return None
 
     def _on_reset_camera(self) -> None:
         self._kart_viewer.reset_camera()
@@ -756,7 +1072,7 @@ class MainWindow(QMainWindow):
         # Reset session; character IDs / slot names / CLUT coords may all
         # differ between profiles. Safer to start clean than to silently drop
         # incompatible entries.
-        self._paintjob = Paintjob()
+        self._library = PaintjobLibrary()
         self._current_character = None
         self._current_bundle = None
         self._undo_stack.clear()
@@ -783,9 +1099,11 @@ class MainWindow(QMainWindow):
         placeholder.setWordWrap(True)
         placeholder.setStyleSheet("QLabel { background: #1f2024; color: #cccccc; padding: 24px; }")
 
-        old = self._splitter.replaceWidget(self._kart_viewer_index, placeholder)
-        if old is not None:
-            old.deleteLater()
+        # The viewer is wrapped in a container that also holds the preview-
+        # character combo above it. Replace just the viewer, not the whole
+        # container, so the combo stays visible and functional.
+        self._viewer_container_layout.replaceWidget(self._kart_viewer, placeholder)
+        self._kart_viewer.deleteLater()
 
         # Calls that used to land on the viewer (highlight, set_atlas, ...)
         # would now crash; swap in a no-op stand-in that silently absorbs
@@ -793,43 +1111,41 @@ class MainWindow(QMainWindow):
         self._kart_viewer = _NullKartViewer()
         self.statusBar().showMessage("3D preview disabled (GL init failed).")
 
-    def _character_paint_index(self, character_id: str) -> int:
-        """1-based position of a character in the active profile.
-
-        Used as the default `PAINT<N>` aggregator index when exporting a single
-        source file — the vanilla profile order matches CTR's own paintjob
-        numbering, so this is almost always what the user wants.
-        """
-        if self._profile is None:
-            return 1
-
-        for i, c in enumerate(self._profile.characters):
-            if c.id == character_id:
-                return i + 1
-
-        return 1
-
-    def _on_character_selected(self, character_id: str) -> None:
-        if self._profile is None:
+    def _on_preview_character_changed(self, index: int) -> None:
+        """Driven by the preview-character combo above the 3D viewer."""
+        if self._profile is None or index < 0:
             return
 
+        character_id = self._preview_character_combo.itemData(index)
         character = next(
             (c for c in self._profile.characters if c.id == character_id),
             None,
         )
-
         if character is None:
             return
 
+        self._current_character = character
+        self._reload_preview()
+
+    def _reload_preview(self) -> None:
+        """Load the current preview character's mesh + VRAM + atlas.
+
+        Applies `_current_paintjob` on top — or an empty paintjob when the
+        library has nothing selected, so the 3D viewer still shows the
+        character's vanilla look.
+        """
+        if self._current_character is None:
+            return
+
+        render_paintjob = self._current_paintjob or Paintjob()
         try:
             bundle = self._character_handler.load_character(
-                self._config.iso_root, character, self._paintjob,
+                self._config.iso_root, self._current_character, render_paintjob,
             )
         except FileNotFoundError as exc:
             self.statusBar().showMessage(f"Load failed: {exc}")
             return
 
-        self._current_character = character
         self._current_bundle = bundle
 
         self._kart_viewer.set_atlas(
@@ -842,14 +1158,89 @@ class MainWindow(QMainWindow):
         self._slot_triangle_mask = self._build_slot_triangle_mask(assembled, bundle)
 
         self._populate_animations()
-        self._populate_slot_editor(character_id, bundle)
+        self._populate_slot_editor()
         self._refresh_action_state()
 
         self.statusBar().showMessage(
-            f"{character.display_name}: {len(bundle.slot_regions.slots)} slots, "
+            f"{self._current_character.display_name}: "
+            f"{len(bundle.slot_regions.slots)} slots, "
             f"{len(bundle.slot_regions.unmatched_palettes)} unmatched palettes, "
             f"{assembled.triangle_count} triangles",
         )
+
+    def _on_paintjob_selected(self, index: int) -> None:
+        """Sidebar click — switch the active paintjob and refresh preview."""
+        if index < 0 or index >= self._library.count():
+            self._current_paintjob = None
+        else:
+            self._current_paintjob = self._library.paintjobs[index]
+
+        # Re-render the atlas with the new paintjob on the current preview
+        # character; slot editor repopulates from the paintjob's colors
+        # (or VRAM defaults for untouched slots).
+        self._reload_preview()
+
+    def _on_new_paintjob(self) -> None:
+        """Create a blank paintjob, append it, and select it."""
+        if self._profile is None:
+            return
+
+        base_character_id = (
+            self._current_character.id if self._current_character is not None else None
+        )
+        paintjob = Paintjob(
+            name=f"Paintjob {self._library.count() + 1}",
+            base_character_id=base_character_id,
+        )
+        index = self._library.add(paintjob)
+        self._sidebar.set_library(self._library, selected_index=index)
+        # The sidebar's selection change fires `_on_paintjob_selected`
+        # which loads the preview.
+
+    def _on_delete_paintjob(self, index: int) -> None:
+        if index < 0 or index >= self._library.count():
+            return
+
+        paintjob = self._library.paintjobs[index]
+        label = paintjob.name.strip() or f"Paintjob {index + 1}"
+        confirm = QMessageBox.question(
+            self, "Delete paintjob",
+            f"Delete '{label}'? This can't be undone.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if confirm != QMessageBox.StandardButton.Yes:
+            return
+
+        removed = self._library.remove(index)
+
+        # Undo history can still reference the removed paintjob via its
+        # stored ref; those entries would mutate a paintjob that's no
+        # longer visible. Safer to clear the stack.
+        self._undo_stack.clear()
+
+        if self._current_paintjob is removed:
+            self._current_paintjob = None
+
+        next_selection = None
+        if self._library.count() > 0:
+            next_selection = min(index, self._library.count() - 1)
+            self._current_paintjob = self._library.paintjobs[next_selection]
+
+        self._sidebar.set_library(self._library, selected_index=next_selection)
+        self._reload_preview()
+
+    def _on_paintjobs_reordered(self, from_index: int, to_index: int) -> None:
+        """Qt reordered the list view; mirror the move into the library.
+
+        `_current_paintjob` holds an object reference, not an index, so the
+        "which paintjob is selected" state naturally survives the move.
+        We just need to translate the visible selection index.
+        """
+        self._library.move(from_index, to_index)
+        # The view already moved; keep sidebar selection on the dragged row.
+        self._sidebar.set_selected_index(to_index)
 
     def _build_slot_triangle_mask(
         self, assembled, bundle: BroughtUpCharacter,
@@ -879,21 +1270,51 @@ class MainWindow(QMainWindow):
             self._slot_triangle_mask.get(slot_name, []),
         )
 
-    def _populate_slot_editor(self, character_id: str, bundle: BroughtUpCharacter) -> None:
-        slot_names = list(bundle.slot_regions.slots.keys())
+    def _populate_slot_editor(self) -> None:
+        """Refresh the slot-editor swatches for the current paintjob + preview character.
+
+        Shows either the paintjob's authored colors or VRAM defaults for
+        slots it hasn't touched. Called on preview-character change,
+        paintjob-selection change, and after any edit that mutates slot
+        state.
+        """
+        if self._current_bundle is None:
+            self._slot_editor.set_slots([])
+            return
+
+        slot_names = self._ordered_slot_names(
+            self._current_bundle.slot_regions.slots.keys(),
+        )
+
         self._slot_editor.set_slots(slot_names)
 
-        character_paintjob = self._paintjob.characters.get(character_id)
-
-        for slot_name, slot in bundle.slot_regions.slots.items():
-            if character_paintjob is not None and slot_name in character_paintjob.slots:
-                colors = list(character_paintjob.slots[slot_name].colors)
+        for slot_name, slot in self._current_bundle.slot_regions.slots.items():
+            if (
+                self._current_paintjob is not None
+                and slot_name in self._current_paintjob.slots
+            ):
+                colors = list(self._current_paintjob.slots[slot_name].colors)
             else:
                 colors = self._color_handler.default_slot_colors(
                     self._config.iso_root, slot,
                 )
 
             self._slot_editor.set_slot_colors(slot_name, colors)
+
+    def _ordered_slot_names(self, names) -> list[str]:
+        """Sort slot names into canonical order so the sidebar stays stable across characters.
+
+        Different characters' CTR files can list slots in different orders, so
+        following the bundle's natural iteration makes the sidebar reshuffle
+        every time the preview character changes. Canonical first (the
+        PAINTALL.BIN slot order), anything unrecognized appended alphabetically.
+        """
+        canonical = self._binary_exporter.CANONICAL_SLOT_ORDER
+        name_set = set(names)
+
+        ordered = [n for n in canonical if n in name_set]
+        extras = sorted(name_set - set(canonical))
+        return ordered + extras
 
     def _defaults_by_slot_for_current(self) -> dict[str, list[PsxColor]]:
         """VRAM-default CLUT for every slot the current character owns.
@@ -912,7 +1333,10 @@ class MainWindow(QMainWindow):
         }
 
     def _on_color_edit_requested(self, slot_name: str, color_index: int) -> None:
-        if self._current_bundle is None or self._current_character is None:
+        if (
+            self._current_bundle is None
+            or not self._require_active_paintjob()
+        ):
             return
 
         slot = self._current_bundle.slot_regions.slots.get(slot_name)
@@ -924,37 +1348,33 @@ class MainWindow(QMainWindow):
         if new_color is None or new_color.value == old_color.value:
             return
 
-        # Apply immediately so the user sees the change without waiting for the
-        # undo stack; then push a command that represents the same operation so
-        # it can be reversed. SetSlotColorCommand's first redo is a no-op.
-        self.apply_color_edit_from_command(
-            self._current_character.id, slot, color_index, new_color,
-        )
+        paintjob = self._current_paintjob
+        # Apply immediately so the user sees the change without waiting for
+        # the undo stack; then push a command that represents the same
+        # operation so it can be reversed. SetSlotColorCommand's first redo
+        # is a no-op.
+        self.apply_color_edit_from_command(paintjob, slot, color_index, new_color)
 
         self._undo_stack.push(SetSlotColorCommand(
-            self,
-            self._current_character.id,
-            slot,
-            color_index,
-            old_color,
-            new_color,
+            self, paintjob, slot, color_index, old_color, new_color,
         ))
 
     def _on_slot_reset_requested(self, slot_name: str) -> None:
-        if self._current_bundle is None or self._current_character is None:
+        if (
+            self._current_bundle is None
+            or not self._require_active_paintjob()
+        ):
             return
 
         slot = self._current_bundle.slot_regions.slots.get(slot_name)
         if slot is None:
             return
 
-        old_colors = self._snapshot_slot_colors(self._current_character.id, slot.slot_name)
-        self.apply_slot_reset_from_command(self._current_character.id, slot)
+        paintjob = self._current_paintjob
+        old_colors = self._snapshot_slot_colors(paintjob, slot.slot_name)
+        self.apply_slot_reset_from_command(paintjob, slot)
         self._undo_stack.push(ResetSlotCommand(
-            self,
-            self._current_character.id,
-            slot,
-            old_colors,
+            self, paintjob, slot, old_colors,
         ))
 
     def _on_eyedropper_picked(
@@ -1045,7 +1465,10 @@ class MainWindow(QMainWindow):
         Centralizes the color-picker → apply → undo-push flow so both the
         swatch-click handler and the eyedropper drive the same pipeline.
         """
-        if self._current_bundle is None or self._current_character is None:
+        if (
+            self._current_bundle is None
+            or not self._require_active_paintjob()
+        ):
             return
 
         old_color = self._current_color(slot, color_index)
@@ -1053,17 +1476,11 @@ class MainWindow(QMainWindow):
         if new_color is None or new_color.value == old_color.value:
             return
 
-        self.apply_color_edit_from_command(
-            self._current_character.id, slot, color_index, new_color,
-        )
+        paintjob = self._current_paintjob
+        self.apply_color_edit_from_command(paintjob, slot, color_index, new_color)
 
         self._undo_stack.push(SetSlotColorCommand(
-            self,
-            self._current_character.id,
-            slot,
-            color_index,
-            old_color,
-            new_color,
+            self, paintjob, slot, color_index, old_color, new_color,
         ))
 
     def _find_slot_for_texture_layout(self, layout_index: int) -> str | None:
@@ -1147,7 +1564,10 @@ class MainWindow(QMainWindow):
         menu.exec(global_pos)
 
     def _open_gradient_fill_dialog(self, slot_name: str) -> None:
-        if self._current_bundle is None or self._current_character is None:
+        if (
+            self._current_bundle is None
+            or not self._require_active_paintjob()
+        ):
             return
 
         slot = self._current_bundle.slot_regions.slots.get(slot_name)
@@ -1173,9 +1593,10 @@ class MainWindow(QMainWindow):
         if not replacements:
             return
 
+        paintjob = self._current_paintjob
         edits = [
             BulkColorEdit(
-                character_id=self._current_character.id,
+                paintjob=paintjob,
                 slot=slot,
                 color_index=ci,
                 old_color=current_colors[ci],
@@ -1185,7 +1606,7 @@ class MainWindow(QMainWindow):
         ]
 
         self.apply_bulk_edits_from_command(
-            [(e.character_id, e.slot, e.color_index, e.new_color) for e in edits],
+            [(e.paintjob, e.slot, e.color_index, e.new_color) for e in edits],
         )
 
         lo = replacements[0][0]
@@ -1199,12 +1620,10 @@ class MainWindow(QMainWindow):
         slot_name: str | None,
         match_color: PsxColor | None,
     ) -> None:
-        if self._current_bundle is None or self._current_character is None:
-            QMessageBox.information(
-                self,
-                "Transform Colors",
-                "Load a character before running a bulk color transform.",
-            )
+        if (
+            self._current_bundle is None
+            or not self._require_active_paintjob()
+        ):
             return
 
         slot_candidates: list[TransformCandidate] = []
@@ -1218,13 +1637,12 @@ class MainWindow(QMainWindow):
         )
 
         # Snapshot every slot the dialog could touch. Needed because the
-        # Preview button pushes the current transform into the paintjob + 3D
-        # view — on Cancel we roll back to snapshot, on Apply we roll back
-        # then re-apply the final edit set so the committed state matches
-        # what Apply's `resulting_edits` describes (user may have tweaked
-        # sliders between the last Preview and Apply).
+        # Preview button pushes the current transform into the paintjob +
+        # 3D view — on Cancel we roll back to snapshot, on Apply we roll
+        # back then re-apply the final edit set so the committed state
+        # matches what Apply's `resulting_edits` describes.
         preview_snapshot = self._snapshot_slots_for_preview(kart_candidates)
-        dirty_slots: set[tuple[str, str]] = set()
+        dirty_keys: set[tuple[int, str]] = set()
 
         dialog = TransformColorsDialog(
             slot_candidates=slot_candidates,
@@ -1238,28 +1656,28 @@ class MainWindow(QMainWindow):
         )
         dialog.preview_requested.connect(
             lambda edits: self._apply_transform_preview(
-                preview_snapshot, dirty_slots, edits,
+                preview_snapshot, dirty_keys, edits,
             ),
         )
 
         if dialog.exec() != dialog.DialogCode.Accepted:
-            self._restore_transform_snapshot(preview_snapshot, dirty_slots)
+            self._restore_transform_snapshot(preview_snapshot, dirty_keys)
             return
 
         edits = dialog.resulting_edits()
         if not edits:
-            self._restore_transform_snapshot(preview_snapshot, dirty_slots)
+            self._restore_transform_snapshot(preview_snapshot, dirty_keys)
             return
 
         # Roll back any preview state first, then apply the final edit set
-        # from a clean baseline. Without the restore, residue from an earlier
-        # preview that touched different slots/indices than the final Apply
-        # would stay in the paintjob (applying new edits only overwrites the
-        # colors they touch; earlier preview colors at other indices would
-        # stick around).
-        self._restore_transform_snapshot(preview_snapshot, dirty_slots)
+        # from a clean baseline. Without the restore, residue from an
+        # earlier preview that touched different slots/indices than the
+        # final Apply would stay in the paintjob (applying new edits only
+        # overwrites the colors they touch; earlier preview colors at
+        # other indices would stick around).
+        self._restore_transform_snapshot(preview_snapshot, dirty_keys)
         self.apply_bulk_edits_from_command(
-            [(e.character_id, e.slot, e.color_index, e.new_color) for e in edits],
+            [(e.paintjob, e.slot, e.color_index, e.new_color) for e in edits],
         )
 
         label = (
@@ -1270,73 +1688,80 @@ class MainWindow(QMainWindow):
 
     def _snapshot_slots_for_preview(
         self, candidates: list[TransformCandidate],
-    ) -> dict[tuple[str, str], tuple[object, SlotColors | None]]:
+    ) -> dict[tuple[int, str], tuple[object, object, SlotColors | None]]:
         """Capture per-slot paintjob state for every unique slot in `candidates`.
 
-        Value is (slot, colors). `colors` is None when the slot hadn't been
-        touched yet, so revert deletes the paintjob entry — same semantics as
-        `ResetSlotCommand.undo`'s None-means-untouched branch.
+        Keyed by `(id(paintjob), slot_name)` — `id()` on the paintjob
+        object makes the key hashable and stable across the preview
+        session without leaking the reference into Python's dict-equality
+        machinery (paintjobs aren't `@dataclass(eq=False)` so two distinct
+        instances with matching fields would otherwise hash equal).
+        The value carries the paintjob back so the revert path can find
+        it without re-scanning the library.
         """
-        snapshot: dict[tuple[str, str], tuple[object, SlotColors | None]] = {}
+        snapshot: dict[tuple[int, str], tuple[object, object, SlotColors | None]] = {}
         for cand in candidates:
-            key = (cand.character_id, cand.slot.slot_name)
+            key = (id(cand.paintjob), cand.slot.slot_name)
             if key in snapshot:
                 continue
 
             snapshot[key] = (
+                cand.paintjob,
                 cand.slot,
-                self._snapshot_slot_colors(cand.character_id, cand.slot.slot_name),
+                self._snapshot_slot_colors(cand.paintjob, cand.slot.slot_name),
             )
 
         return snapshot
 
     def _apply_transform_preview(
         self,
-        snapshot: dict[tuple[str, str], tuple[object, SlotColors | None]],
-        dirty_slots: set[tuple[str, str]],
+        snapshot: dict[tuple[int, str], tuple[object, object, SlotColors | None]],
+        dirty_keys: set[tuple[int, str]],
         edits: list,
     ) -> None:
         """Push a preview edit set into the paintjob + 3D view.
 
-        Reverts everything to snapshot first (clearing residue from a prior
-        Preview click that might have touched different slots/indices), then
-        applies the new edits grouped by slot, then does one full-atlas GL
-        upload. Per-slot `set_atlas_region` can't be used here — the viewer's
-        pending-region field is a single tuple, so multiple region uploads
-        within one paintGL cycle would drop all but the last one.
+        Reverts everything to snapshot first (clearing residue from a
+        prior Preview click that might have touched different
+        slots/indices), then applies the new edits grouped by slot, then
+        does one full-atlas GL upload. Per-slot `set_atlas_region` can't
+        be used here — the viewer's pending-region field is a single
+        tuple, so multiple region uploads within one paintGL cycle would
+        drop all but the last one.
         """
         if self._current_bundle is None:
             return
 
-        new_dirty = {(e.character_id, e.slot.slot_name) for e in edits}
+        new_dirty = {(id(e.paintjob), e.slot.slot_name) for e in edits}
 
-        for key in dirty_slots | new_dirty:
-            slot, colors = snapshot[key]
+        for key in dirty_keys | new_dirty:
+            paintjob, slot, colors = snapshot[key]
             restored = self._color_handler.restore_slot(
                 self._config.iso_root,
                 self._current_bundle.atlas_rgba,
-                self._paintjob,
-                key[0],
+                paintjob,
                 slot,
                 colors,
             )
             self._slot_editor.set_slot_colors(slot.slot_name, restored)
 
-        by_slot: dict[tuple[str, str], list] = {}
-        slot_for_key: dict[tuple[str, str], object] = {}
+        by_slot: dict[tuple[int, str], list] = {}
+        slot_for_key: dict[tuple[int, str], object] = {}
+        paintjob_for_key: dict[tuple[int, str], object] = {}
 
         for edit in edits:
-            key = (edit.character_id, edit.slot.slot_name)
+            key = (id(edit.paintjob), edit.slot.slot_name)
             by_slot.setdefault(key, []).append(edit)
             slot_for_key[key] = edit.slot
+            paintjob_for_key[key] = edit.paintjob
 
         for key, slot_edits in by_slot.items():
             slot = slot_for_key[key]
+            paintjob = paintjob_for_key[key]
             self._color_handler.apply_edits(
                 self._config.iso_root,
                 self._current_bundle.atlas_rgba,
-                self._paintjob,
-                key[0],
+                paintjob,
                 slot,
                 [(e.color_index, e.new_color) for e in slot_edits],
             )
@@ -1352,26 +1777,25 @@ class MainWindow(QMainWindow):
             AtlasRenderer.ATLAS_HEIGHT,
         )
 
-        dirty_slots.clear()
-        dirty_slots.update(new_dirty)
+        dirty_keys.clear()
+        dirty_keys.update(new_dirty)
 
     def _restore_transform_snapshot(
         self,
-        snapshot: dict[tuple[str, str], tuple[object, SlotColors | None]],
-        dirty_slots: set[tuple[str, str]],
+        snapshot: dict[tuple[int, str], tuple[object, object, SlotColors | None]],
+        dirty_keys: set[tuple[int, str]],
     ) -> None:
-        """Revert every slot that diverged during preview back to snapshot state."""
-        if self._current_bundle is None or not dirty_slots:
-            dirty_slots.clear()
+        """Revert every slot that diverged during preview back to snapshot."""
+        if self._current_bundle is None or not dirty_keys:
+            dirty_keys.clear()
             return
 
-        for key in dirty_slots:
-            slot, colors = snapshot[key]
+        for key in dirty_keys:
+            paintjob, slot, colors = snapshot[key]
             restored = self._color_handler.restore_slot(
                 self._config.iso_root,
                 self._current_bundle.atlas_rgba,
-                self._paintjob,
-                key[0],
+                paintjob,
                 slot,
                 colors,
             )
@@ -1383,48 +1807,59 @@ class MainWindow(QMainWindow):
             AtlasRenderer.ATLAS_HEIGHT,
         )
 
-        dirty_slots.clear()
+        dirty_keys.clear()
 
     def apply_bulk_edits_from_command(
         self,
-        operations: list[tuple[str, object, int, PsxColor]],
+        operations: list[tuple[object, object, int, PsxColor]],
     ) -> None:
-        """Apply N (character, slot, color_index, color) changes as one batch.
+        """Apply N `(paintjob, slot, color_index, color)` changes in one batch.
 
-        Used by the Transform Colors Accept path AND by `BulkTransformCommand`
-        redo/undo. Groups by slot so each slot takes one paintjob mutation +
-        one atlas render, and finishes with a single full-atlas GL upload.
-        Per-edit `apply_color_edit_from_command` would queue one
-        `set_atlas_region` per edit, but the viewer keeps only the latest
-        pending region — all earlier uploads get dropped before `paintGL`
-        runs, so a multi-slot transform would leave most slots un-updated on
-        the GPU.
+        Used by the Transform Colors Accept path AND by
+        `BulkTransformCommand` redo/undo. Groups by
+        `(id(paintjob), slot_name)` so each slot takes one paintjob
+        mutation + one atlas render, and finishes with a single full-atlas
+        GL upload. Per-edit `apply_color_edit_from_command` would queue
+        one `set_atlas_region` per edit, but the viewer keeps only the
+        latest pending region — all earlier uploads get dropped before
+        `paintGL` runs, so a multi-slot transform would leave most slots
+        un-updated on the GPU.
         """
         if self._current_bundle is None or not operations:
             return
 
-        by_slot: dict[tuple[str, str], list[tuple[int, PsxColor]]] = {}
-        slot_for_key: dict[tuple[str, str], object] = {}
-        for character_id, slot, color_index, color in operations:
-            key = (character_id, slot.slot_name)
+        # If every edit targets a single paintjob that's NOT the currently
+        # selected one, switch selection — a Ctrl+Z on hidden state is
+        # confusing.
+        paintjobs = {id(op[0]) for op in operations}
+        if len(paintjobs) == 1:
+            self._switch_to_paintjob_if_needed(operations[0][0])
+
+        by_slot: dict[tuple[int, str], list[tuple[int, PsxColor]]] = {}
+        slot_for_key: dict[tuple[int, str], object] = {}
+        paintjob_for_key: dict[tuple[int, str], object] = {}
+        for paintjob, slot, color_index, color in operations:
+            key = (id(paintjob), slot.slot_name)
             by_slot.setdefault(key, []).append((color_index, color))
             slot_for_key[key] = slot
+            paintjob_for_key[key] = paintjob
 
         for key, slot_ops in by_slot.items():
             slot = slot_for_key[key]
+            paintjob = paintjob_for_key[key]
             self._color_handler.apply_edits(
                 self._config.iso_root,
                 self._current_bundle.atlas_rgba,
-                self._paintjob,
-                key[0],
+                paintjob,
                 slot,
                 slot_ops,
             )
 
-            for color_index, new_color in slot_ops:
-                self._slot_editor.update_color(
-                    slot.slot_name, color_index, new_color,
-                )
+            if paintjob is self._current_paintjob:
+                for color_index, new_color in slot_ops:
+                    self._slot_editor.update_color(
+                        slot.slot_name, color_index, new_color,
+                    )
 
         self._kart_viewer.set_atlas(
             self._current_bundle.atlas_rgba,
@@ -1433,22 +1868,21 @@ class MainWindow(QMainWindow):
         )
 
     def _build_transform_candidates(self, slots) -> list[TransformCandidate]:
-        """Resolve (slot, color_index) → effective color for every color in `slots`.
+        """Resolve `(slot, color_index)` → effective color for every color in `slots`.
 
-        "Effective" = paintjob override if the user has touched this slot,
-        else the VRAM default. That matches what the swatches visually show
-        and what Replace-matches uses as its before value.
+        "Effective" = current paintjob override if present, else the
+        preview character's VRAM default. That matches what the swatches
+        visually show and what Replace-matches uses as its before value.
         """
-        if self._current_character is None:
+        if self._current_paintjob is None:
             return []
 
-        character_id = self._current_character.id
-        character_paintjob = self._paintjob.characters.get(character_id)
+        paintjob = self._current_paintjob
 
         result: list[TransformCandidate] = []
         for slot in slots:
-            if character_paintjob is not None and slot.slot_name in character_paintjob.slots:
-                colors = character_paintjob.slots[slot.slot_name].colors
+            if slot.slot_name in paintjob.slots:
+                colors = paintjob.slots[slot.slot_name].colors
             else:
                 colors = self._color_handler.default_slot_colors(
                     self._config.iso_root, slot,
@@ -1456,7 +1890,7 @@ class MainWindow(QMainWindow):
 
             for i, color in enumerate(colors):
                 result.append(TransformCandidate(
-                    character_id=character_id,
+                    paintjob=paintjob,
                     slot=slot,
                     color_index=i,
                     current_color=PsxColor(value=color.value),
@@ -1464,27 +1898,52 @@ class MainWindow(QMainWindow):
 
         return result
 
+    def _switch_to_paintjob_if_needed(self, paintjob: Paintjob) -> None:
+        """Make `paintjob` the currently-selected one (for undo across paintjobs).
+
+        Commands hold paintjob refs — a Ctrl+Z on an edit to paintjob A
+        while paintjob B is selected needs to visually show the unwound
+        change on A. Select it in the sidebar so the user sees what just
+        reverted.
+        """
+        if self._current_paintjob is paintjob:
+            return
+
+        try:
+            index = self._library.paintjobs.index(paintjob)
+        except ValueError:
+            # Paintjob is no longer in the library (e.g. command targets a
+            # deleted entry). Fail quietly — deletion clears the undo
+            # stack, so this should only happen if an earlier path missed
+            # that cleanup.
+            return
+
+        self._current_paintjob = paintjob
+        self._sidebar.set_selected_index(index)
+        self._reload_preview()
+
     def apply_color_edit_from_command(
         self,
-        character_id: str,
+        paintjob: Paintjob,
         slot,
         color_index: int,
         new_color: PsxColor,
     ) -> None:
         """Apply a color change without going through the undo stack.
 
-        Called from `SetSlotColorCommand.redo` / `undo` and from the initial
-        edit path to keep all three mutate-state / re-render / refresh-swatch
-        steps in one place.
+        Called from `SetSlotColorCommand.redo` / `undo` and from the
+        initial edit path to keep all three mutate-state / re-render /
+        refresh-swatch steps in one place.
         """
         if self._current_bundle is None:
             return
 
+        self._switch_to_paintjob_if_needed(paintjob)
+
         self._color_handler.apply_edit(
             self._config.iso_root,
             self._current_bundle.atlas_rgba,
-            self._paintjob,
-            character_id,
+            paintjob,
             slot,
             color_index,
             new_color,
@@ -1493,15 +1952,16 @@ class MainWindow(QMainWindow):
         self._push_slot_region_to_viewer(slot)
         self._slot_editor.update_color(slot.slot_name, color_index, new_color)
 
-    def apply_slot_reset_from_command(self, character_id: str, slot) -> None:
+    def apply_slot_reset_from_command(self, paintjob: Paintjob, slot) -> None:
         if self._current_bundle is None:
             return
+
+        self._switch_to_paintjob_if_needed(paintjob)
 
         defaults = self._color_handler.reset_slot(
             self._config.iso_root,
             self._current_bundle.atlas_rgba,
-            self._paintjob,
-            character_id,
+            paintjob,
             slot,
         )
 
@@ -1510,18 +1970,19 @@ class MainWindow(QMainWindow):
 
     def apply_slot_restore_from_command(
         self,
-        character_id: str,
+        paintjob: Paintjob,
         slot,
         old_colors: SlotColors | None,
     ) -> None:
         if self._current_bundle is None:
             return
 
+        self._switch_to_paintjob_if_needed(paintjob)
+
         colors = self._color_handler.restore_slot(
             self._config.iso_root,
             self._current_bundle.atlas_rgba,
-            self._paintjob,
-            character_id,
+            paintjob,
             slot,
             old_colors,
         )
@@ -1587,24 +2048,26 @@ class MainWindow(QMainWindow):
 
         return min_x, min_y, max_x - min_x, max_y - min_y
 
-    def _snapshot_slot_colors(self, character_id: str, slot_name: str) -> SlotColors | None:
-        character = self._paintjob.characters.get(character_id)
-        if character is None:
-            return None
-
-        slot = character.slots.get(slot_name)
+    def _snapshot_slot_colors(
+        self, paintjob: Paintjob, slot_name: str,
+    ) -> SlotColors | None:
+        slot = paintjob.slots.get(slot_name)
         if slot is None:
             return None
 
         return SlotColors(colors=[PsxColor(value=c.value) for c in slot.colors])
 
     def _current_color(self, slot, color_index: int) -> PsxColor:
-        if self._current_character is None:
-            return PsxColor()
+        """Effective color for `(slot, color_index)` in the editor right now.
 
-        character_paintjob = self._paintjob.characters.get(self._current_character.id)
-        if character_paintjob is not None and slot.slot_name in character_paintjob.slots:
-            return character_paintjob.slots[slot.slot_name].colors[color_index]
+        Paintjob override if the slot has been authored; otherwise the
+        VRAM default from the preview character's CLUT.
+        """
+        if (
+            self._current_paintjob is not None
+            and slot.slot_name in self._current_paintjob.slots
+        ):
+            return self._current_paintjob.slots[slot.slot_name].colors[color_index]
 
         defaults = self._color_handler.default_slot_colors(self._config.iso_root, slot)
         return defaults[color_index]

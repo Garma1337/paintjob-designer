@@ -33,6 +33,7 @@ def main() -> int:
         color_transformer=container.resolve("color_transformer"),
         gradient_generator=container.resolve("gradient_generator"),
         ray_picker=container.resolve("ray_triangle_picker"),
+        slugifier=container.resolve("slugifier"),
     )
 
     window.show()

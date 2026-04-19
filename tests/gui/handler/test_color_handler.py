@@ -7,7 +7,6 @@ import pytest
 
 from paintjob_designer.models import (
     BitDepth,
-    CharacterPaintjob,
     ClutCoord,
     Paintjob,
     PsxColor,
@@ -60,7 +59,7 @@ def _atlas_pixel(rgba: bytearray, x: int, y: int) -> tuple[int, int, int, int]:
 class TestApplyEdit:
 
     def test_first_edit_initializes_slot_from_vram_defaults(
-        self, color_handler, atlas_renderer, tmp_path,
+        self, color_handler, tmp_path,
     ):
         _write_shared_vrm(tmp_path)
         paintjob = Paintjob()
@@ -70,32 +69,30 @@ class TestApplyEdit:
         # Edit index 5. The handler should populate all 16 colors from VRAM first,
         # so everything except index 5 keeps the default CLUT values.
         color_handler.apply_edit(
-            tmp_path, rgba, paintjob, "crash", slot,
+            tmp_path, rgba, paintjob, slot,
             color_index=5, new_color=PsxColor(value=0x001F),
         )
 
-        slot_colors = paintjob.characters["crash"].slots["front"].colors
+        slot_colors = paintjob.slots["front"].colors
         assert len(slot_colors) == SlotColors.SIZE
         assert slot_colors[5].value == 0x001F
         # Index 3 retained its default blue from VRAM (0x7C00).
         assert slot_colors[3].value == 0x7C00
 
     def test_subsequent_edit_only_changes_the_one_color(
-        self, color_handler, atlas_renderer, tmp_path,
+        self, color_handler, tmp_path,
     ):
         _write_shared_vrm(tmp_path)
         existing = SlotColors(colors=[PsxColor(value=0x1234) for _ in range(16)])
-        paintjob = Paintjob(characters={
-            "crash": CharacterPaintjob(slots={"front": existing}),
-        })
+        paintjob = Paintjob(slots={"front": existing})
         rgba = bytearray(AtlasRenderer.ATLAS_WIDTH * AtlasRenderer.ATLAS_HEIGHT * 4)
 
         color_handler.apply_edit(
-            tmp_path, rgba, paintjob, "crash", _front_slot(),
+            tmp_path, rgba, paintjob, _front_slot(),
             color_index=7, new_color=PsxColor(value=0x7FFF),
         )
 
-        result = paintjob.characters["crash"].slots["front"].colors
+        result = paintjob.slots["front"].colors
         assert result[7].value == 0x7FFF
         # Other indices untouched.
         for i in range(16):
@@ -105,7 +102,7 @@ class TestApplyEdit:
             assert result[i].value == 0x1234
 
     def test_rerenders_slot_in_place_with_new_color(
-        self, color_handler, atlas_renderer, tmp_path,
+        self, color_handler, tmp_path,
     ):
         _write_shared_vrm(tmp_path)
         paintjob = Paintjob()
@@ -114,7 +111,7 @@ class TestApplyEdit:
         # Set CLUT index 3 to red. The texture nibbles at VRAM (50, 10) are all 3,
         # so atlas pixels at (200..203, 10) should become red.
         color_handler.apply_edit(
-            tmp_path, rgba, paintjob, "crash", _front_slot(),
+            tmp_path, rgba, paintjob, _front_slot(),
             color_index=3, new_color=PsxColor(value=0x001F),
         )
 
@@ -128,7 +125,7 @@ class TestApplyEdit:
 
         with pytest.raises(IndexError):
             color_handler.apply_edit(
-                tmp_path, rgba, paintjob, "crash", _front_slot(),
+                tmp_path, rgba, paintjob, _front_slot(),
                 color_index=16, new_color=PsxColor(),
             )
 
@@ -153,29 +150,26 @@ class TestResetSlot:
     ):
         _write_shared_vrm(tmp_path)
         edited = SlotColors(colors=[PsxColor(value=0xAAAA) for _ in range(16)])
-        paintjob = Paintjob(characters={
-            "crash": CharacterPaintjob(slots={"front": edited}),
-        })
+        paintjob = Paintjob(slots={"front": edited})
         rgba = bytearray(AtlasRenderer.ATLAS_WIDTH * AtlasRenderer.ATLAS_HEIGHT * 4)
 
         defaults = color_handler.reset_slot(
-            tmp_path, rgba, paintjob, "crash", _front_slot(),
+            tmp_path, rgba, paintjob, _front_slot(),
         )
 
         assert defaults[3].value == 0x7C00
-        assert paintjob.characters["crash"].slots["front"].colors[3].value == 0x7C00
-        assert paintjob.characters["crash"].slots["front"] is not edited
+        assert paintjob.slots["front"].colors[3].value == 0x7C00
+        assert paintjob.slots["front"] is not edited
 
-    def test_reset_creates_missing_character_and_slot(self, color_handler, tmp_path):
+    def test_reset_creates_missing_slot(self, color_handler, tmp_path):
         _write_shared_vrm(tmp_path)
         paintjob = Paintjob()
         rgba = bytearray(AtlasRenderer.ATLAS_WIDTH * AtlasRenderer.ATLAS_HEIGHT * 4)
 
-        color_handler.reset_slot(tmp_path, rgba, paintjob, "crash", _front_slot())
+        color_handler.reset_slot(tmp_path, rgba, paintjob, _front_slot())
 
-        assert "crash" in paintjob.characters
-        assert "front" in paintjob.characters["crash"].slots
-        assert len(paintjob.characters["crash"].slots["front"].colors) == 16
+        assert "front" in paintjob.slots
+        assert len(paintjob.slots["front"].colors) == 16
 
     def test_reset_rerenders_atlas_with_default_colors(self, color_handler, tmp_path):
         _write_shared_vrm(tmp_path)
@@ -185,11 +179,11 @@ class TestResetSlot:
 
         # Apply a red edit first.
         color_handler.apply_edit(
-            tmp_path, rgba, paintjob, "crash", slot,
+            tmp_path, rgba, paintjob, slot,
             color_index=3, new_color=PsxColor(value=0x001F),
         )
         assert _atlas_pixel(rgba, 200, 10) == (255, 0, 0, 255)
 
         # Reset should return the atlas to the VRAM-default decode (index 3 = blue).
-        color_handler.reset_slot(tmp_path, rgba, paintjob, "crash", slot)
+        color_handler.reset_slot(tmp_path, rgba, paintjob, slot)
         assert _atlas_pixel(rgba, 200, 10) == (0, 0, 255, 255)

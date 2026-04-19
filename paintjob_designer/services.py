@@ -7,7 +7,7 @@ from paintjob_designer.color.gradient import GradientGenerator
 from paintjob_designer.color.transform import ColorTransformer
 from paintjob_designer.config.iso_root_validator import IsoRootValidator
 from paintjob_designer.config.store import ConfigStore
-from paintjob_designer.core import Container
+from paintjob_designer.core import Container, Slugifier
 from paintjob_designer.ctr.animation import AnimationDecoder
 from paintjob_designer.ctr.reader import CtrModelReader
 from paintjob_designer.ctr.vertex_assembler import VertexAssembler
@@ -17,8 +17,8 @@ from paintjob_designer.gui.handler.character_handler import CharacterHandler
 from paintjob_designer.gui.handler.color_handler import ColorHandler
 from paintjob_designer.gui.handler.project_handler import ProjectHandler
 from paintjob_designer.gui.widget.color_picker import PsxColorPicker
-from paintjob_designer.paintjob.single_reader import SinglePaintjobReader
-from paintjob_designer.paintjob.single_writer import SinglePaintjobWriter
+from paintjob_designer.paintjob.reader import PaintjobReader
+from paintjob_designer.paintjob.writer import PaintjobWriter
 from paintjob_designer.profile.reader import ProfileReader
 from paintjob_designer.profile.registry import ProfileRegistry
 from paintjob_designer.render.atlas_renderer import AtlasRenderer
@@ -44,6 +44,7 @@ container = Container()
 
 container.register("config_store", lambda c: ConfigStore(_default_config_path()))
 container.register("iso_root_validator", lambda c: IsoRootValidator())
+container.register("slugifier", lambda c: Slugifier())
 container.register("color_converter", lambda c: ColorConverter())
 container.register("color_transformer", lambda c: ColorTransformer(c.resolve("color_converter")))
 container.register("gradient_generator", lambda c: GradientGenerator(c.resolve("color_converter")))
@@ -59,8 +60,8 @@ container.register("vram_cache", lambda c: VramCache(c.resolve("vram_reader")))
 container.register("atlas_renderer", lambda c: AtlasRenderer(c.resolve("color_converter")))
 container.register("atlas_uv_mapper", lambda c: AtlasUvMapper())
 container.register("psx_color_picker", lambda c: PsxColorPicker(c.resolve("color_converter")))
-container.register("single_paintjob_reader", lambda c: SinglePaintjobReader(c.resolve("color_converter")))
-container.register("single_paintjob_writer", lambda c: SinglePaintjobWriter(c.resolve("color_converter")))
+container.register("paintjob_reader", lambda c: PaintjobReader(c.resolve("color_converter")))
+container.register("paintjob_writer", lambda c: PaintjobWriter(c.resolve("color_converter")))
 container.register("source_code_exporter", lambda c: SourceCodeExporter())
 container.register("binary_exporter", lambda c: BinaryExporter())
 container.register("character_handler", lambda c: CharacterHandler(
@@ -74,6 +75,6 @@ container.register("color_handler", lambda c: ColorHandler(
     c.resolve("atlas_renderer"),
 ))
 container.register("project_handler", lambda c: ProjectHandler(
-    c.resolve("single_paintjob_reader"),
-    c.resolve("single_paintjob_writer"),
+    c.resolve("paintjob_reader"),
+    c.resolve("paintjob_writer"),
 ))

@@ -1,6 +1,6 @@
 # User Guide
 
-This guide covers internal behaviors and details that are not immediately obvious from the editor's UI. Basic things — click a swatch, pick a color — aren't documented here; read on for the gotchas.
+This guide covers internal behaviors and details that aren't immediately obvious from the editor's UI. Basic things — click a swatch, pick a color — aren't documented here; read on for the gotchas.
 
 ## Table of Contents
 
@@ -8,7 +8,12 @@ This guide covers internal behaviors and details that are not immediately obviou
 - [Profiles](#profiles)
   - [Switching Profiles Resets the Session](#switching-profiles-resets-the-session)
   - [Where Profile JSONs Live](#where-profile-jsons-live)
-- [Character Sidebar](#character-sidebar)
+  - [paintjob_slots Binding](#paintjob_slots-binding)
+- [Paintjob Library](#paintjob-library)
+  - [Library Position Is the In-Game Paintjob Index](#library-position-is-the-in-game-paintjob-index)
+  - [Sidebar Context Menu](#sidebar-context-menu)
+- [Preview Character](#preview-character)
+  - [Home Character vs Preview Character](#home-character-vs-preview-character)
 - [Slot Editor](#slot-editor)
   - [CLUT Index 0 Is Transparent](#clut-index-0-is-transparent)
   - [Highlight Button](#highlight-button)
@@ -28,35 +33,35 @@ This guide covers internal behaviors and details that are not immediately obviou
 - [Gradient Fill](#gradient-fill)
 - [Undo / Redo](#undo--redo)
 - [Import / Export](#import--export)
-  - [Right-Click Targets a Single Character](#right-click-targets-a-single-character)
-  - [Toolbar Batch-Exports What You've Edited](#toolbar-batch-exports-what-youve-edited)
+  - [Open Library / Save Library](#open-library--save-library)
+  - [Single-Paintjob Export](#single-paintjob-export)
   - [JSON Is Character-Agnostic](#json-is-character-agnostic)
   - [JSON Colors Preserve the Full u16](#json-colors-preserve-the-full-u16)
-  - [Exports Include Every Slot](#exports-include-every-slot)
-  - [Binary Export Zero-Pads Un-edited Characters](#binary-export-zero-pads-un-edited-characters)
-- [Schema Migration](#schema-migration)
+  - [Exports Backfill Unauthored Slots](#exports-backfill-unauthored-slots)
+  - [PAINTALL.BIN Layout](#paintallbin-layout)
+- [Schema](#schema)
 - [Drag-and-Drop](#drag-and-drop)
 - [Packaging Notes](#packaging-notes)
 
 ## First Launch and ISO Layout
 
-On first launch the window opens with an empty sidebar and the status bar reading `No ISO loaded — use File → Load ISO...`. Point it at the root of your extracted CTR directory — specifically the folder that contains `bigfile/`. The tool probes `bigfile/models/racers/hi/<character>.ctr` for each profile character; if those aren't present you'll get a per-character "load failed" message when you click them but the rest of the app still works.
+On first launch the window opens with an empty sidebar and the status bar reading `No ISO loaded — use File → Load ISO...`. Point it at the root of your extracted CTR directory — specifically the folder that contains `bigfile/`. The tool probes `bigfile/models/racers/hi/<character>.ctr` for each profile character; if those aren't present you'll get a "load failed" status when that character is previewed but the rest of the app still works.
 
-The ISO path is saved to `%APPDATA%/python/paintjob-designer/config.json` (or the platform equivalent of `QStandardPaths.AppDataLocation`). Re-pointing via `File → Load ISO...` rewrites the same file.
+The ISO path is saved to `%APPDATA%/python/paintjob-designer/config.json` (or the platform equivalent of `QStandardPaths.AppDataLocation`). Re-pointing via **File → Load ISO...** rewrites the same file.
 
 ## Profiles
 
-A **profile** is a JSON file under `config/profiles/` that describes:
+A **profile** is a JSON file under `config/profiles/` that describes three things:
 
-- Which characters exist
-- Each character's mesh path (relative to the ISO root)
-- Each character's slot names + CLUT coordinates
+- **Characters** — id, display name, mesh path (relative to ISO root), slot names + CLUT coordinates (both race and menu).
+- **Paintjob slots** — the ordered binding table that PAINTALL.bin's `colors[N]` materializes: each entry carries a display name and an optional home character.
+- **VRAM page dimensions** — usually the PS1 default 1024×512.
 
-The profile controls every downstream behavior: what fills the sidebar, which CLUT coords are read from VRAM, how binary exports order their entries.
+The profile controls every downstream behavior: which characters populate the preview dropdown, which CLUT coords are read from VRAM, and which index each library paintjob occupies in the binary output.
 
 ### Switching Profiles Resets the Session
 
-**File → Switch Profile...** (or the toolbar button) opens a picker over `ProfileRegistry.available()`. Confirming clears the in-memory `Paintjob` and undo stack — character IDs may differ between profiles, so edits can't be trusted to map cleanly. Export what you've got before switching if it matters.
+**File → Switch Profile...** (or the toolbar button) opens a picker over `ProfileRegistry.available()`. Confirming clears the in-memory library and undo stack — character IDs, slot names, and paintjob bindings can all differ between profiles, so carry-over isn't safe. Save the library first if it matters.
 
 The choice is persisted to `last_profile_id` in the config, so the next launch picks up where you left off.
 
@@ -66,11 +71,63 @@ At build time: `config/profiles/<id>.json`. At runtime in a PyInstaller bundle: 
 
 To add your own profile, drop a JSON file in `config/profiles/`; it shows up in the picker on next launch with its `id` field as the option value and its `display_name` as the visible label.
 
-## Character Sidebar
+### paintjob_slots Binding
 
-The active character is always visible on the left. Clicking a row loads the character's mesh, VRAM atlas, and any edits you've already made this session.
+`profile.paintjob_slots[]` declares what PAINTALL.bin's `colors[N]` should contain. Each entry:
 
-**Right-click** any row for the per-character menu: Import from JSON, Export as JSON, Export as Code. Right-click acts on *that* character regardless of which one is currently displayed — the tool quietly warps to the target before running the export so slot defaults come from the right VRAM.
+```json
+{
+  "name": "Crash",
+  "default_character_id": "crash"
+}
+```
+
+- `name` — display label shown in the game's paintjob-cycle menu / API.
+- `default_character_id` — the character this paintjob is the home palette for. The game's runtime sets that character's `paintJobIndex` to this position on boot, and the exporter backfills this paintjob's unauthored slots from this character's VRAM. `null` means "no home character" — a shared paintjob with no default owner.
+
+Unlock gating (what the game checks to decide if a paintjob is selectable in the menu) is mod-runtime C config, not paintjob-designer config — the editor doesn't model it.
+
+When exporting PAINTALL.bin the library must have exactly `len(paintjob_slots)` paintjobs — the ordering lines up 1:1. The editor doesn't auto-populate the library from `paintjob_slots`; that's an intentional separation: the binding is static config, the library is authored content.
+
+## Paintjob Library
+
+The **left sidebar** lists every paintjob in the current session, not characters. **New** creates a blank paintjob at the end; **Delete** removes the selected one (and clears undo history so stale refs can't haunt the stack). Drag-to-reorder is enabled — rows moved via drag-drop update `PaintjobLibrary.move` under the hood.
+
+Each paintjob carries four pieces of data:
+
+- `name` — free-form; shown in the sidebar label and used as the default filename when exporting.
+- `author` — metadata that round-trips through JSON.
+- `base_character_id` — optional "home" character hint (see [Home Character vs Preview Character](#home-character-vs-preview-character)).
+- `slots` — dict of 8 slot names → 16 colors each. Only slots the artist has touched are populated; unauthored slots fall back to VRAM at display and export time.
+
+### Library Position Is the In-Game Paintjob Index
+
+The sidebar's top-to-bottom order is the same as the `colors[N]` array PAINTALL.bin emits, which is the same as each character's `paintJobIndex` state at runtime. Reordering the sidebar re-indexes everything downstream. The default `NN_<slug>.json` filename `Save Library As...` uses encodes the position as a `00_`, `01_`, ... prefix so that `Open Library...`'s sorted-filename load round-trips the order.
+
+### Sidebar Context Menu
+
+Right-click a paintjob row for:
+
+- **Rename...** — edit the paintjob's `name` field. Affects sidebar label and default export filename.
+- **Export as JSON...** — save just that paintjob to a user-chosen path.
+- **Export as Code...** — emit a `.c` + `paintjob.h` pair for that paintjob.
+- **Replace from JSON...** — overwrite the selected paintjob with one loaded from disk. Clears undo.
+- **Delete** — remove from the library. Clears undo.
+
+## Preview Character
+
+The **Preview on:** dropdown above the 3D viewer picks which character's mesh + VRAM the active paintjob is shown on. Paintjobs don't belong to characters — the dropdown is purely a viewing concern, so an "Saphi" paintjob can be auditioned on Crash, Cortex, or Penta without changing any data.
+
+Switching preview character reloads the mesh and reruns the atlas decode against the current paintjob. Unauthored slots inherit VRAM defaults from the **preview character** (not `base_character_id`), so the 3D view always matches what the game would draw if *that* character wore this paintjob.
+
+### Home Character vs Preview Character
+
+Two distinct ideas:
+
+- **Preview character** — chosen via the dropdown. Drives the 3D mesh and the fallback VRAM for unauthored slots *in the editor*.
+- **Home character** — the character this paintjob belongs to in-game. Set via the paintjob's `base_character_id` field, or via `profile.paintjob_slots[i].default_character_id` (the profile binding wins at export time). Drives the fallback VRAM when exporting PAINTALL.bin — the game needs every slot populated with concrete CLUT bytes, and the home character's VRAM is the obvious source.
+
+The editor displays what the paintjob looks like *right now on the preview character*. The exported file reflects what the paintjob looks like *at runtime on its home character*. The two usually agree but they're independent knobs.
 
 ## Slot Editor
 
@@ -88,17 +145,17 @@ Each slot row has a checkable **Highlight** button. Clicking it focuses that slo
 
 - In the 3D preview, every triangle not in the slot dims to 22% of its lit color.
 - Clicking the same button again (or another row's button) clears / moves the focus.
-- Switching to a different character clears focus.
+- Switching to a different paintjob or preview character clears focus.
 - Focus is per-session UI state — it doesn't affect the exported data.
 
-The triangle→slot mapping is built from `SlotRegion.texture_layout_indices`; faces with no slot binding (wheel rims, shared driver geometry) never light up under any slot's focus.
+The triangle → slot mapping is built from `SlotRegion.texture_layout_indices`; faces with no slot binding (wheel rims, shared driver geometry) never light up under any slot's focus.
 
 ### Reset vs Undo
 
-- **Reset button** — replaces every color in that slot with the VRAM defaults read directly from the `.vrm`. Pushes a `ResetSlotCommand` onto the undo stack, so Ctrl+Z un-resets cleanly.
-- **Ctrl+Z** — reverses the most recent edit (color pick, reset, gradient fill, or transform), regardless of whether it was on the current character.
+- **Reset button** — replaces every color in that slot with the preview character's VRAM defaults. Pushes a `ResetSlotCommand` onto the undo stack, so Ctrl+Z un-resets cleanly.
+- **Ctrl+Z** — reverses the most recent edit (color pick, reset, gradient fill, or transform), regardless of which paintjob currently selected. If the reverted edit targets a different paintjob than the one on screen, the sidebar selection automatically moves to that paintjob so the visible state tracks the unwound change.
 
-The undo stack is session-wide and never auto-clears across character switches. It does clear when you import a paintjob file (the imported slots aren't reachable through the edit commands). Bulk operations (Transform Colors, Gradient Fill) collapse into a single undo entry — one Ctrl+Z reverts the whole batch.
+The undo stack is session-wide and never auto-clears when you switch paintjobs. It does clear when you import a file or delete a paintjob — their commands' captured refs would otherwise point at stale data.
 
 ## 3D Preview
 
@@ -110,7 +167,7 @@ The undo stack is session-wide and never auto-clears across character switches. 
 
 ### Reset Camera and the Pivot Point
 
-Reset restores the camera to the pose it had right after the current character loaded — *not* world origin. The orbit pivot is the kart's bounding-box center, snapshotted by `OrbitCamera.fit_to_bounds` when the mesh was uploaded. This matters because `paintGL` drops the vertex buffer after upload; a naïve reset would have no bounds to fit and would pivot on (0, 0, 0), which is often far from the kart.
+Reset restores the camera to the pose it had right after the current preview character loaded — *not* world origin. The orbit pivot is the kart's bounding-box center, snapshotted by `OrbitCamera.fit_to_bounds` when the mesh was uploaded. This matters because `paintGL` drops the vertex buffer after upload; a naïve reset would have no bounds to fit and would pivot on (0, 0, 0), which is often far from the kart.
 
 ### Eyedropper (Right-Click)
 
@@ -135,13 +192,13 @@ Textured faces on PSX are modulated by `2 × vertex_color` (128/255 = "neutral /
 
 ### GL Init Failure
 
-If your system can't bring up OpenGL 3.3 core (old drivers, remote desktop without hardware accel, etc.), the 3D pane is replaced with a placeholder label reading "3D preview unavailable" plus the GL error. The slot editor, exports, and undo all stay fully functional — only the live preview is disabled.
+If your system can't bring up OpenGL 3.3 core (old drivers, remote desktop without hardware accel, etc.), the 3D pane is replaced with a placeholder label reading "3D preview unavailable" plus the GL error. The slot editor, sidebar, and exports all stay fully functional — only the live preview is disabled.
 
 ## Animation Playback
 
-The Animation panel below the character list shows up for characters whose `.ctr` contains animation frames. Pick a clip, hit Play, and the 3D viewer steps through frames at the FPS you've set.
+The Animation panel below the sidebar shows up when the preview character's `.ctr` contains animation frames. Pick a clip, hit Play, and the 3D viewer steps through frames at the FPS you've set.
 
-**FPS is a preview control, not a data field.** PS1 animations don't carry an intended framerate; the editor defaults to 30 fps because that's what looks reasonable for character idle loops. If a clip has bigger frames-per-step, bump the spinner up; nothing about the export or the paintjob itself cares.
+**FPS is a preview control, not a data field.** PS1 animations don't carry an intended framerate; the editor defaults to 30 fps because that's what looks reasonable for character idle loops. Nothing about the export or the paintjob itself cares about this value.
 
 Playback re-assembles the mesh geometry on every tick (positions change, UVs don't) — fine for idle anims, measurably slower for very long clips with hundreds of frames.
 
@@ -155,7 +212,7 @@ The `stp` bit of the original color is preserved when possible (see [JSON Colors
 
 ## Transform Colors
 
-The **Transform Colors...** action (top toolbar, or right-click menus on swatches and slot rows) opens a dialog for bulk edits. Every change the dialog makes is bundled into a single `BulkTransformCommand`, so Ctrl+Z reverts the whole batch.
+The **Transform Colors...** action (top toolbar, or right-click menus on swatches and slot rows) opens a dialog for bulk edits. Every change the dialog makes is bundled into a single `BulkTransformCommand`, so Ctrl+Z reverts the whole batch. All transforms target the currently-selected paintjob.
 
 ### Modes
 
@@ -169,7 +226,7 @@ All modes preserve the stp bit of each edited color. The PSX transparency sentin
 ### Scope
 
 - **Just this slot** — transforms the 16 colors of the clicked slot.
-- **Entire kart** — transforms all slots of the current character (8 × 16 = 128 entries).
+- **Entire kart** — transforms every slot of the active paintjob (8 × 16 = 128 entries).
 
 Entry points pre-fill the scope and, for Replace mode, the Match color:
 
@@ -181,7 +238,7 @@ You can always switch scope inside the dialog.
 
 ### Preview vs Apply
 
-The dialog's inline swatch strip shows before → after for every CLUT entry that *would* change — that updates as you move any control.
+The dialog's inline swatch strip shows before → after for every CLUT entry that *would* change — updates as you move any control.
 
 The **Preview** button pushes the current transform into the real paintjob + 3D view. Rotate the kart, check how it looks, tweak the sliders, click Preview again. The paintjob is kept in a "what the transform would commit" state until you close the dialog. Cancel reverts everything the previews ever touched. Apply commits the final transform as one undo entry; the live state from your last Preview click is re-applied from a clean snapshot first, so residue from previous Preview clicks that touched different indices can't leak in.
 
@@ -199,64 +256,74 @@ Right-click a slot row → **Gradient fill...** fills a contiguous index range w
 ## Undo / Redo
 
 - **Ctrl+Z / Ctrl+Shift+Z** (or Ctrl+Y) — single session-wide stack.
-- Undo works across character switches: edit a color on Crash, switch to Cortex, edit Cortex, Ctrl+Z twice — Cortex's edit reverts first, then Crash's.
-- **Imports clear the undo stack.** Opening a `.json` overwrites slots at a lower level than the edit commands know about, so pre-import entries would refer to the wrong base. Cleaner to start fresh.
-- **Switching profiles clears the undo stack** — character IDs change, old commands can't replay.
+- Undo works across sidebar selections: edit paintjob A, switch to paintjob B, edit B, Ctrl+Z twice — B's edit reverts first, then A's. If the reverted edit targets a paintjob that isn't currently selected, the sidebar auto-switches to it.
+- **Imports clear the undo stack.** Loading a library or importing/replacing a paintjob creates state the edit commands can't reason about.
+- **Deleting a paintjob clears the undo stack** — captured paintjob refs would otherwise point at a removed object.
+- **Switching profiles clears the undo stack** — character IDs and slot names change, old commands can't replay.
 
 ## Import / Export
 
-### Right-Click Targets a Single Character
+### Open Library / Save Library
 
-Right-click any sidebar row:
+- **File → Open Library...** (Ctrl+O) reads every `*.json` file under a chosen directory in sorted-filename order. The `NN_<name>.json` convention `Save Library As...` writes uses the `NN_` prefix to pin library index → filename index, so a saved library reopens with identical ordering. Non-JSON files in the directory are ignored; a JSON file that fails to parse stops the load with a message naming the offending file.
+- **File → Save Library As...** (Ctrl+Shift+S) writes each library paintjob to a chosen directory as `NN_<name-slug>.json`. Same as clicking **Save Library** on the toolbar.
+- **File → Import Paintjob...** appends a single `.json` to the end of the library.
 
-- **Import Paintjob from JSON...** — applies a `.json` to that character's slots, replacing whatever was there
-- **Export Paintjob as JSON...** — saves that character's slots
-- **Export Paintjob as Code...** — saves that character's slots as a `.c` + `paintjob.h` pair
+### Single-Paintjob Export
 
-Import targets the right-clicked character, not the currently-displayed one.
+Right-click a paintjob in the sidebar:
 
-### Toolbar Batch-Exports What You've Edited
-
-The top toolbar has three actions: **Export All as JSON / Code / Binary**.
-
-- **JSON / Code** — one file per character *that has session edits*. A character you never clicked isn't in the output.
-- **Binary** — always writes one 256-byte entry per character *in the profile* (see the caveat below).
+- **Export as JSON...** — save just that paintjob. Default filename is the paintjob's `name` slugified, falling back to `base_character_id` or `paintjob_NN`.
+- **Export as Code...** — emit a `.c` + `paintjob.h` pair. The dialog lets you pick the C identifier used for the slot arrays (`front_<id>`, ...) and the `PAINT<N>` aggregator index; both default to the paintjob's position in the library.
 
 ### JSON Is Character-Agnostic
 
-The `.paintjob.json` format stores `{slot_name: [16 colors]}`. No character ID, no profile ID, no mesh binding. A paintjob authored on Crash can be imported onto Cortex — any slot names the target character doesn't have are ignored; any the target has that the file doesn't cover fall back to VRAM defaults.
+The `.json` format stores `{schema_version, name, author, base_character_id, slots: {slot_name: [16 colors]}}`. No profile ID, no mesh binding. A paintjob authored against Crash can be previewed on Cortex without modification — slot names are shared across characters in the profile, and `base_character_id` is only a preview-fallback hint.
 
 ### JSON Colors Preserve the Full u16
 
 Each color is serialized as a 4-digit hex string like `"#7fff"` — the raw PSX 16-bit value, *not* `#RRGGBB`. This matters for round-tripping:
 
-- PSX renders `value == 0` as fully transparent, regardless of the stp bit
-- A CLUT entry with RGB `(0, 0, 0)` and stp=1 has `value == 0x8000` and renders as *opaque black*
-- The same RGB with stp=0 has `value == 0` and renders as transparent
+- PSX renders `value == 0` as fully transparent, regardless of the stp bit.
+- A CLUT entry with RGB `(0, 0, 0)` and stp=1 has `value == 0x8000` and renders as *opaque black*.
+- The same RGB with stp=0 has `value == 0` and renders as transparent.
 
-If colors were stored as 6-digit RGB hex, every opaque black would collapse to transparent on reimport. The u16 format makes the whole round-trip exact.
+If colors were stored as 6-digit RGB hex, every opaque black would collapse to transparent on reimport. The u16 format makes the whole round-trip exact. The reader also accepts the legacy 6-digit `#RRGGBB` form (treated as stp=0).
 
-For backwards compatibility the reader also accepts 6-digit `#RRGGBB` strings (treated as stp=0).
+### Exports Backfill Unauthored Slots
 
-### Exports Include Every Slot
+Per-paintjob JSON and code exports call `ProjectHandler.with_backfilled_defaults` with the preview character's VRAM defaults, so slots the artist has *edited* win, slots they haven't touched fall back to concrete CLUT bytes, and every slot the profile knows about lands in the output file. This avoids the foot-gun where a partially-authored paintjob reimports with missing-slot holes.
 
-Both JSON and Code exports call `extract_character_as_standalone` with `defaults_by_slot` populated from the current character's VRAM. Result: slots you've *edited* win, slots you haven't touched fall back to the VRAM defaults, and every slot the character knows about lands in the output file. This avoids the foot-gun where a partially-edited paintjob reimports with missing-slot holes.
+### PAINTALL.BIN Layout
 
-### Binary Export Zero-Pads Un-edited Characters
+Toolbar → **Export PAINTALL.bin** writes the `TexData` struct the vanilla CTR loads at PS1 RAM address `0x801CE000` and cast directly to a typed pointer:
 
-The binary format expects `N × 256` bytes for `N` characters in profile order. For characters with no session edits, the exporter currently writes zeroes, not VRAM defaults — so a binary export of "crash only" applied to base CTR would blank out every other character's paintjob.
+```c
+typedef struct {
+    Texture colors[N];         // N = len(profile.paintjob_slots) = library.count()
+    Texture colorsMenuPos[M];  // M = len(profile.characters) — menu-screen VRAM
+    Texture colorsRacePos[M];  // M = len(profile.characters) — in-race VRAM
+} TexData;
+```
 
-If you're using the binary format against base CTR, edit every character (even just with Reset → Reset → done per slot to populate them) before running Export as Binary. A proper fix would load every character's VRAM at export time; that's not done yet.
+`Texture` is a union of 8 pointers in canonical slot order (`front, back, floor, brown, motorside, motortop, bridge, exhaust`). `N` and `M` are independent — Saphi has 16 paintjobs across 15 characters, vanilla CTR has 15 of each.
 
-## Schema Migration
+The exporter:
 
-Paintjob JSONs carry a `schema_version` field. The reader migrates older versions up to the current schema before parsing, so files authored with an older editor keep working. Newer-than-supported files are rejected with `Paintjob schema_version N is newer than this tool supports — upgrade Paintjob Designer to open this file.`
+1. **Iterates the library** — paintjob `i` in the sidebar becomes `colors[i]` in the file.
+2. **Backfills each paintjob** from its home character's VRAM. Home character is `profile.paintjob_slots[i].default_character_id` (the binding wins), falling back to the paintjob's own `base_character_id` for entries where the binding is `null`. Slots the artist has already authored take priority.
+3. **Pre-resolves pointers as absolute PS1 addresses.** After `LOAD_XnfFile` drops the file at `0x801CE000`, the struct casts cleanly and every pointer dereferences correctly without a runtime fixup pass.
+4. **Validates up front.** Library size must match `len(profile.paintjob_slots)`; every character must declare all 8 canonical slots with both `clut` (race) and `clut_menu` coordinates; every paintjob must end up with all 8 slots populated after backfill. A single error message lists every missing piece before any bytes are written.
 
-The migration pipeline is centralized in `SinglePaintjobReader._migrate` — format changes should add a step there rather than forcing users to re-author.
+Profile slots accept `clut_menu: {x, y}` alongside `clut: {x, y}`. The menu position differs from the race position because the character-select screen lays all characters out at once — each needs its own VRAM CLUT slot there. Profiles without `clut_menu` can still be used for every other feature; they just can't target PAINTALL.bin.
+
+## Schema
+
+Paintjob JSONs and profile JSONs both carry a `schema_version` field. Both readers reject files with a newer-than-supported version. The editor is pre-release, so no legacy-version migration pipeline is in place — every file must declare the current schema.
 
 ## Drag-and-Drop
 
-Drag a `.json` file onto the main window to apply it to the currently-selected character. Same behaviour as right-click → Import. Other file types (including `.paintjobproject.json` from old versions) are silently ignored to avoid the cryptic "open failed" that an unfiltered handler would produce.
+Drag a `.json` file onto the main window to append it to the library (same as **File → Import Paintjob...**). Other file types are silently ignored to avoid the cryptic "open failed" an unfiltered handler would produce.
 
 ## Packaging Notes
 
@@ -270,6 +337,6 @@ Drag a `.json` file onto the main window to apply it to the currently-selected c
 
 ## Known Limitations
 
-- **One mesh only.** The tool reads `model.meshes[0]` of the character's `.ctr` — the high-LOD body. Wheels and flame/plume effects live outside the character's `.ctr` (wheels are sprite icons from `iconGroup[0]`, flames are separate model IDs) and aren't rendered here.
+- **One mesh only.** The tool reads `model.meshes[0]` of the preview character's `.ctr` — the high-LOD body. Wheels and flame/plume effects live outside the character's `.ctr` (wheels are sprite icons from `iconGroup[0]`, flames are separate model IDs) and aren't rendered here.
 - **Animation framerates are guessed.** No clip metadata carries an intended FPS; 30 is a preview default.
-- **Binary export doesn't backfill un-edited characters.** See [Binary Export Zero-Pads](#binary-export-zero-pads-un-edited-characters).
+- **PAINTALL.bin needs `clut_menu` per slot AND a matching `paintjob_slots` table in the profile.** The binary export fails fast with a list of missing entries; populating the profile JSON unblocks it.

@@ -3,82 +3,108 @@
 from pathlib import Path
 
 from paintjob_designer.models import (
-    CharacterPaintjob,
     Paintjob,
+    PaintjobLibrary,
     PsxColor,
-    SinglePaintjob,
     SlotColors,
 )
-from paintjob_designer.paintjob.single_reader import SinglePaintjobReader
-from paintjob_designer.paintjob.single_writer import SinglePaintjobWriter
+from paintjob_designer.paintjob.reader import PaintjobReader
+from paintjob_designer.paintjob.writer import PaintjobWriter
 
 
 class ProjectHandler:
     """Paintjob file I/O.
 
-    Reads/writes paintjob JSON (character-agnostic slot dict) and converts
-    between that on-disk form and the in-memory `Paintjob` session state the
-    editor mutates. Stateless — the caller owns any path/dirty tracking.
+    Reads/writes paintjob JSON — one file = one `Paintjob` — plus
+    directory-level "library" operations that treat a folder of JSONs
+    as a whole `PaintjobLibrary`. Stateless; the caller owns any path /
+    dirty tracking.
     """
+
+    _LIBRARY_GLOB = "*.json"
 
     def __init__(
         self,
-        single_paintjob_reader: SinglePaintjobReader,
-        single_paintjob_writer: SinglePaintjobWriter,
+        paintjob_reader: PaintjobReader,
+        paintjob_writer: PaintjobWriter,
     ) -> None:
-        self._single_reader = single_paintjob_reader
-        self._single_writer = single_paintjob_writer
+        self._reader = paintjob_reader
+        self._writer = paintjob_writer
 
-    def open_standalone(self, path: Path) -> SinglePaintjob:
-        return self._single_reader.read(path.read_bytes())
+    def load(self, path: Path) -> Paintjob:
+        return self._reader.read(path.read_bytes())
 
-    def save_standalone(self, path: Path, paintjob: SinglePaintjob) -> None:
+    def save(self, path: Path, paintjob: Paintjob) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            self._single_writer.serialize(paintjob),
-            encoding="utf-8",
-        )
+        path.write_text(self._writer.serialize(paintjob), encoding="utf-8")
 
-    def extract_character_as_standalone(
-        self,
-        project: Paintjob,
-        character_id: str,
-        defaults_by_slot: dict[str, list[PsxColor]] | None = None,
-    ) -> SinglePaintjob:
-        """Snapshot one character's slots out of the session as a standalone paintjob.
+    def load_library(self, directory: Path) -> PaintjobLibrary:
+        """Load every `*.json` under `directory` as a `PaintjobLibrary`.
 
-        When `defaults_by_slot` is given, every slot in that dict is written
-        to the output — edited slots win, unedited slots fall back to the
-        supplied default CLUT. That's what callers want for "export a
-        paintjob" — a self-contained document with every slot, not just the
-        ones the user touched.
+        Files are loaded in sorted-filename order so a `NN_name.json`
+        convention preserves the library index → in-game paintjob index
+        mapping. Non-JSON files are ignored; a JSON file that fails to
+        parse stops the load and propagates the `ValueError` with its
+        path attached so the user can fix the offending file without
+        guessing which one.
         """
-        character = project.characters.get(character_id)
-        edited = dict(character.slots) if character is not None else {}
+        library = PaintjobLibrary()
+        for path in sorted(directory.glob(self._LIBRARY_GLOB)):
+            try:
+                library.add(self.load(path))
+            except ValueError as exc:
+                raise ValueError(f"{path.name}: {exc}") from exc
 
-        if defaults_by_slot is None:
-            slots = edited
-        else:
-            slots = {
-                name: edited.get(name, SlotColors(colors=list(colors)))
-                for name, colors in defaults_by_slot.items()
-            }
+        return library
 
-            # Preserve any edited slot that isn't in the defaults set (e.g. if
-            # the profile's slot list drifted — safer to keep the user's data
-            # than silently drop it).
-            for name, slot in edited.items():
-                slots.setdefault(name, slot)
-
-        return SinglePaintjob(slots=slots)
-
-    def apply_standalone_to_character(
+    def save_library(
         self,
-        project: Paintjob,
-        character_id: str,
-        standalone: SinglePaintjob,
-    ) -> None:
-        """Overwrite one character's slots in the session with the standalone's."""
-        project.characters[character_id] = CharacterPaintjob(
-            slots=dict(standalone.slots),
+        directory: Path,
+        library: PaintjobLibrary,
+        filename_for: "callable",
+    ) -> list[Path]:
+        """Write each paintjob in `library` as a JSON file in `directory`.
+
+        `filename_for(paintjob, index) -> str` picks each file's basename
+        so callers can enforce whatever convention they want (the main
+        window prefixes `NN_` for sortability). Returns the list of
+        written paths in library order.
+        """
+        directory.mkdir(parents=True, exist_ok=True)
+
+        written: list[Path] = []
+        for i, paintjob in enumerate(library.paintjobs):
+            path = directory / filename_for(paintjob, i)
+            self.save(path, paintjob)
+            written.append(path)
+
+        return written
+
+    def with_backfilled_defaults(
+        self,
+        paintjob: Paintjob,
+        defaults_by_slot: dict[str, list[PsxColor]],
+    ) -> Paintjob:
+        """Return a copy of `paintjob` with every slot in `defaults_by_slot`
+        populated — edited slots win, the rest fall back to VRAM defaults.
+
+        Used at export time so a saved file carries every slot the profile
+        knows about, not just the ones the user touched. Slots already in
+        the paintjob but missing from the defaults set (e.g. if the profile
+        drifted) are preserved rather than silently dropped.
+        """
+        slots: dict[str, SlotColors] = {
+            name: SlotColors(colors=list(colors))
+            for name, colors in defaults_by_slot.items()
+        }
+
+        for name, slot in paintjob.slots.items():
+            slots[name] = slot
+
+        return Paintjob(
+            schema_version=paintjob.schema_version,
+            name=paintjob.name,
+            author=paintjob.author,
+            base_character_id=paintjob.base_character_id,
+            slots=slots,
         )

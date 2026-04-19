@@ -3,7 +3,6 @@
 from pathlib import Path
 
 from paintjob_designer.models import (
-    CharacterPaintjob,
     Paintjob,
     PsxColor,
     SlotColors,
@@ -15,11 +14,12 @@ from paintjob_designer.vram.cache import VramCache
 
 
 class ColorHandler:
-    """Applies a single color edit: upsert into the paintjob + re-render the slot.
+    """Applies color edits to a single `Paintjob` + re-renders the slot.
 
-    First edit of a slot pulls the slot's 16 default colors from the current
-    VRAM CLUT so only the user's one change differs from the in-game default.
-    Subsequent edits just flip one of the already-stored colors.
+    First edit of a slot pulls the slot's 16 default colors from the
+    current VRAM CLUT so only the user's one change differs from the
+    in-game default. Subsequent edits just flip one of the already-stored
+    colors.
     """
 
     def __init__(
@@ -35,7 +35,6 @@ class ColorHandler:
         iso_root: str | Path,
         rgba_buffer: bytearray,
         paintjob: Paintjob,
-        character_id: str,
         slot: SlotRegions,
         color_index: int,
         new_color: PsxColor,
@@ -47,16 +46,15 @@ class ColorHandler:
             )
 
         vram = self._vram_cache.get(iso_root)
-        self._ensure_slot_populated(paintjob, character_id, slot, vram)
-        paintjob.characters[character_id].slots[slot.slot_name].colors[color_index] = new_color
-        self._atlas.render_slot(rgba_buffer, vram, paintjob, character_id, slot)
+        self._ensure_slot_populated(paintjob, slot, vram)
+        paintjob.slots[slot.slot_name].colors[color_index] = new_color
+        self._atlas.render_slot(rgba_buffer, vram, paintjob, slot)
 
     def apply_edits(
         self,
         iso_root: str | Path,
         rgba_buffer: bytearray,
         paintjob: Paintjob,
-        character_id: str,
         slot: SlotRegions,
         edits: list[tuple[int, PsxColor]],
     ) -> None:
@@ -64,17 +62,17 @@ class ColorHandler:
 
         `apply_edit` re-renders the slot's atlas region after every single
         color write, which is wasteful when a bulk transform touches 10+
-        colors in the same slot. This collapses the same operation into one
-        render by mutating the paintjob's 16-color CLUT entry in place and
-        then calling `render_slot` exactly once.
+        colors in the same slot. This collapses the operation into one
+        render by mutating the 16-color CLUT entry in place and calling
+        `render_slot` exactly once.
         """
         if not edits:
             return
 
         vram = self._vram_cache.get(iso_root)
-        self._ensure_slot_populated(paintjob, character_id, slot, vram)
+        self._ensure_slot_populated(paintjob, slot, vram)
 
-        slot_colors = paintjob.characters[character_id].slots[slot.slot_name].colors
+        slot_colors = paintjob.slots[slot.slot_name].colors
         for color_index, new_color in edits:
             if color_index < 0 or color_index >= SlotColors.SIZE:
                 raise IndexError(
@@ -83,7 +81,7 @@ class ColorHandler:
 
             slot_colors[color_index] = new_color
 
-        self._atlas.render_slot(rgba_buffer, vram, paintjob, character_id, slot)
+        self._atlas.render_slot(rgba_buffer, vram, paintjob, slot)
 
     def default_slot_colors(
         self,
@@ -92,13 +90,27 @@ class ColorHandler:
     ) -> list[PsxColor]:
         """Return the 16-entry CLUT currently in VRAM for `slot`.
 
-        Used by the slot editor to paint its initial swatches when the paintjob
-        hasn't yet been touched for a given slot.
+        Used by the slot editor to paint its initial swatches when the
+        paintjob hasn't yet been touched for a given slot.
+        """
+        return self.default_slot_colors_at(iso_root, slot.clut.x, slot.clut.y)
+
+    def default_slot_colors_at(
+        self,
+        iso_root: str | Path,
+        clut_x: int,
+        clut_y: int,
+    ) -> list[PsxColor]:
+        """Raw-coord variant used when we only have a `ClutCoord`, not a
+        `SlotRegions`. The binary exporter's "backfill un-edited characters
+        with VRAM defaults" path hits this because it reads straight from
+        the profile's `SlotProfile.clut` without going through region
+        derivation.
         """
         vram = self._vram_cache.get(iso_root)
 
         return [
-            PsxColor(value=vram.u16_at(slot.clut.x + i, slot.clut.y))
+            PsxColor(value=vram.u16_at(clut_x + i, clut_y))
             for i in range(SlotColors.SIZE)
         ]
 
@@ -107,14 +119,12 @@ class ColorHandler:
         iso_root: str | Path,
         rgba_buffer: bytearray,
         paintjob: Paintjob,
-        character_id: str,
         slot: SlotRegions,
     ) -> list[PsxColor]:
         """Revert a slot to the VRAM default CLUT and re-render it in the atlas.
 
-        Returns the 16 default colors so the caller can refresh its swatches.
-        Safe even when the paintjob has no entry for the character or slot yet
-        — it creates one populated with the defaults.
+        Returns the 16 default colors so the caller can refresh its
+        swatches.
         """
         vram = self._vram_cache.get(iso_root)
         defaults = [
@@ -122,13 +132,8 @@ class ColorHandler:
             for i in range(SlotColors.SIZE)
         ]
 
-        character = paintjob.characters.get(character_id)
-        if character is None:
-            character = CharacterPaintjob()
-            paintjob.characters[character_id] = character
-
-        character.slots[slot.slot_name] = SlotColors(colors=list(defaults))
-        self._atlas.render_slot(rgba_buffer, vram, paintjob, character_id, slot)
+        paintjob.slots[slot.slot_name] = SlotColors(colors=list(defaults))
+        self._atlas.render_slot(rgba_buffer, vram, paintjob, slot)
         return defaults
 
     def restore_slot(
@@ -136,33 +141,26 @@ class ColorHandler:
         iso_root: str | Path,
         rgba_buffer: bytearray,
         paintjob: Paintjob,
-        character_id: str,
         slot: SlotRegions,
         colors: SlotColors | None,
     ) -> list[PsxColor]:
         """Undo-style inverse of `apply_edit` / `reset_slot`.
 
-        When `colors` is `None` the slot is removed from the character's
-        paintjob entirely (restoring the "never been touched" state); otherwise
-        its colors are overwritten with the provided snapshot. Either way the
-        affected atlas region is re-decoded and the resolved colors (paintjob
-        override if set, else VRAM defaults) are returned so the caller can
-        refresh its swatches.
+        When `colors` is `None` the slot entry is removed from the
+        paintjob (restoring the "never been touched" state); otherwise the
+        paintjob's slot is overwritten with the provided snapshot. Either
+        way the affected atlas region is re-decoded and the resolved colors
+        (paintjob override if set, else VRAM defaults) are returned so the
+        caller can refresh its swatches.
         """
         vram = self._vram_cache.get(iso_root)
 
-        character = paintjob.characters.get(character_id)
         if colors is None:
-            if character is not None:
-                character.slots.pop(slot.slot_name, None)
+            paintjob.slots.pop(slot.slot_name, None)
         else:
-            if character is None:
-                character = CharacterPaintjob()
-                paintjob.characters[character_id] = character
+            paintjob.slots[slot.slot_name] = SlotColors(colors=list(colors.colors))
 
-            character.slots[slot.slot_name] = SlotColors(colors=list(colors.colors))
-
-        self._atlas.render_slot(rgba_buffer, vram, paintjob, character_id, slot)
+        self._atlas.render_slot(rgba_buffer, vram, paintjob, slot)
 
         if colors is not None:
             return list(colors.colors)
@@ -175,19 +173,13 @@ class ColorHandler:
     def _ensure_slot_populated(
         self,
         paintjob: Paintjob,
-        character_id: str,
         slot: SlotRegions,
         vram: VramPage,
     ) -> None:
-        character = paintjob.characters.get(character_id)
-        if character is None:
-            character = CharacterPaintjob()
-            paintjob.characters[character_id] = character
-
-        if slot.slot_name in character.slots:
+        if slot.slot_name in paintjob.slots:
             return
 
-        character.slots[slot.slot_name] = SlotColors(colors=[
+        paintjob.slots[slot.slot_name] = SlotColors(colors=[
             PsxColor(value=vram.u16_at(slot.clut.x + i, slot.clut.y))
             for i in range(SlotColors.SIZE)
         ])

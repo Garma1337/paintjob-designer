@@ -17,14 +17,14 @@ from paintjob_designer.models.ctr_mesh import (
     Vector3f,
 )
 from paintjob_designer.models.paintjob import (
-    CharacterPaintjob,
     Paintjob,
-    SinglePaintjob,
+    PaintjobLibrary,
     SlotColors,
 )
 from paintjob_designer.models.profile import (
     CharacterProfile,
     ClutCoord,
+    PaintjobSlotProfile,
     Profile,
     SlotProfile,
     VramPageDimensions,
@@ -43,9 +43,10 @@ __all__ = [
     "CharacterProfile",
     "SlotProfile",
     "ClutCoord",
+    "PaintjobSlotProfile",
     "VramPageDimensions",
     "Paintjob",
-    "CharacterPaintjob",
+    "PaintjobLibrary",
     "SlotColors",
     "CtrModel",
     "CtrMesh",
@@ -64,5 +65,4 @@ __all__ = [
     "SlotRegions",
     "CharacterSlotRegions",
     "VramPage",
-    'SinglePaintjob',
 ]

@@ -73,18 +73,18 @@ class ColorTransformer:
         r, g, b = rgb.r, rgb.g, rgb.b
 
         if params.mode == TransformMode.RGB_DELTA:
-            r = _clamp_u8(r + params.rgb_delta_r)
-            g = _clamp_u8(g + params.rgb_delta_g)
-            b = _clamp_u8(b + params.rgb_delta_b)
+            r = self.clamp_u8(r + params.rgb_delta_r)
+            g = self.clamp_u8(g + params.rgb_delta_g)
+            b = self.clamp_u8(b + params.rgb_delta_b)
         else:
             h, s, v = colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
 
             if params.mode == TransformMode.SHIFT_HUE:
                 h = (h + params.hue_shift_degrees / 360.0) % 1.0
             elif params.mode == TransformMode.SHIFT_SATURATION:
-                s = _clamp_unit(s + params.saturation_shift)
+                s = self.clamp_unit(s + params.saturation_shift)
             elif params.mode == TransformMode.SHIFT_BRIGHTNESS:
-                v = _clamp_unit(v + params.brightness_shift)
+                v = self.clamp_unit(v + params.brightness_shift)
 
             r_f, g_f, b_f = colorsys.hsv_to_rgb(h, s, v)
             r, g, b = round(r_f * 255), round(g_f * 255), round(b_f * 255)
@@ -100,10 +100,10 @@ class ColorTransformer:
 
         return color
 
+    @staticmethod
+    def clamp_u8(v: int) -> int:
+        return max(0, min(255, v))
 
-def _clamp_u8(v: int) -> int:
-    return max(0, min(255, v))
-
-
-def _clamp_unit(v: float) -> float:
-    return max(0.0, min(1.0, v))
+    @staticmethod
+    def clamp_unit(v: float) -> float:
+        return max(0.0, min(1.0, v))

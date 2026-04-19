@@ -23,6 +23,7 @@ def _profile_json(**overrides) -> str:
             }
         ],
     }
+
     doc.update(overrides)
     return json.dumps(doc)
 
@@ -83,3 +84,30 @@ class TestProfileReader:
         profile = profile_reader.read(doc)
 
         assert profile.characters == []
+
+    def test_empty_paintjob_slots_when_missing(self, profile_reader):
+        profile = profile_reader.read(_profile_json())
+
+        assert profile.paintjob_slots == []
+
+    def test_parses_paintjob_slots(self, profile_reader):
+        doc = _profile_json(paintjob_slots=[
+            {"name": "Crash", "default_character_id": "crash"},
+            {"name": "Saphi", "default_character_id": None},
+            # default_character_id missing entirely -> None
+            {"name": "Mystery"},
+        ])
+
+        profile = profile_reader.read(doc)
+
+        assert len(profile.paintjob_slots) == 3
+
+        crash, saphi, mystery = profile.paintjob_slots
+        assert crash.name == "Crash"
+        assert crash.default_character_id == "crash"
+
+        assert saphi.name == "Saphi"
+        assert saphi.default_character_id is None
+
+        assert mystery.name == "Mystery"
+        assert mystery.default_character_id is None

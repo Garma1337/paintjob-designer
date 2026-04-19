@@ -15,8 +15,8 @@ from paintjob_designer.gui.handler.character_handler import CharacterHandler
 from paintjob_designer.gui.handler.color_handler import ColorHandler
 from paintjob_designer.gui.handler.project_handler import ProjectHandler
 from paintjob_designer.models import SlotColors, PsxColor
-from paintjob_designer.paintjob.single_reader import SinglePaintjobReader
-from paintjob_designer.paintjob.single_writer import SinglePaintjobWriter
+from paintjob_designer.paintjob.reader import PaintjobReader
+from paintjob_designer.paintjob.writer import PaintjobWriter
 from paintjob_designer.profile.reader import ProfileReader
 from paintjob_designer.profile.registry import ProfileRegistry
 from paintjob_designer.render.atlas_renderer import AtlasRenderer
@@ -97,18 +97,18 @@ def color_handler(vram_cache, atlas_renderer):
 
 
 @pytest.fixture
-def project_handler(single_paintjob_reader, single_paintjob_writer):
-    return ProjectHandler(single_paintjob_reader, single_paintjob_writer)
+def project_handler(paintjob_reader, paintjob_writer):
+    return ProjectHandler(paintjob_reader, paintjob_writer)
 
 
 @pytest.fixture
-def single_paintjob_reader(color_converter):
-    return SinglePaintjobReader(color_converter)
+def paintjob_reader(color_converter):
+    return PaintjobReader(color_converter)
 
 
 @pytest.fixture
-def single_paintjob_writer(color_converter):
-    return SinglePaintjobWriter(color_converter)
+def paintjob_writer(color_converter):
+    return PaintjobWriter(color_converter)
 
 
 @pytest.fixture

@@ -66,7 +66,7 @@ class GradientFillDialog(QDialog):
         # Default endpoints: index 0's color (often transparent on PSX) is a
         # bad default, so start from the slot's first non-sentinel entry and
         # the last entry.
-        default_start = _first_non_sentinel(current_colors)
+        default_start = self.first_non_sentinel(current_colors)
         default_end = current_colors[-1] if current_colors else PsxColor(value=0x8000)
 
         self._start_button = PsxColorButton(self._converter, default_start)
@@ -119,6 +119,22 @@ class GradientFillDialog(QDialog):
         matches the current slot colors exactly (so Apply is a no-op).
         """
         return list(self._result)
+
+    @staticmethod
+    def first_non_sentinel(colors: list[PsxColor]) -> PsxColor:
+        """Pick a sensible default endpoint from an existing slot's palette.
+
+        Index 0 is usually the PSX transparency sentinel (value 0), so
+        starting the gradient picker there would default to "transparent"
+        — almost never what the artist wants. Skip ahead to the first
+        non-sentinel color; if the whole slot is sentinel-only, fall back
+        to stp=1 black (`0x8000`) so the picker has something to show.
+        """
+        for c in colors:
+            if c.value != 0:
+                return c
+
+        return PsxColor(value=0x8000)
 
     def _on_range_changed(self) -> None:
         # Keep `from <= to`. Fudge the counterpart spin so the user can drag
@@ -249,11 +265,3 @@ class _GradientPreview(QFrame):
 
         painter.setPen(QPen(QColor("#222")))
         painter.drawRect(x, y, w - 1, h - 1)
-
-
-def _first_non_sentinel(colors: list[PsxColor]) -> PsxColor:
-    for c in colors:
-        if c.value != 0:
-            return c
-
-    return PsxColor(value=0x8000)

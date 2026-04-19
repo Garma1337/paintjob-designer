@@ -28,20 +28,21 @@ from paintjob_designer.color.transform import (
 )
 from paintjob_designer.gui.command.bulk_transform_command import BulkColorEdit
 from paintjob_designer.gui.widget.psx_color_button import PsxColorButton
-from paintjob_designer.models import PsxColor, SlotRegions
+from paintjob_designer.models import Paintjob, PsxColor, SlotRegions
 
 
 @dataclass
 class TransformCandidate:
     """One color in the paintjob the dialog is allowed to rewrite.
 
-    `current_color` is the effective color (paintjob override if present, else
-    the VRAM default) — preview math runs against it, and the `old_color` on
-    the emitted `BulkColorEdit` is this value so undo restores the effective
-    color rather than the raw paintjob entry (which may not have existed).
+    `current_color` is the effective color (paintjob override if present,
+    else the VRAM default) — preview math runs against it, and the
+    `old_color` on the emitted `BulkColorEdit` is this value so undo
+    restores the effective color rather than the raw paintjob entry
+    (which may not have existed).
     """
 
-    character_id: str
+    paintjob: Paintjob
     slot: SlotRegions
     color_index: int
     current_color: PsxColor
@@ -227,7 +228,7 @@ class TransformColorsDialog(QDialog):
             new_color = self._transformer.transform(cand.current_color, params)
             if new_color.value != cand.current_color.value:
                 edits.append(BulkColorEdit(
-                    character_id=cand.character_id,
+                    paintjob=cand.paintjob,
                     slot=cand.slot,
                     color_index=cand.color_index,
                     old_color=cand.current_color,
@@ -355,13 +356,13 @@ class _ControlsStack(QWidget):
         page = QWidget()
         layout = QFormLayout(page)
 
-        self._hue_slider = _make_slider(-180, 180, 0)
+        self._hue_slider = self.make_slider(-180, 180, 0)
         self._hue_value = QLabel("0°")
         self._hue_slider.valueChanged.connect(
             lambda v: self._hue_value.setText(f"{v:+d}°"),
         )
         self._hue_slider.valueChanged.connect(self.params_changed)
-        layout.addRow("Hue shift:", _slider_with_label(self._hue_slider, self._hue_value))
+        layout.addRow("Hue shift:", self.slider_with_label(self._hue_slider, self._hue_value))
 
         self._stack.addWidget(page)
         self._pages[TransformMode.SHIFT_HUE] = page
@@ -372,7 +373,7 @@ class _ControlsStack(QWidget):
 
         # Slider range is ±100 so the user feels 1% steps; we divide by 100 in
         # `current_params` to land on a [-1, 1] float the transformer wants.
-        self._brightness_slider = _make_slider(-100, 100, 0)
+        self._brightness_slider = self.make_slider(-100, 100, 0)
         self._brightness_value = QLabel("0%")
         self._brightness_slider.valueChanged.connect(
             lambda v: self._brightness_value.setText(f"{v:+d}%"),
@@ -380,7 +381,7 @@ class _ControlsStack(QWidget):
         self._brightness_slider.valueChanged.connect(self.params_changed)
         layout.addRow(
             "Brightness shift:",
-            _slider_with_label(self._brightness_slider, self._brightness_value),
+            self.slider_with_label(self._brightness_slider, self._brightness_value),
         )
 
         self._stack.addWidget(page)
@@ -390,7 +391,7 @@ class _ControlsStack(QWidget):
         page = QWidget()
         layout = QFormLayout(page)
 
-        self._saturation_slider = _make_slider(-100, 100, 0)
+        self._saturation_slider = self.make_slider(-100, 100, 0)
         self._saturation_value = QLabel("0%")
         self._saturation_slider.valueChanged.connect(
             lambda v: self._saturation_value.setText(f"{v:+d}%"),
@@ -398,7 +399,7 @@ class _ControlsStack(QWidget):
         self._saturation_slider.valueChanged.connect(self.params_changed)
         layout.addRow(
             "Saturation shift:",
-            _slider_with_label(self._saturation_slider, self._saturation_value),
+            self.slider_with_label(self._saturation_slider, self._saturation_value),
         )
 
         self._stack.addWidget(page)
@@ -408,32 +409,53 @@ class _ControlsStack(QWidget):
         page = QWidget()
         layout = QFormLayout(page)
 
-        self._rgb_r_slider = _make_slider(-255, 255, 0)
+        self._rgb_r_slider = self.make_slider(-255, 255, 0)
         self._rgb_r_value = QLabel("0")
         self._rgb_r_slider.valueChanged.connect(
             lambda v: self._rgb_r_value.setText(f"{v:+d}"),
         )
         self._rgb_r_slider.valueChanged.connect(self.params_changed)
-        layout.addRow("Red:", _slider_with_label(self._rgb_r_slider, self._rgb_r_value))
+        layout.addRow("Red:", self.slider_with_label(self._rgb_r_slider, self._rgb_r_value))
 
-        self._rgb_g_slider = _make_slider(-255, 255, 0)
+        self._rgb_g_slider = self.make_slider(-255, 255, 0)
         self._rgb_g_value = QLabel("0")
         self._rgb_g_slider.valueChanged.connect(
             lambda v: self._rgb_g_value.setText(f"{v:+d}"),
         )
         self._rgb_g_slider.valueChanged.connect(self.params_changed)
-        layout.addRow("Green:", _slider_with_label(self._rgb_g_slider, self._rgb_g_value))
+        layout.addRow("Green:", self.slider_with_label(self._rgb_g_slider, self._rgb_g_value))
 
-        self._rgb_b_slider = _make_slider(-255, 255, 0)
+        self._rgb_b_slider = self.make_slider(-255, 255, 0)
         self._rgb_b_value = QLabel("0")
         self._rgb_b_slider.valueChanged.connect(
             lambda v: self._rgb_b_value.setText(f"{v:+d}"),
         )
         self._rgb_b_slider.valueChanged.connect(self.params_changed)
-        layout.addRow("Blue:", _slider_with_label(self._rgb_b_slider, self._rgb_b_value))
+        layout.addRow("Blue:", self.slider_with_label(self._rgb_b_slider, self._rgb_b_value))
 
         self._stack.addWidget(page)
         self._pages[TransformMode.RGB_DELTA] = page
+
+    @staticmethod
+    def make_slider(minimum: int, maximum: int, value: int) -> QSlider:
+        slider = QSlider(Qt.Orientation.Horizontal)
+        slider.setRange(minimum, maximum)
+        slider.setValue(value)
+        slider.setTickPosition(QSlider.TickPosition.NoTicks)
+        return slider
+
+    @staticmethod
+    def slider_with_label(slider: QSlider, label: QLabel) -> QWidget:
+        wrap = QWidget()
+        layout = QHBoxLayout(wrap)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(slider, 1)
+        label.setMinimumWidth(48)
+        label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+        )
+        layout.addWidget(label)
+        return wrap
 
 
 class _PreviewStrip(QFrame):
@@ -511,22 +533,3 @@ class _PreviewStrip(QFrame):
 
         painter.setPen(QPen(QColor("#222")))
         painter.drawRect(x, y, size - 1, size - 1)
-
-
-def _make_slider(minimum: int, maximum: int, value: int) -> QSlider:
-    slider = QSlider(Qt.Orientation.Horizontal)
-    slider.setRange(minimum, maximum)
-    slider.setValue(value)
-    slider.setTickPosition(QSlider.TickPosition.NoTicks)
-    return slider
-
-
-def _slider_with_label(slider: QSlider, label: QLabel) -> QWidget:
-    wrap = QWidget()
-    layout = QHBoxLayout(wrap)
-    layout.setContentsMargins(0, 0, 0, 0)
-    layout.addWidget(slider, 1)
-    label.setMinimumWidth(48)
-    label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-    layout.addWidget(label)
-    return wrap

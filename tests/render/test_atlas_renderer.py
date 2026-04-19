@@ -1,10 +1,7 @@
 # coding: utf-8
 
-import struct
-
 from paintjob_designer.models import (
     BitDepth,
-    CharacterPaintjob,
     CharacterSlotRegions,
     ClutCoord,
     Paintjob,
@@ -15,7 +12,7 @@ from paintjob_designer.models import (
     VramPage,
 )
 from paintjob_designer.render.atlas_renderer import AtlasRenderer
-from tests.conftest import atlas_pixel as _shared_atlas_pixel, slot_of
+from tests.conftest import atlas_pixel as _shared_atlas_pixel
 
 
 def _write_u16(page: VramPage, x: int, y: int, value: int) -> None:
@@ -34,7 +31,7 @@ class TestOutputShape:
 
     def test_render_returns_stretched_rgba_buffer(self, atlas_renderer):
         rgba = atlas_renderer.render_atlas(
-            VramPage(), Paintjob(), "crash", CharacterSlotRegions(),
+            VramPage(), Paintjob(), CharacterSlotRegions(),
         )
 
         assert len(rgba) == 4096 * 512 * 4
@@ -46,7 +43,7 @@ class TestBaseline16bpp:
 
     def test_zero_vram_produces_transparent_atlas(self, atlas_renderer):
         rgba = atlas_renderer.render_atlas(
-            VramPage(), Paintjob(), "crash", CharacterSlotRegions(),
+            VramPage(), Paintjob(), CharacterSlotRegions(),
         )
 
         # Every pixel should be (0, 0, 0, 0) — PSX value 0 is transparent.
@@ -59,7 +56,7 @@ class TestBaseline16bpp:
         _write_u16(vram, 10, 20, 0x7FFF)
 
         rgba = atlas_renderer.render_atlas(
-            vram, Paintjob(), "crash", CharacterSlotRegions(),
+            vram, Paintjob(), CharacterSlotRegions(),
         )
 
         # VRAM pixel (10, 20) -> atlas pixels (40..43, 20), all white.
@@ -96,7 +93,7 @@ class TestSlotDecodeWith4bpp:
             )},
         )
 
-        rgba = atlas_renderer.render_atlas(vram, Paintjob(), "crash", regions)
+        rgba = atlas_renderer.render_atlas(vram, Paintjob(), regions)
 
         # VRAM (100, 50) spans atlas (400..403, 50). All four nibbles are index 5
         # -> all blue.
@@ -113,11 +110,7 @@ class TestSlotDecodeWith4bpp:
         # Paintjob replaces CLUT index 3 with red (PSX 0x001F).
         red_colors = [PsxColor(value=0) for _ in range(16)]
         red_colors[3] = PsxColor(value=0x001F)
-        paintjob = Paintjob(
-            characters={
-                "crash": CharacterPaintjob(slots={"front": SlotColors(colors=red_colors)})
-            },
-        )
+        paintjob = Paintjob(slots={"front": SlotColors(colors=red_colors)})
 
         region = SlotRegion(
             vram_x=50, vram_y=10, vram_width=1, vram_height=1,
@@ -130,7 +123,7 @@ class TestSlotDecodeWith4bpp:
             )},
         )
 
-        rgba = atlas_renderer.render_atlas(vram, paintjob, "crash", regions)
+        rgba = atlas_renderer.render_atlas(vram, paintjob, regions)
 
         # Atlas pixels at the region now show the paintjob's red, not the default blue.
         for atlas_x in range(200, 204):
@@ -152,8 +145,8 @@ class TestSlotDecodeWith4bpp:
             )},
         )
 
-        # Paintjob has NO entry for this character -> default VRAM CLUT is used.
-        rgba = atlas_renderer.render_atlas(vram, Paintjob(), "crash", regions)
+        # Paintjob has NO entry for this slot -> default VRAM CLUT is used.
+        rgba = atlas_renderer.render_atlas(vram, Paintjob(), regions)
 
         assert _atlas_pixel(rgba, 200, 10) == (0, 0, 255, 255)
 
@@ -179,7 +172,7 @@ class TestUnmatchedRegions:
             )],
         )
 
-        rgba = atlas_renderer.render_atlas(vram, Paintjob(), "crash", regions)
+        rgba = atlas_renderer.render_atlas(vram, Paintjob(), regions)
 
         # Atlas x=800..803 stretched from VRAM x=200 should all be green.
         for atlas_x in range(800, 804):
@@ -207,11 +200,9 @@ class TestUnmatchedRegions:
         # the unmatched region, which reads its CLUT straight from VRAM.
         red_colors = [PsxColor(value=0) for _ in range(16)]
         red_colors[5] = PsxColor(value=0x001F)
-        paintjob = Paintjob(characters={
-            "crash": CharacterPaintjob(slots={"some_slot": SlotColors(colors=red_colors)}),
-        })
+        paintjob = Paintjob(slots={"some_slot": SlotColors(colors=red_colors)})
 
-        rgba = atlas_renderer.render_atlas(vram, paintjob, "crash", regions)
+        rgba = atlas_renderer.render_atlas(vram, paintjob, regions)
 
         assert _atlas_pixel(rgba, 200, 10) == (0, 255, 0, 255)
 
@@ -235,7 +226,7 @@ class TestBppFilter:
             )},
         )
 
-        rgba = atlas_renderer.render_atlas(vram, Paintjob(), "crash", regions)
+        rgba = atlas_renderer.render_atlas(vram, Paintjob(), regions)
 
         # Unchanged from baseline 16bpp decode: white stretched 4x.
         for atlas_x in range(400, 404):
@@ -262,17 +253,15 @@ class TestIncrementalRender:
 
         # First render with an empty paintjob -> region is blue, (900,400) is white.
         regions = CharacterSlotRegions(character_id="crash", slots={"front": slot})
-        rgba = atlas_renderer.render_atlas(vram, Paintjob(), "crash", regions)
+        rgba = atlas_renderer.render_atlas(vram, Paintjob(), regions)
         assert _atlas_pixel(rgba, 200, 10) == (0, 0, 255, 255)
         assert _atlas_pixel(rgba, 3600, 400) == (255, 255, 255, 255)
 
         # Now apply a paintjob that makes index 3 green, and re-render only the slot.
         green_colors = [PsxColor(value=0) for _ in range(16)]
         green_colors[3] = PsxColor(value=0x03E0)  # pure green
-        paintjob = Paintjob(
-            characters={"crash": CharacterPaintjob(slots={"front": SlotColors(colors=green_colors)})},
-        )
-        atlas_renderer.render_slot(rgba, vram, paintjob, "crash", slot)
+        paintjob = Paintjob(slots={"front": SlotColors(colors=green_colors)})
+        atlas_renderer.render_slot(rgba, vram, paintjob, slot)
 
         # Slot region updated to green.
         assert _atlas_pixel(rgba, 200, 10) == (0, 255, 0, 255)

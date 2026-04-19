@@ -2,12 +2,12 @@
 
 from pathlib import Path
 
-from paintjob_designer.models import Paintjob, SinglePaintjob, SlotColors
+from paintjob_designer.models import Paintjob, SlotColors
 
 # The canonical 8-slot order used in CTR kart paintjob .c files.
-# We always export slots in this order, even if the source
-# paintjob only populates a subset — missing slots are skipped but the
-# aggregator still uses named field designators.
+# We always export slots in this order, even if the source paintjob only
+# populates a subset — missing slots are skipped but the aggregator still
+# uses named field designators.
 _CANONICAL_SLOT_ORDER = (
     "front", "back", "floor", "brown",
     "motorside", "motortop", "bridge", "exhaust",
@@ -20,34 +20,34 @@ _CANONICAL_SLOT_ORDER = (
 _HEADER_FILENAME = "paintjob.h"
 
 # The header's contents live as a plain `.h` file under `templates/` instead
-# of a big triple-quoted string — that way the canonical copy matches exactly
-# what gets written next to the generated `.c` (line endings, trailing
-# newline, everything), and editors give us C syntax highlighting while
-# tweaking it.
+# of a big triple-quoted string — that way the canonical copy matches
+# exactly what gets written next to the generated `.c` (line endings,
+# trailing newline, everything), and editors give us C syntax highlighting
+# while tweaking it.
 _HEADER_TEMPLATE_PATH = Path(__file__).parent / "templates" / _HEADER_FILENAME
 
 
 class SourceCodeExporter:
-    """Writes CTR kart paintjobs as C source files.
+    """Writes a CTR kart paintjob as a C source file.
 
-    Call `export_single` for a standalone paintjob (one `.c` file) or
-    `export_set` for a multi-character project (one `.c` per character in an
-    output directory).
+    One `Paintjob` = one `.c` file. For a multi-paintjob library the caller
+    iterates the library and invokes `export` once per entry, picking its
+    own `PAINT<N>` index per paintjob (matches the target mod's aggregator
+    layout).
     """
 
-    def export_single(
+    def export(
         self,
-        paintjob: SinglePaintjob,
+        paintjob: Paintjob,
         dest: Path,
         identifier: str,
         paint_index: int,
     ) -> None:
-        """Write one `.c` file for a standalone paintjob, plus `paintjob.h`
-        alongside it so the export is plug-and-play.
+        """Write one `.c` for `paintjob` plus a shared `paintjob.h` alongside.
 
-        `identifier` becomes the per-slot variable-name suffix (e.g. `"lime"`
-        produces `front_lime`, `back_lime`, ...). `paint_index` is the 1-based
-        `PAINT<N>` aggregator slot.
+        `identifier` becomes the per-slot variable-name suffix (e.g.
+        `"lime"` produces `front_lime`, `back_lime`, …). `paint_index` is
+        the 1-based `PAINT<N>` aggregator slot.
         """
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(
@@ -56,44 +56,14 @@ class SourceCodeExporter:
         )
         self._write_header(dest.parent)
 
-    def export_set(
-        self,
-        paintjob: Paintjob,
-        dest_dir: Path,
-        paint_index_by_character: dict[str, int],
-        identifier_by_character: dict[str, str] | None = None,
-    ) -> None:
-        """Write one `.c` per character in `dest_dir`, plus a shared `paintjob.h`.
-
-        `paint_index_by_character` decides each character's `PAINT<N>` slot —
-        callers typically map this from the vanilla CTR paintjob order
-        (crash=1, cortex=2, ...). `identifier_by_character` lets callers
-        override the variable-name suffix per character; missing entries fall
-        back to the character id.
-        """
-        dest_dir.mkdir(parents=True, exist_ok=True)
-        identifier_by_character = identifier_by_character or {}
-
-        for character_id, character_paintjob in paintjob.characters.items():
-            identifier = identifier_by_character.get(character_id, character_id)
-            paint_index = paint_index_by_character.get(character_id, 1)
-            out = dest_dir / f"{identifier}.c"
-            out.write_text(
-                self._render(
-                    character_paintjob.slots, identifier, paint_index, "",
-                ),
-                encoding="utf-8",
-            )
-
-        self._write_header(dest_dir)
-
     def _write_header(self, directory: Path) -> None:
         """Write `paintjob.h` into `directory`, overwriting any existing copy.
 
         Always writing it keeps exports self-contained — callers can drop a
-        freshly-exported `.c`/`.h` pair into any build without hunting down a
-        mod-specific header. The template is read on every call rather than
-        cached since the file is ~500 bytes and exports are user-triggered.
+        freshly-exported `.c`/`.h` pair into any build without hunting down
+        a mod-specific header. The template is read on every call rather
+        than cached since the file is ~500 bytes and exports are
+        user-triggered.
         """
         content = _HEADER_TEMPLATE_PATH.read_text(encoding="utf-8")
         (directory / _HEADER_FILENAME).write_text(content, encoding="utf-8")

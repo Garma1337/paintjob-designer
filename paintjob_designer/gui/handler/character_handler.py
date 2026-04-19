@@ -55,6 +55,11 @@ class CharacterHandler:
         character: CharacterProfile,
         paintjob: Paintjob,
     ) -> BroughtUpCharacter:
+        """Load `character`'s mesh + VRAM and render `paintjob` onto the atlas.
+
+        `paintjob` supplies slot overrides for the initial atlas render —
+        unedited slots fall back to the VRAM defaults in `_resolve_clut`.
+        """
         vram = self._vram_cache.get(iso_root)
 
         ctr_path = Path(iso_root) / character.mesh_source
@@ -62,7 +67,7 @@ class CharacterHandler:
         mesh = model.meshes[0]
 
         regions = self._deriver.derive(mesh, character)
-        atlas = self._atlas.render_atlas(vram, paintjob, character.id, regions)
+        atlas = self._atlas.render_atlas(vram, paintjob, regions)
 
         return BroughtUpCharacter(
             character_id=character.id,

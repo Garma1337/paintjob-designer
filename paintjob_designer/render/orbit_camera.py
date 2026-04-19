@@ -123,7 +123,29 @@ class OrbitCamera:
             self._distance * math.cos(self._pitch) * math.cos(self._yaw),
         ], dtype=np.float32)
 
-        return _look_at(eye, self._target, np.array([0.0, 1.0, 0.0], dtype=np.float32))
+        return self.look_at(
+            eye, self._target, np.array([0.0, 1.0, 0.0], dtype=np.float32),
+        )
+
+    @staticmethod
+    def look_at(
+        eye: np.ndarray, center: np.ndarray, up: np.ndarray,
+    ) -> np.ndarray:
+        f = center - eye
+        f = f / np.linalg.norm(f)
+        s = np.cross(f, up)
+        s = s / np.linalg.norm(s)
+        u = np.cross(s, f)
+
+        m = np.eye(4, dtype=np.float32)
+        m[0, :3] = s
+        m[1, :3] = u
+        m[2, :3] = -f
+        m[0, 3] = -float(s @ eye)
+        m[1, 3] = -float(u @ eye)
+        m[2, 3] = float(f @ eye)
+
+        return m
 
     def projection_matrix(self, aspect: float) -> np.ndarray:
         """Classic right-handed perspective matrix.
@@ -157,21 +179,3 @@ class OrbitCamera:
     @property
     def target(self) -> np.ndarray:
         return self._target
-
-
-def _look_at(eye: np.ndarray, center: np.ndarray, up: np.ndarray) -> np.ndarray:
-    f = center - eye
-    f = f / np.linalg.norm(f)
-    s = np.cross(f, up)
-    s = s / np.linalg.norm(s)
-    u = np.cross(s, f)
-
-    m = np.eye(4, dtype=np.float32)
-    m[0, :3] = s
-    m[1, :3] = u
-    m[2, :3] = -f
-    m[0, 3] = -float(s @ eye)
-    m[1, 3] = -float(u @ eye)
-    m[2, 3] = float(f @ eye)
-
-    return m
