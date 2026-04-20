@@ -7,7 +7,7 @@ requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [ {name = "Garma"} ]
 dependencies = [
-    "PySide6>=6.5",
+    "PySide6-Essentials>=6.5",
     "PyOpenGL>=3.1",
     "numpy>=1.26",
     "Pillow>=10.0",

@@ -68,18 +68,10 @@ On first launch, use **File → Load ISO...** to point the tool at the root of y
 The GitHub Actions workflow in `.github/workflows/release.yml` builds Windows + Linux one-dir bundles via PyInstaller and publishes them as `.7z` artifacts on manual trigger. To build locally:
 
 ```bash
-pip install pyinstaller
-pyinstaller --noconsole --name PaintjobDesigner \
-  --icon app.ico \
-  --add-data "config/profiles;config/profiles" \
-  --add-data "app.ico;." \
-  --add-data "paintjob_designer/gui/widget/shaders;paintjob_designer/gui/widget/shaders" \
-  main.py
+pyinstaller PaintjobDesigner.spec
 ```
 
-(On Linux/macOS replace the `;` separators with `:`.)
-
-The output is in `dist/PaintjobDesigner/`.
+The spec file lives at the repo root; it handles icon, data-file bundling, and the PySide6 submodule exclusions that keep the bundle small. Output lands in `dist/PaintjobDesigner/`.
 
 ## Running Tests
 

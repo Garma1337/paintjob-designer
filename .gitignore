@@ -4,8 +4,6 @@
 .vs/
 __pycache__/
 .pytest_cache/
-PaintjobDesigner.spec
-paintjob-designer.spec
 build/
 dist/
 *.egg-info/

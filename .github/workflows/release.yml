@@ -40,9 +40,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements.txt
 
       - name: Install dependencies
-        run: pip install PySide6 PyOpenGL numpy pytest
+        run: pip install -r requirements.txt
 
       - name: Run tests
         run: pytest tests/
@@ -54,11 +56,8 @@ jobs:
         include:
           - os: windows-latest
             artifact: PaintjobDesigner-windows
-            # PyInstaller's --add-data uses `;` on Windows, `:` elsewhere.
-            sep: ";"
           - os: ubuntu-latest
             artifact: PaintjobDesigner-linux
-            sep: ":"
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -66,25 +65,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements.txt
 
       - name: Install dependencies
-        run: pip install PySide6 PyOpenGL numpy pyinstaller
+        run: pip install -r requirements.txt
 
       - name: Build executable
-        # --add-data bundles runtime-read data files:
-        #   - config/profiles/*.json: ProfileRegistry resolves via sys._MEIPASS
-        #   - paintjob_designer/exporters/templates/: paintjob.h template
-        #   - paintjob_designer/gui/widget/shaders/: GLSL vert/frag files
-        # Package-relative paths (last two) end up next to their .py files, so
-        # `Path(__file__).parent / "..."` resolves correctly in the frozen
-        # extraction dir.
-        shell: bash
-        run: |
-          pyinstaller --noconsole --name PaintjobDesigner \
-            --add-data "config/profiles${{ matrix.sep }}config/profiles" \
-            --add-data "paintjob_designer/exporters/templates${{ matrix.sep }}paintjob_designer/exporters/templates" \
-            --add-data "paintjob_designer/gui/widget/shaders${{ matrix.sep }}paintjob_designer/gui/widget/shaders" \
-            main.py
+        # Data files (config/profiles, shaders, app.ico) and the
+        # PySide6 module exclusion list live in PaintjobDesigner.spec
+        # so the build invocation stays a one-liner and local + CI
+        # builds stay in lockstep.
+        run: pyinstaller PaintjobDesigner.spec
 
       - name: Compress output
         shell: bash
