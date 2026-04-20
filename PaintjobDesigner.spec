@@ -49,19 +49,25 @@ def _path_modules(dest: str) -> set[str]:
     lowered = dest.replace("\\", "/").lower()
     found: set[str] = set()
 
-    for part in lowered.split("/"):
-        for prefix in ("qt6", "qt"):
-            if part.startswith(prefix):
-                stripped = part[len(prefix):]
+    prefixes = ("libqt6", "libqt", "qt6", "qt")
+    separators = ".-_"
 
-                for suffix in (".dll", ".so", ".dylib", ".qm", ".pak"):
-                    idx = stripped.find(suffix)
-                    if idx != -1:
-                        stripped = stripped[:idx]
-                        break
-                
-                if stripped:
-                    found.add(stripped)
+    for part in lowered.split("/"):
+        for prefix in prefixes:
+            if not part.startswith(prefix):
+                continue
+
+            tail = part[len(prefix):]
+            cut = min(
+                (tail.find(s) for s in separators if s in tail),
+                default=len(tail),
+            )
+            candidate = tail[:cut]
+
+            if candidate:
+                found.add(candidate)
+
+            break
 
     return found
 
