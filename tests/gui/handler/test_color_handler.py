@@ -155,6 +155,7 @@ class TestResetSlot:
 
         defaults = color_handler.reset_slot(
             tmp_path, rgba, paintjob, _front_slot(),
+            base_clut_x=0, base_clut_y=0,
         )
 
         assert defaults[3].value == 0x7C00
@@ -166,7 +167,10 @@ class TestResetSlot:
         paintjob = Paintjob()
         rgba = bytearray(AtlasRenderer.ATLAS_WIDTH * AtlasRenderer.ATLAS_HEIGHT * 4)
 
-        color_handler.reset_slot(tmp_path, rgba, paintjob, _front_slot())
+        color_handler.reset_slot(
+            tmp_path, rgba, paintjob, _front_slot(),
+            base_clut_x=0, base_clut_y=0,
+        )
 
         assert "front" in paintjob.slots
         assert len(paintjob.slots["front"].colors) == 16
@@ -185,5 +189,32 @@ class TestResetSlot:
         assert _atlas_pixel(rgba, 200, 10) == (255, 0, 0, 255)
 
         # Reset should return the atlas to the VRAM-default decode (index 3 = blue).
-        color_handler.reset_slot(tmp_path, rgba, paintjob, slot)
+        color_handler.reset_slot(
+            tmp_path, rgba, paintjob, slot,
+            base_clut_x=0, base_clut_y=0,
+        )
         assert _atlas_pixel(rgba, 200, 10) == (0, 0, 255, 255)
+
+    def test_reset_uses_base_clut_coord_not_slot_coord(
+        self, color_handler, tmp_path,
+    ):
+        # New behavior: reset pulls from whatever `base_clut_x` / `base_clut_y`
+        # the caller supplies, not from `slot.clut`. Simulates "paintjob based on
+        # Crash, preview on Cortex" — the SlotRegions argument would have Cortex's
+        # clut coords, but reset should use Crash's instead.
+        _write_shared_vrm(tmp_path)
+        paintjob = Paintjob()
+        rgba = bytearray(AtlasRenderer.ATLAS_WIDTH * AtlasRenderer.ATLAS_HEIGHT * 4)
+
+        # slot.clut points at (50, 0) — would normally read green (VRAM
+        # has green at index 3 when decoded from clut at 50,0).
+        # But we pass base_clut (0, 0) which has blue at index 3.
+        _write_shared_vrm(tmp_path)
+
+        color_handler.reset_slot(
+            tmp_path, rgba, paintjob, _front_slot(),
+            base_clut_x=0, base_clut_y=0,
+        )
+
+        # Index 3 at base_clut (0, 0) is 0x7C00 (blue), per _write_shared_vrm.
+        assert paintjob.slots["front"].colors[3].value == 0x7C00

@@ -2,12 +2,7 @@
 
 import pytest
 
-from paintjob_designer.models import (
-    Paintjob,
-    PaintjobLibrary,
-    PsxColor,
-    SlotColors,
-)
+from paintjob_designer.models import Paintjob, PaintjobLibrary
 from tests.conftest import slot_of
 
 
@@ -36,59 +31,6 @@ class TestLoadSaveRoundTrip:
         project_handler.save(deep, Paintjob())
 
         assert deep.exists()
-
-
-class TestWithBackfilledDefaults:
-
-    def test_edited_slots_win_over_defaults(self, project_handler):
-        paintjob = Paintjob(slots={"front": slot_of(value=0x03EB)})
-        defaults = {
-            "front": [PsxColor(value=0)] * SlotColors.SIZE,
-            "back":  [PsxColor(value=0x7C00)] * SlotColors.SIZE,
-        }
-
-        result = project_handler.with_backfilled_defaults(paintjob, defaults)
-
-        # Edited slot survives despite the defaults entry.
-        assert result.slots["front"].colors[0].value == 0x03EB
-        # Un-edited slot is populated from defaults.
-        assert result.slots["back"].colors[0].value == 0x7C00
-
-    def test_preserves_metadata(self, project_handler):
-        paintjob = Paintjob(
-            name="Lime",
-            author="Garma",
-            base_character_id="crash",
-            slots={"front": slot_of(value=0x03EB)},
-        )
-        defaults = {"back": [PsxColor(value=0)] * SlotColors.SIZE}
-
-        result = project_handler.with_backfilled_defaults(paintjob, defaults)
-
-        assert result.name == "Lime"
-        assert result.author == "Garma"
-        assert result.base_character_id == "crash"
-
-    def test_returned_paintjob_is_independent(self, project_handler):
-        paintjob = Paintjob(slots={"front": slot_of(value=0x03EB)})
-        defaults = {"back": [PsxColor(value=0x7C00)] * SlotColors.SIZE}
-
-        result = project_handler.with_backfilled_defaults(paintjob, defaults)
-        result.slots["new"] = slot_of(value=0x7FFF)
-
-        assert "new" not in paintjob.slots
-
-    def test_preserves_slots_missing_from_defaults(self, project_handler):
-        # If a slot lives on the paintjob but the defaults map doesn't
-        # mention it (e.g. profile drifted), keep it rather than silently
-        # dropping.
-        paintjob = Paintjob(slots={"obscure": slot_of(value=0xABCD)})
-        defaults = {"back": [PsxColor(value=0)] * SlotColors.SIZE}
-
-        result = project_handler.with_backfilled_defaults(paintjob, defaults)
-
-        assert result.slots["obscure"].colors[0].value == 0xABCD
-        assert "back" in result.slots
 
 
 class TestLibraryRoundTrip:

@@ -2,28 +2,45 @@
 
 import json
 
-from paintjob_designer.color.converter import ColorConverter
+from pydantic import ValidationError
+
 from paintjob_designer.models import Paintjob, SlotColors
 
 
 class PaintjobReader:
     """Parses a paintjob JSON file into a `Paintjob`.
 
-    Each file is one paintjob — a character-agnostic 8-slot palette with
-    metadata. The library-level format (N paintjobs in a directory, or one
-    combined file) lives above this reader; this class handles the unit.
-    """
+    A thin wrapper around `Paintjob.model_validate_json` that adds two
+    project-specific pre-checks:
+      - Rejects `schema_version > Paintjob.SCHEMA_VERSION`.
+      - Rejects slot entries whose `colors` array isn't exactly 16 long
+        (pydantic would accept any length unless we pin it).
 
-    def __init__(self, color_converter: ColorConverter) -> None:
-        self._colors = color_converter
+    Everything else — hex color parsing, base64 pixel decoding, field
+    validation — is handled by the pydantic models themselves, so this
+    class contains no format logic that could drift from the models.
+    """
 
     def read(self, data: str | bytes) -> Paintjob:
         if isinstance(data, bytes):
             data = data.decode("utf-8")
 
-        return self._parse(json.loads(data))
+        raw = json.loads(data)
+        self._validate_shape(raw)
 
-    def _parse(self, raw: dict) -> Paintjob:
+        # Force the in-memory object's `schema_version` to current. An older
+        # JSON that declared a lower version (e.g. a hypothetical migration
+        # path) loads into a "current" model without a separate migration
+        # step — if the format had actually changed incompatibly the shape
+        # check above would have already rejected the file.
+        raw["schema_version"] = Paintjob.SCHEMA_VERSION
+
+        try:
+            return Paintjob.model_validate(raw)
+        except ValidationError as exc:
+            raise ValueError(f"Paintjob is not valid: {exc}") from exc
+
+    def _validate_shape(self, raw: object) -> None:
         if not isinstance(raw, dict):
             raise ValueError("Paintjob root must be a JSON object")
 
@@ -39,31 +56,16 @@ class PaintjobReader:
         if not isinstance(slots_raw, dict):
             raise ValueError("Paintjob 'slots' must be an object")
 
-        slots = {
-            str(name): self._parse_slot(name, colors_raw)
-            for name, colors_raw in slots_raw.items()
-        }
+        for slot_name, slot_raw in slots_raw.items():
+            if not isinstance(slot_raw, dict):
+                raise ValueError(
+                    f"Slot {slot_name!r} must be an object with 'colors' "
+                    f"(and optional 'pixels')"
+                )
 
-        base_character_id = raw.get("base_character_id")
-
-        return Paintjob(
-            schema_version=Paintjob.SCHEMA_VERSION,
-            name=str(raw.get("name", "")),
-            author=str(raw.get("author", "")),
-            base_character_id=(
-                str(base_character_id) if base_character_id else None
-            ),
-            slots=slots,
-        )
-
-    def _parse_slot(self, slot_name: str, raw_colors: list) -> SlotColors:
-        if not isinstance(raw_colors, list):
-            raise ValueError(f"Slot {slot_name!r} colors must be a list")
-
-        if len(raw_colors) != SlotColors.SIZE:
-            raise ValueError(
-                f"Slot {slot_name!r} must have exactly {SlotColors.SIZE} colors, "
-                f"got {len(raw_colors)}"
-            )
-
-        return SlotColors(colors=[self._colors.u16_hex_to_psx(h) for h in raw_colors])
+            colors_raw = slot_raw.get("colors")
+            if colors_raw is None or len(colors_raw) != SlotColors.SIZE:
+                raise ValueError(
+                    f"Slot {slot_name!r} must have exactly {SlotColors.SIZE} colors, "
+                    f"got {len(colors_raw) if colors_raw is not None else 0}"
+                )

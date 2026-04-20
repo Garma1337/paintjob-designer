@@ -59,14 +59,24 @@ class SlotEditor(QScrollArea):
         self._highlight_buttons: dict[str, QPushButton] = {}
         self._focused_slot: str | None = None
 
-    def set_slots(self, slot_names: list[str]) -> None:
+    def set_slots(
+        self,
+        slot_names: list[str],
+        *,
+        dimensions: dict[str, str] | None = None,
+    ) -> None:
         """(Re)build the grid with one row per slot. Colors start transparent until
         `update_color` is called for each entry.
+
+        `dimensions[slot_name]` is an optional human-readable size hint ("17x33",
+        "2 regions") shown next to the slot label so artists authoring custom
+        textures can see the expected pixel dimensions without guessing.
         """
         self._clear()
 
+        dimensions = dimensions or {}
         for slot_name in slot_names:
-            row = self._build_slot_row(slot_name)
+            row = self._build_slot_row(slot_name, dimensions.get(slot_name))
             self._rows[slot_name] = row
             self._root_layout.insertWidget(self._root_layout.count() - 1, row)
 
@@ -90,6 +100,15 @@ class SlotEditor(QScrollArea):
         for i, color in enumerate(colors):
             self.update_color(slot_name, i, color)
 
+    def focused_slot(self) -> str | None:
+        """Current Highlight-toggle slot, or None if nothing's focused.
+
+        Consumed by the Transform Colors panel to anchor its "this slot"
+        scope to whatever the artist is currently spotlighting in the
+        editor — no separate slot picker needed in the panel.
+        """
+        return self._focused_slot
+
     def _clear(self) -> None:
         for row in self._rows.values():
             self._root_layout.removeWidget(row)
@@ -99,7 +118,9 @@ class SlotEditor(QScrollArea):
         self._swatches.clear()
         self._highlight_buttons.clear()
 
-    def _build_slot_row(self, slot_name: str) -> SlotRow:
+    def _build_slot_row(
+        self, slot_name: str, dimension_hint: str | None = None,
+    ) -> SlotRow:
         row = SlotRow()
         row.setFrameShape(QFrame.Shape.StyledPanel)
         row.right_clicked.connect(
@@ -117,8 +138,12 @@ class SlotEditor(QScrollArea):
         top = QHBoxLayout()
         top.setContentsMargins(0, 0, 0, 0)
 
-        label = QLabel(slot_name)
-        label.setMinimumWidth(80)
+        label_text = slot_name
+        if dimension_hint:
+            label_text = f"{slot_name}  ({dimension_hint})"
+
+        label = QLabel(label_text)
+        label.setMinimumWidth(120)
         label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         top.addWidget(label)
 

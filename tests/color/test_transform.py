@@ -245,6 +245,110 @@ class TestRgbDelta:
         assert result.g5 == 0
 
 
+class TestReplaceHue:
+
+    def test_green_in_tolerance_rotates_to_red_family(self, transformer, psx):
+        green = psx(0, 255, 0)
+        source = psx(0, 255, 0)   # hue 120°
+        target = psx(255, 0, 0)   # hue 0° (target −120° from source)
+
+        params = TransformParams(
+            mode=TransformMode.REPLACE_HUE,
+            source_color=source,
+            target_color=target,
+            hue_tolerance_degrees=30.0,
+        )
+
+        result = transformer.transform(green, params)
+
+        # Pure green rotated to the red end of the spectrum — red dominates.
+        assert result.r5 > result.g5
+        assert result.r5 > result.b5
+
+    def test_relative_shading_preserved(self, transformer, psx):
+        """Two greens of different brightness must stay distinct after the swap."""
+        bright_green = psx(0, 255, 0)
+        dim_green = psx(0, 96, 0)
+        source = psx(0, 255, 0)
+        target = psx(255, 0, 0)
+
+        params = TransformParams(
+            mode=TransformMode.REPLACE_HUE,
+            source_color=source,
+            target_color=target,
+            hue_tolerance_degrees=30.0,
+        )
+
+        bright_result = transformer.transform(bright_green, params)
+        dim_result = transformer.transform(dim_green, params)
+
+        # The brighter green should land as a brighter red.
+        assert bright_result.r5 > dim_result.r5
+
+    def test_color_outside_tolerance_is_untouched(self, transformer, psx):
+        blue = psx(0, 0, 255)     # hue 240°
+        source = psx(0, 255, 0)   # hue 120°, |240-120| = 120° > tolerance
+        target = psx(255, 0, 0)
+
+        params = TransformParams(
+            mode=TransformMode.REPLACE_HUE,
+            source_color=source,
+            target_color=target,
+            hue_tolerance_degrees=30.0,
+        )
+
+        assert transformer.transform(blue, params).value == blue.value
+
+    def test_near_gray_input_is_untouched(self, transformer, psx):
+        # s≈0 → hue is meaningless, skip even if the nominal hue matches.
+        near_white = psx(240, 240, 240)
+        source = psx(0, 255, 0)
+        target = psx(255, 0, 0)
+
+        params = TransformParams(
+            mode=TransformMode.REPLACE_HUE,
+            source_color=source,
+            target_color=target,
+            hue_tolerance_degrees=180.0,
+        )
+
+        assert transformer.transform(near_white, params).value == near_white.value
+
+    def test_near_gray_source_is_noop(self, transformer, psx):
+        # Gray source has no hue to match — op should pass everything through.
+        bright_red = psx(255, 0, 0)
+        source = psx(128, 128, 128)
+        target = psx(0, 255, 0)
+
+        params = TransformParams(
+            mode=TransformMode.REPLACE_HUE,
+            source_color=source,
+            target_color=target,
+            hue_tolerance_degrees=180.0,
+        )
+
+        assert transformer.transform(bright_red, params).value == bright_red.value
+
+    def test_noop_when_params_incomplete(self, transformer, psx):
+        red = psx(255, 0, 0)
+        params = TransformParams(mode=TransformMode.REPLACE_HUE)
+
+        assert transformer.transform(red, params).value == red.value
+
+    def test_stp_bit_is_preserved(self, transformer, psx):
+        opaque_green = transformer._converter.rgb_to_psx(
+            Rgb888(r=0, g=255, b=0), stp=1,
+        )
+        params = TransformParams(
+            mode=TransformMode.REPLACE_HUE,
+            source_color=psx(0, 255, 0),
+            target_color=psx(255, 0, 0),
+            hue_tolerance_degrees=30.0,
+        )
+
+        assert transformer.transform(opaque_green, params).stp == 1
+
+
 class TestQuantization:
 
     def test_output_snaps_to_psx_grid(self, transformer, psx):

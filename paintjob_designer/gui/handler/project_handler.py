@@ -5,8 +5,6 @@ from pathlib import Path
 from paintjob_designer.models import (
     Paintjob,
     PaintjobLibrary,
-    PsxColor,
-    SlotColors,
 )
 from paintjob_designer.paintjob.reader import PaintjobReader
 from paintjob_designer.paintjob.writer import PaintjobWriter
@@ -80,31 +78,3 @@ class ProjectHandler:
 
         return written
 
-    def with_backfilled_defaults(
-        self,
-        paintjob: Paintjob,
-        defaults_by_slot: dict[str, list[PsxColor]],
-    ) -> Paintjob:
-        """Return a copy of `paintjob` with every slot in `defaults_by_slot`
-        populated — edited slots win, the rest fall back to VRAM defaults.
-
-        Used at export time so a saved file carries every slot the profile
-        knows about, not just the ones the user touched. Slots already in
-        the paintjob but missing from the defaults set (e.g. if the profile
-        drifted) are preserved rather than silently dropped.
-        """
-        slots: dict[str, SlotColors] = {
-            name: SlotColors(colors=list(colors))
-            for name, colors in defaults_by_slot.items()
-        }
-
-        for name, slot in paintjob.slots.items():
-            slots[name] = slot
-
-        return Paintjob(
-            schema_version=paintjob.schema_version,
-            name=paintjob.name,
-            author=paintjob.author,
-            base_character_id=paintjob.base_character_id,
-            slots=slots,
-        )

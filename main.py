@@ -9,6 +9,7 @@ from paintjob_designer.services import container
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    app.setWindowIcon(container.resolve("app_icon").load())
 
     window = MainWindow(
         config_store=container.resolve("config_store"),
@@ -17,8 +18,6 @@ if __name__ == "__main__":
         character_handler=container.resolve("character_handler"),
         color_handler=container.resolve("color_handler"),
         project_handler=container.resolve("project_handler"),
-        source_code_exporter=container.resolve("source_code_exporter"),
-        binary_exporter=container.resolve("binary_exporter"),
         color_converter=container.resolve("color_converter"),
         color_picker=container.resolve("psx_color_picker"),
         vertex_assembler=container.resolve("vertex_assembler"),
@@ -27,6 +26,7 @@ if __name__ == "__main__":
         gradient_generator=container.resolve("gradient_generator"),
         ray_picker=container.resolve("ray_triangle_picker"),
         slugifier=container.resolve("slugifier"),
+        texture_importer=container.resolve("texture_importer"),
     )
 
     window.show()

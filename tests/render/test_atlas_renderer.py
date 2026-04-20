@@ -8,6 +8,7 @@ from paintjob_designer.models import (
     PsxColor,
     SlotColors,
     SlotRegion,
+    SlotRegionPixels,
     SlotRegions,
     VramPage,
 )
@@ -267,3 +268,138 @@ class TestIncrementalRender:
         assert _atlas_pixel(rgba, 200, 10) == (0, 255, 0, 255)
         # Unrelated baseline pixel untouched.
         assert _atlas_pixel(rgba, 3600, 400) == (255, 255, 255, 255)
+
+
+class TestPaintjobPixelOverride:
+    """Paintjobs with imported textures replace the vanilla VRAM pixels.
+
+    The slot's CLUT already drives color choice; when `SlotColors.pixels`
+    is populated, the atlas must also sample the imported indices instead
+    of the VRAM-stored ones, so the artist sees their actual PNG (not
+    vanilla geometry recolored with the new palette).
+    """
+
+    def test_paintjob_pixels_override_vram_at_matching_region(
+        self, atlas_renderer,
+    ):
+        vram = VramPage()
+        # VRAM texture at (50, 10): all nibbles = 5 (would decode to whatever
+        # the CLUT puts at index 5).
+        _write_u16(vram, 50, 10, 0x5555)
+
+        # CLUT: red at index 3, something-else at 5. Paintjob keeps that CLUT.
+        red = PsxColor(value=0x001F)
+        clut = [PsxColor(value=0) for _ in range(16)]
+        clut[3] = red
+        clut[5] = PsxColor(value=0x7C00)  # blue — what vanilla would show
+
+        # Imported pixels: all four nibbles = 3 (every byte = 0x33).
+        # At vram_width=1, 4bpp → 4 pixels per row, 2 bytes per row.
+        override = SlotRegionPixels(
+            vram_x=50, vram_y=10, width=4, height=1,
+            pixels=bytes([0x33, 0x33]),
+        )
+
+        paintjob = Paintjob(
+            slots={"front": SlotColors(colors=clut, pixels=[override])},
+        )
+
+        region = SlotRegion(
+            vram_x=50, vram_y=10, vram_width=1, vram_height=1,
+            bpp=BitDepth.Bit4,
+        )
+
+        regions = CharacterSlotRegions(
+            character_id="crash",
+            slots={"front": SlotRegions(
+                slot_name="front", clut=ClutCoord(x=0, y=0), regions=[region],
+            )},
+        )
+
+        rgba = atlas_renderer.render_atlas(vram, paintjob, regions)
+
+        # All four atlas pixels at this region should be red — NOT blue,
+        # which is what the vanilla VRAM nibbles would have resolved to.
+        for atlas_x in range(200, 204):
+            assert _atlas_pixel(rgba, atlas_x, 10) == (255, 0, 0, 255)
+
+    def test_missing_pixel_region_falls_back_to_vram(self, atlas_renderer):
+        # Paintjob has pixels for ONE region at (50, 10); a separate region at
+        # (80, 10) with the same slot should still decode from VRAM, not skip.
+        vram = VramPage()
+        _write_u16(vram, 3, 0, 0x03E0)   # VRAM CLUT index 3 = green
+        _write_u16(vram, 80, 10, 0x3333)
+
+        clut = [PsxColor(value=0) for _ in range(16)]
+        clut[3] = PsxColor(value=0x03E0)  # green in the paintjob CLUT too
+
+        override = SlotRegionPixels(
+            vram_x=50, vram_y=10, width=4, height=1,
+            pixels=bytes([0x33, 0x33]),
+        )
+
+        paintjob = Paintjob(
+            slots={"front": SlotColors(colors=clut, pixels=[override])},
+        )
+
+        region_with_override = SlotRegion(
+            vram_x=50, vram_y=10, vram_width=1, vram_height=1,
+            bpp=BitDepth.Bit4,
+        )
+
+        region_without_override = SlotRegion(
+            vram_x=80, vram_y=10, vram_width=1, vram_height=1,
+            bpp=BitDepth.Bit4,
+        )
+
+        regions = CharacterSlotRegions(
+            character_id="crash",
+            slots={"front": SlotRegions(
+                slot_name="front", clut=ClutCoord(x=0, y=0),
+                regions=[region_with_override, region_without_override],
+            )},
+        )
+
+        rgba = atlas_renderer.render_atlas(vram, paintjob, regions)
+
+        # The non-override region must still be green (VRAM fallback).
+        for atlas_x in range(320, 324):
+            assert _atlas_pixel(rgba, atlas_x, 10) == (0, 255, 0, 255)
+
+    def test_size_mismatched_pixel_buffer_is_ignored(self, atlas_renderer):
+        # A corrupted pixel buffer (wrong length) should NOT punch a hole
+        # in the atlas — the VRAM baseline stays so the preview remains
+        # useful.
+        vram = VramPage()
+        _write_u16(vram, 3, 0, 0x03E0)
+        _write_u16(vram, 50, 10, 0x3333)
+
+        clut = [PsxColor(value=0) for _ in range(16)]
+        clut[3] = PsxColor(value=0x03E0)
+
+        bad = SlotRegionPixels(
+            vram_x=50, vram_y=10, width=4, height=1,
+            pixels=bytes([0x33]),  # 1 byte instead of 2
+        )
+
+        paintjob = Paintjob(
+            slots={"front": SlotColors(colors=clut, pixels=[bad])},
+        )
+
+        region = SlotRegion(
+            vram_x=50, vram_y=10, vram_width=1, vram_height=1,
+            bpp=BitDepth.Bit4,
+        )
+
+        regions = CharacterSlotRegions(
+            character_id="crash",
+            slots={"front": SlotRegions(
+                slot_name="front", clut=ClutCoord(x=0, y=0), regions=[region],
+            )},
+        )
+
+        rgba = atlas_renderer.render_atlas(vram, paintjob, regions)
+
+        # VRAM fallback: index 3 -> green.
+        for atlas_x in range(200, 204):
+            assert _atlas_pixel(rgba, atlas_x, 10) == (0, 255, 0, 255)

@@ -66,8 +66,9 @@ class AtlasRenderer:
 
         for slot_name, slot in regions.slots.items():
             clut = self._resolve_clut(vram, slot.clut, paintjob, slot_name)
+            pixels_by_pos = self._paintjob_pixels_by_pos(paintjob, slot_name)
             for region in slot.regions:
-                self._decoder.decode_into(vram, region, clut, rgba)
+                self._decode_region(vram, region, clut, pixels_by_pos, rgba)
 
         # Unmatched regions always use the default VRAM CLUT — they're the
         # wheels, driver figures, and shared textures that aren't paintjob-
@@ -97,9 +98,53 @@ class AtlasRenderer:
         every color-picker change.
         """
         clut = self._resolve_clut(vram, slot.clut, paintjob, slot.slot_name)
+        pixels_by_pos = self._paintjob_pixels_by_pos(paintjob, slot.slot_name)
+        
         for region in slot.regions:
-            self._decoder.decode_into(vram, region, clut, rgba)
+            self._decode_region(vram, region, clut, pixels_by_pos, rgba)
+
         return rgba
+
+    def _decode_region(
+        self,
+        vram: VramPage,
+        region,
+        clut: list[int],
+        pixels_by_pos: dict,
+        rgba: bytearray,
+    ) -> None:
+        """Route a single region through the pixel payload or the VRAM fallback.
+
+        A textured paintjob carries `SlotRegionPixels` keyed by VRAM
+        position; when one matches this region we decode straight from
+        those bytes (so imported pixel art shows up 1:1). Otherwise we
+        fall back to the mesh's vanilla 4bpp pixels in VRAM so CLUT-only
+        paintjobs keep working unchanged.
+        """
+        override = pixels_by_pos.get((region.vram_x, region.vram_y))
+        if override is not None:
+            ok = self._decoder.decode_pixels_into(
+                region, override.pixels, clut, rgba,
+            )
+
+            if ok:
+                return
+
+        self._decoder.decode_into(vram, region, clut, rgba)
+
+    def _paintjob_pixels_by_pos(self, paintjob: Paintjob, slot_name: str) -> dict:
+        """Index a slot's imported pixel payloads by their VRAM anchor.
+
+        Keyed on `(vram_x, vram_y)` so the per-region decoder can look up
+        "does this paintjob have custom pixels for this exact region?"
+        in O(1). Returns an empty dict for CLUT-only paintjobs or slots
+        the paintjob doesn't touch.
+        """
+        slot = paintjob.slots.get(slot_name)
+        if slot is None or not slot.pixels:
+            return {}
+
+        return {(p.vram_x, p.vram_y): p for p in slot.pixels}
 
     def _decode_16bpp_baseline(self, vram: VramPage, rgba: bytearray) -> None:
         """Vectorized 16bpp decode: every VRAM u16 -> 4 adjacent atlas pixels.

@@ -120,15 +120,25 @@ class ColorHandler:
         rgba_buffer: bytearray,
         paintjob: Paintjob,
         slot: SlotRegions,
+        base_clut_x: int,
+        base_clut_y: int,
     ) -> list[PsxColor]:
-        """Revert a slot to the VRAM default CLUT and re-render it in the atlas.
+        """Revert a slot to the paintjob's base-character VRAM CLUT.
+
+        `base_clut_x` / `base_clut_y` are the profile-level CLUT coords of
+        the paintjob's home character (resolved by the caller via
+        `paintjob.base_character_id` on the profile). Using those —
+        rather than the preview character's CLUT coords on the
+        `SlotRegions` — means Reset always yields the paintjob's
+        "base" colors, independent of whatever character the user
+        happens to be previewing on right now.
 
         Returns the 16 default colors so the caller can refresh its
         swatches.
         """
         vram = self._vram_cache.get(iso_root)
         defaults = [
-            PsxColor(value=vram.u16_at(slot.clut.x + i, slot.clut.y))
+            PsxColor(value=vram.u16_at(base_clut_x + i, base_clut_y))
             for i in range(SlotColors.SIZE)
         ]
 
@@ -158,7 +168,10 @@ class ColorHandler:
         if colors is None:
             paintjob.slots.pop(slot.slot_name, None)
         else:
-            paintjob.slots[slot.slot_name] = SlotColors(colors=list(colors.colors))
+            paintjob.slots[slot.slot_name] = SlotColors(
+                colors=list(colors.colors),
+                pixels=list(colors.pixels),
+            )
 
         self._atlas.render_slot(rgba_buffer, vram, paintjob, slot)
 

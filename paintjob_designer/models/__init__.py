@@ -17,9 +17,11 @@ from paintjob_designer.models.ctr_mesh import (
     Vector3f,
 )
 from paintjob_designer.models.paintjob import (
+    CANONICAL_SLOT_NAMES,
     Paintjob,
     PaintjobLibrary,
     SlotColors,
+    SlotRegionPixels,
 )
 from paintjob_designer.models.profile import (
     CharacterProfile,
@@ -48,6 +50,8 @@ __all__ = [
     "Paintjob",
     "PaintjobLibrary",
     "SlotColors",
+    "SlotRegionPixels",
+    "CANONICAL_SLOT_NAMES",
     "CtrModel",
     "CtrMesh",
     "CtrAnim",

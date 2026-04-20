@@ -72,6 +72,65 @@ class VramRegionDecoder:
                     atlas_off = atlas_row_base + (atlas_x + nibble) * bpp_out
                     rgba[atlas_off:atlas_off + bpp_out] = pixel
 
+    def decode_pixels_into(
+        self,
+        region: SlotRegion,
+        pixel_bytes: bytes,
+        clut: list[int],
+        rgba: bytearray,
+    ) -> bool:
+        """Write a paintjob-authored 4bpp pixel payload into the atlas.
+
+        Mirrors `decode_into` but sources nibbles from `pixel_bytes`
+        (two pixels per byte, low nibble = left) instead of the VRAM
+        page. Used for textured paintjobs whose imported pixels should
+        overwrite the vanilla-sampled texels at the slot's VRAM rect.
+
+        Returns `True` if the region was fully written, `False` if the
+        region was skipped (non-4bpp, or buffer size mismatch). The
+        caller uses that to fall back to the vanilla VRAM decode so a
+        corrupted import doesn't punch a hole in the preview.
+        """
+        if region.bpp != BitDepth.Bit4:
+            return False
+
+        stretch_x = self._stretch_x
+        bpp_out = self.BYTES_PER_PIXEL
+        pixel_width = region.vram_width * stretch_x
+        bytes_per_row = pixel_width // 2
+
+        if len(pixel_bytes) != bytes_per_row * region.vram_height:
+            return False
+
+        atlas_x_base = region.vram_x * stretch_x
+
+        for row in range(region.vram_height):
+            atlas_y = region.vram_y + row
+            if atlas_y >= self._atlas_height:
+                break
+
+            atlas_row_base = atlas_y * self._atlas_width * bpp_out
+            byte_row_base = row * bytes_per_row
+
+            for byte_col in range(bytes_per_row):
+                byte = pixel_bytes[byte_row_base + byte_col]
+                low_index = byte & 0x0F
+                high_index = (byte >> 4) & 0x0F
+
+                atlas_x = atlas_x_base + byte_col * 2
+                if atlas_x + 1 >= self._atlas_width:
+                    break
+
+                atlas_off = atlas_row_base + atlas_x * bpp_out
+                rgba[atlas_off:atlas_off + bpp_out] = self._psx_to_rgba(
+                    clut[low_index],
+                )
+                rgba[atlas_off + bpp_out:atlas_off + 2 * bpp_out] = self._psx_to_rgba(
+                    clut[high_index],
+                )
+
+        return True
+
     def _psx_to_rgba(self, value: int) -> bytes:
         # Mirrors the LUT path for value==0 (transparent sentinel) while
         # reusing ColorConverter's bit math for the general case — the

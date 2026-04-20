@@ -9,8 +9,6 @@ from paintjob_designer.config.iso_root_validator import IsoRootValidator
 from paintjob_designer.ctr.animation import AnimationDecoder
 from paintjob_designer.ctr.reader import CtrModelReader
 from paintjob_designer.ctr.vertex_assembler import VertexAssembler
-from paintjob_designer.exporters.binary_exporter import BinaryExporter
-from paintjob_designer.exporters.source_code_exporter import SourceCodeExporter
 from paintjob_designer.gui.handler.character_handler import CharacterHandler
 from paintjob_designer.gui.handler.color_handler import ColorHandler
 from paintjob_designer.gui.handler.project_handler import ProjectHandler
@@ -102,23 +100,13 @@ def project_handler(paintjob_reader, paintjob_writer):
 
 
 @pytest.fixture
-def paintjob_reader(color_converter):
-    return PaintjobReader(color_converter)
+def paintjob_reader():
+    return PaintjobReader()
 
 
 @pytest.fixture
-def paintjob_writer(color_converter):
-    return PaintjobWriter(color_converter)
-
-
-@pytest.fixture
-def source_code_exporter():
-    return SourceCodeExporter()
-
-
-@pytest.fixture
-def binary_exporter():
-    return BinaryExporter()
+def paintjob_writer():
+    return PaintjobWriter()
 
 
 def slot_of(value: int = 0x1234) -> SlotColors:

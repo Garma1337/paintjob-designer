@@ -12,6 +12,7 @@ class TransformMode(Enum):
     """Bulk operations the Transform Colors dialog can apply across a scope."""
 
     REPLACE_MATCHES = "replace_matches"
+    REPLACE_HUE = "replace_hue"
     SHIFT_HUE = "shift_hue"
     SHIFT_BRIGHTNESS = "shift_brightness"
     SHIFT_SATURATION = "shift_saturation"
@@ -28,6 +29,10 @@ class TransformParams:
       - `rgb_delta_*`: [-255, 255] (clamped after addition).
       - `match_color`, `replace_with`: for REPLACE_MATCHES. Matching is by
         full u16 equality so stp-bit state is respected.
+      - `source_color`, `target_color`, `hue_tolerance_degrees`: for
+        REPLACE_HUE. Colors whose hue is within ±tolerance of
+        `source_color`'s hue get rotated by (target_hue - source_hue);
+        saturation and value are preserved.
     """
 
     mode: TransformMode
@@ -39,6 +44,9 @@ class TransformParams:
     rgb_delta_r: int = 0
     rgb_delta_g: int = 0
     rgb_delta_b: int = 0
+    source_color: PsxColor | None = None
+    target_color: PsxColor | None = None
+    hue_tolerance_degrees: float = 30.0
 
 
 class ColorTransformer:
@@ -59,6 +67,12 @@ class ColorTransformer:
 
     _TRANSPARENT_SENTINEL = 0
 
+    # Below this saturation, a color's hue is numerical noise — the RGB→HSV
+    # conversion yields essentially arbitrary angles for near-grays. Used to
+    # gate REPLACE_HUE so we don't shift whites/grays along with chromatic
+    # colors that happen to share their (meaningless) hue.
+    _HUE_SATURATION_FLOOR = 0.05
+
     def __init__(self, color_converter: ColorConverter) -> None:
         self._converter = color_converter
 
@@ -68,6 +82,9 @@ class ColorTransformer:
 
         if params.mode == TransformMode.REPLACE_MATCHES:
             return self._replace(color, params)
+
+        if params.mode == TransformMode.REPLACE_HUE:
+            return self._replace_hue(color, params)
 
         rgb = self._converter.psx_to_rgb(color)
         r, g, b = rgb.r, rgb.g, rgb.b
@@ -99,6 +116,53 @@ class ColorTransformer:
             return params.replace_with
 
         return color
+
+    def _replace_hue(self, color: PsxColor, params: TransformParams) -> PsxColor:
+        """Rotate hues inside a tolerance band of `source_color`'s hue.
+
+        Preserves saturation and value, so a paintjob's gradient structure
+        survives the swap — "replace green with red" keeps the relative
+        shading between the greens intact when they land in the reds.
+        """
+        if params.source_color is None or params.target_color is None:
+            return color
+
+        src_rgb = self._converter.psx_to_rgb(params.source_color)
+        src_h, src_s, _ = colorsys.rgb_to_hsv(
+            src_rgb.r / 255.0, src_rgb.g / 255.0, src_rgb.b / 255.0,
+        )
+        if src_s < self._HUE_SATURATION_FLOOR:
+            # Source is near-gray — no meaningful hue to match against.
+            return color
+
+        tgt_rgb = self._converter.psx_to_rgb(params.target_color)
+        tgt_h, _, _ = colorsys.rgb_to_hsv(
+            tgt_rgb.r / 255.0, tgt_rgb.g / 255.0, tgt_rgb.b / 255.0,
+        )
+
+        rgb = self._converter.psx_to_rgb(color)
+        h, s, v = colorsys.rgb_to_hsv(rgb.r / 255.0, rgb.g / 255.0, rgb.b / 255.0)
+        if s < self._HUE_SATURATION_FLOOR:
+            return color
+
+        tolerance = max(0.0, min(180.0, params.hue_tolerance_degrees)) / 360.0
+        if self.hue_distance(h, src_h) > tolerance:
+            return color
+
+        delta = tgt_h - src_h
+        new_h = (h + delta) % 1.0
+
+        r_f, g_f, b_f = colorsys.hsv_to_rgb(new_h, s, v)
+        return self._converter.rgb_to_psx(
+            Rgb888(r=round(r_f * 255), g=round(g_f * 255), b=round(b_f * 255)),
+            stp=color.stp,
+        )
+
+    @staticmethod
+    def hue_distance(a: float, b: float) -> float:
+        """Shortest angular distance between two hues in [0, 1) space, in [0, 0.5]."""
+        d = abs(a - b) % 1.0
+        return min(d, 1.0 - d)
 
     @staticmethod
     def clamp_u8(v: int) -> int:

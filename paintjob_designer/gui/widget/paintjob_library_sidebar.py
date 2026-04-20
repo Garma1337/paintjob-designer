@@ -1,11 +1,16 @@
 # coding: utf-8
 
-from PySide6.QtCore import QPoint, Qt, Signal
+from PySide6.QtCore import QPoint, QSize, Qt, Signal
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QPalette
 from PySide6.QtWidgets import (
+    QApplication,
     QHBoxLayout,
     QListWidget,
     QListWidgetItem,
     QPushButton,
+    QStyle,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
     QVBoxLayout,
     QWidget,
 )
@@ -13,13 +18,132 @@ from PySide6.QtWidgets import (
 from paintjob_designer.models import PaintjobLibrary
 
 
+class _PaintjobRowDelegate(QStyledItemDelegate):
+    """Two-line row: primary label on top, muted author line below.
+
+    Using a delegate (not `setItemWidget`) so drag-reorders preserve the
+    rendering — item data moves with the item, attached widgets don't.
+    """
+
+    AUTHOR_ROLE = Qt.ItemDataRole.UserRole + 1
+
+    _PADDING_X = 6
+    _PADDING_Y = 3
+    _LINE_GAP = 2
+    _AUTHOR_ALPHA = 140
+
+    def paint(self, painter, option, index) -> None:
+        painter.save()
+
+        widget = option.widget
+        style = widget.style() if widget else QApplication.style()
+
+        background_opt = QStyleOptionViewItem(option)
+        background_opt.text = ""
+        style.drawControl(
+            QStyle.ControlElement.CE_ItemViewItem, background_opt, painter, widget,
+        )
+
+        primary = index.data(Qt.ItemDataRole.DisplayRole) or ""
+        author = index.data(self.AUTHOR_ROLE) or ""
+
+        primary_color, muted_color = self.text_colors(option, self._AUTHOR_ALPHA)
+
+        primary_font = option.font
+        author_font = self.author_font(option.font)
+
+        fm_primary = QFontMetrics(primary_font)
+
+        rect = option.rect
+        text_rect = rect.adjusted(
+            self._PADDING_X, self._PADDING_Y, -self._PADDING_X, -self._PADDING_Y,
+        )
+
+        painter.setFont(primary_font)
+        painter.setPen(primary_color)
+        painter.drawText(
+            text_rect,
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
+            primary,
+        )
+
+        if author:
+            author_rect = text_rect.adjusted(
+                0, fm_primary.height() + self._LINE_GAP, 0, 0,
+            )
+            painter.setFont(author_font)
+            painter.setPen(muted_color)
+            painter.drawText(
+                author_rect,
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
+                author,
+            )
+
+        painter.restore()
+
+    def sizeHint(self, option, index) -> QSize:
+        author = index.data(self.AUTHOR_ROLE) or ""
+
+        primary_h = QFontMetrics(option.font).height()
+        total = self._PADDING_Y * 2 + primary_h
+
+        if author:
+            total += self._LINE_GAP + QFontMetrics(self.author_font(option.font)).height()
+
+        return QSize(option.rect.width(), total)
+
+    @staticmethod
+    def author_font(base: QFont) -> QFont:
+        font = QFont(base)
+        size = base.pointSizeF()
+
+        if size > 0:
+            font.setPointSizeF(max(size - 1, 7.0))
+
+        return font
+
+    @staticmethod
+    def text_colors(option, muted_alpha: int) -> tuple[QColor, QColor]:
+        """Pick primary + muted text colors that actually contrast with the row background.
+
+        Windows' native style keeps `QPalette.Text` at the light-theme
+        black even when the app paints on a dark background, so reading
+        the palette directly leaves the label invisible in dark mode.
+        We fall back to an explicit high-contrast color whenever the
+        palette's Text and Base roles sit on the same side of the
+        luminance midpoint (a reliable signal that the palette hasn't
+        caught up with the system theme).
+        """
+        if option.state & QStyle.StateFlag.State_Selected:
+            foreground = option.palette.color(QPalette.ColorRole.HighlightedText)
+            background = option.palette.color(QPalette.ColorRole.Highlight)
+        else:
+            foreground = option.palette.color(QPalette.ColorRole.Text)
+            background = option.palette.color(QPalette.ColorRole.Base)
+
+        background_is_dark = _PaintjobRowDelegate.is_dark(background)
+        if _PaintjobRowDelegate.is_dark(foreground) == background_is_dark:
+            primary = QColor("#eaeaea") if background_is_dark else QColor("#202020")
+        else:
+            primary = foreground
+
+        muted = QColor(primary)
+        muted.setAlpha(muted_alpha)
+        return primary, muted
+
+    @staticmethod
+    def is_dark(color: QColor) -> bool:
+        luminance = (color.red() * 299 + color.green() * 587 + color.blue() * 114) / 1000
+        return luminance < 128
+
+
 class PaintjobLibrarySidebar(QWidget):
     """Scrollable list of paintjobs in the session library.
 
-    Each row shows a paintjob's display name. Below the list, "New" and
-    "Delete" buttons manage the library; rows can be reordered via
-    drag-and-drop (the in-game paintjob index = list position, so order
-    matters for PAINTALL.BIN exports).
+    Each row shows a paintjob's display name plus, when present, a muted
+    author line below. Rows can be reordered via drag-and-drop (the
+    in-game paintjob index = list position, so order matters for
+    PAINTALL.BIN exports).
 
     Emits:
         - `paintjob_selected(index)` on row change.
@@ -51,6 +175,7 @@ class PaintjobLibrarySidebar(QWidget):
         self._list = QListWidget()
         self._list.setDragDropMode(QListWidget.DragDropMode.InternalMove)
         self._list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._list.setItemDelegate(_PaintjobRowDelegate(self._list))
         self._list.currentRowChanged.connect(self._on_row_changed)
         self._list.customContextMenuRequested.connect(self._on_context_menu_requested)
         # `model().rowsMoved` fires after Qt finishes a drag-reorder; we use
@@ -97,7 +222,13 @@ class PaintjobLibrarySidebar(QWidget):
         self._list.clear()
 
         for i, paintjob in enumerate(library.paintjobs):
-            self._list.addItem(QListWidgetItem(self._label_for(paintjob, i)))
+            item = QListWidgetItem(self._primary_text_for(paintjob, i))
+            author = paintjob.author.strip()
+            
+            if author:
+                item.setData(_PaintjobRowDelegate.AUTHOR_ROLE, author)
+
+            self._list.addItem(item)
 
         self._list.blockSignals(False)
         self._suppress_reorder_signal = False
@@ -111,6 +242,7 @@ class PaintjobLibrarySidebar(QWidget):
     def set_selected_index(self, index: int | None) -> None:
         """Programmatically move the selection without firing `paintjob_selected`."""
         self._list.blockSignals(True)
+
         if index is None:
             self._list.setCurrentRow(-1)
             self._last_emitted_index = -1
@@ -121,26 +253,31 @@ class PaintjobLibrarySidebar(QWidget):
         self._list.blockSignals(False)
         self._refresh_button_state()
 
-    def _label_for(self, paintjob, index: int) -> str:
-        """Row label: prefer the paintjob's name, fall back to a numbered hint.
+    def _primary_text_for(self, paintjob, index: int) -> str:
+        """Row label: name + optional character hint + textured marker.
 
-        When both name and base_character_id are set we show both so the
-        artist can tell apart two paintjobs authored for the same character
-        (e.g. "Crash classic" vs "Crash alt" both based on `crash`).
+        Three pieces of information compete for the one-line label:
+          - **Name** — author-given identifier, always shown when present.
+          - **Character hint** — `base_character_id` (soft hint for the
+            preview fallback; the paintjob applies to any character).
+          - **Textured marker** — `" (textured)"` suffix when the paintjob
+            carries imported pixels, so artists can tell at a glance which
+            paintjobs ship custom textures in addition to CLUT swaps.
         """
         name = paintjob.name.strip()
-        base = paintjob.base_character_id
+        character = paintjob.base_character_id
+        marker = " (textured)" if paintjob.has_any_pixels() else ""
 
-        if name and base:
-            return f"{name}  —  {base}"
+        if name and character:
+            return f"{name}  —  {character}{marker}"
 
         if name:
-            return name
+            return f"{name}{marker}"
 
-        if base:
-            return f"({base})"
+        if character:
+            return f"({character}){marker}"
 
-        return f"Paintjob {index + 1}"
+        return f"Paintjob {index + 1}{marker}"
 
     def _on_row_changed(self, row: int) -> None:
         if row == self._last_emitted_index:

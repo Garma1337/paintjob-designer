@@ -1,0 +1,109 @@
+{
+  "$defs": {
+    "PsxColor": {
+      "description": "PSX 15-bit BGR color as a 4-digit hex string `#xxxx`. Bit 15 is the stp (stencil / semi-transparency) flag, bits 14-10 blue, 9-5 green, 4-0 red. Value `#0000` is the PSX transparency sentinel. Legacy 6-digit RGB hex (`#rrggbb`) is accepted on input and treated as stp=0.",
+      "examples": [
+        "#0000",
+        "#7fff",
+        "#8000"
+      ],
+      "pattern": "^#[0-9a-fA-F]{4}([0-9a-fA-F]{2})?$",
+      "title": "PsxColor",
+      "type": "string"
+    },
+    "SlotColors": {
+      "description": "One CLUT slot on a paintjob: 16 colors + optional per-region pixels.\n\n`colors` is always the 16-entry palette the slot's geometry samples\nthrough \u2014 CLUT-only paintjobs use this alone, with the character's\nvanilla texture pixels underneath.\n\n`pixels` is empty for CLUT-only slots and populated when the artist\nimports a custom texture \u2014 one `SlotRegionPixels` per VRAM region\nthe slot occupies. Imported textures only carry across characters\nwhose mesh UV rects for this slot match the stored dimensions; the\ndesigner restricts imports to slots whose dims are invariant across\nall profile characters so that portability is automatic.",
+      "properties": {
+        "colors": {
+          "items": {
+            "$ref": "#/$defs/PsxColor"
+          },
+          "title": "Colors",
+          "type": "array"
+        },
+        "pixels": {
+          "items": {
+            "$ref": "#/$defs/SlotRegionPixels"
+          },
+          "title": "Pixels",
+          "type": "array"
+        }
+      },
+      "title": "SlotColors",
+      "type": "object"
+    },
+    "SlotRegionPixels": {
+      "description": "4bpp pixel payload for one VRAM region of a slot.\n\nA slot can occupy multiple VRAM rects that share its CLUT (same\npalette, different pieces of geometry). When an artist imports a\ncustom texture for a slot, each region needs its own pixel buffer\n\u2014 identified here by its VRAM position so the assignment survives\nre-parsing the character mesh in a different order.\n\n`pixels` is 4bpp packed: two pixels per byte, low nibble = left\npixel, same layout the PSX GPU samples. Serializes as base64 in\nthe JSON field `data`; round-trips cleanly to/from Python `bytes`.\nPython attribute stays `pixels` so call sites read naturally.",
+      "properties": {
+        "vram_x": {
+          "default": 0,
+          "title": "Vram X",
+          "type": "integer"
+        },
+        "vram_y": {
+          "default": 0,
+          "title": "Vram Y",
+          "type": "integer"
+        },
+        "width": {
+          "default": 0,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "default": 0,
+          "title": "Height",
+          "type": "integer"
+        },
+        "data": {
+          "contentEncoding": "base64",
+          "default": "",
+          "format": "binary",
+          "title": "Data",
+          "type": "string"
+        }
+      },
+      "title": "SlotRegionPixels",
+      "type": "object"
+    }
+  },
+  "description": "A single paintjob: 8 slots \u00d7 16 colors, optionally with custom textures.\n\nPaintjobs are character-agnostic. A CLUT-only paintjob applies to\nany character \u2014 palette swaps reuse each character's vanilla pixels.\nA paintjob that imports a custom texture for a slot also applies to\nany character, **as long as the slot's VRAM rect dimensions match\nacross those characters**. The designer enforces this by only\nallowing texture imports on dim-invariant slots (currently 7 of 8 \u2014\nall except `floor`, whose rect size differs per character).\n\n`base_character_id` is a soft, non-authoritative hint used for:\n  - **Preview fallback** \u2014 slots the paintjob hasn't explicitly authored\n    inherit colors from that character's VRAM so the 3D preview matches\n    the character's unpainted look.\n  - **Reopen context** \u2014 loading a saved paintjob restores the preview\n    character the artist had active when they saved.\n\nConsumer tools should ignore it for dispatch decisions.",
+  "properties": {
+    "schema_version": {
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "name": {
+      "default": "",
+      "title": "Name",
+      "type": "string"
+    },
+    "author": {
+      "default": "",
+      "title": "Author",
+      "type": "string"
+    },
+    "base_character_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Base Character Id"
+    },
+    "slots": {
+      "additionalProperties": {
+        "$ref": "#/$defs/SlotColors"
+      },
+      "title": "Slots",
+      "type": "object"
+    }
+  },
+  "title": "Paintjob",
+  "type": "object"
+}

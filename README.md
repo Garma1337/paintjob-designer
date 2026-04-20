@@ -1,51 +1,35 @@
 # Paintjob Designer
 
-A graphical editor for Crash Team Racing character paintjobs (CLUT swaps) with an accurate 3D preview. Build a library of paintjobs, preview each one on any character from your extracted CTR ISO, and export to JSON, C source, or `PAINTALL.bin`.
+A graphical editor for Crash Team Racing character paintjobs (CLUT swaps + optional custom 4bpp textures) with an accurate 3D preview. Build a library of paintjobs against your extracted CTR ISO and save it as a directory of JSON files — the **library directory is the designer's only output**.
 
-Paintjobs are character-agnostic — one paintjob is just 8 × 16 PSX colors and can be worn by any character. The profile binds library paintjobs to their in-game home characters and unlockable IDs.
-
-Not tied to any specific CTR mod — works against base CTR (NTSC-U) out of the box and any mod that ships a target profile.
+Downstream mods (e.g. Saphi) own their own tools that consume the library and produce mod-specific artifacts (source files, binaries, linker scripts). The designer is just a front-end for the visual creation of paintjobs; each mod owns the integration.
 
 ## Features
 
 ### Library-first editing
 
-- **Paintjob library sidebar** — the left pane lists every paintjob in the current session. New, Delete, drag-to-reorder. Library position = in-game paintjob index, so reordering matters for `PAINTALL.bin`.
-- **Preview character dropdown** — above the 3D viewer, picks which character's mesh + VRAM the editor previews the active paintjob on. Paintjob-to-character is a viewing choice, not a data binding.
 - **Per-paintjob CLUT editing** — click any of the 8 × 16 color swatches to open a PSX-quantized color picker; edits snap to the PS1 5-5-5 color grid as you pick.
-- **Highlight button per slot** — click the row's **Highlight** button to dim the 3D kart except for the faces that sample that slot. Click again (or another row) to move the highlight.
-- **Transform Colors...** — bulk edit with five modes (replace matches, shift hue, shift brightness, shift saturation, RGB delta) scoped to just one slot or the entire kart; Preview button pushes the transform into the 3D view before you commit.
-- **Gradient fill** — right-click a slot row → "Gradient fill..." to fill a contiguous index range with a linear gradient between two endpoints (RGB linear or HSV short-arc on the hue wheel).
-- **Animation playback** — if the current preview character has animation frames, pick a clip and scrub through them at a configurable FPS.
-- **Reset slot** — one-click revert of any slot to the preview character's VRAM defaults.
+- **Texture import** — replace a slot's pixels with a PNG. The image is quantized to 15 colors + transparent, packed 4bpp, and baked into the paintjob JSON alongside the CLUT. Imported textures stay portable across every character (except `floor`, whose VRAM rect size varies).
+- **Transform Colors panel** — modeless panel with six stackable modes (replace matching color, replace hue, shift hue, shift saturation, shift brightness, RGB delta) scoped to one slot or the entire kart. Slider changes stream into the 3D view live; Apply commits the full stack as a single undo entry.
+- **Preview character dropdown** — picks which character's mesh + VRAM the editor previews the active paintjob on. Paintjob-to-character is a viewing choice, not a data binding.
 
 ### 3D preview
 
 - **Orbit camera** — left-drag to rotate, wheel to zoom, **R** to recenter.
-- **Eyedropper** — **right-click** any surface on the kart to sample its slot + CLUT index and open the color picker pre-loaded with that color. Works alongside orbit without a mode switch.
-- **Full Gouraud + textured shading** — PSX-accurate rendering: untextured faces use their authored per-vertex colors; textured faces modulate by `2 × vertex_color` like the real PS1 GPU (so greyscale texture templates tint correctly).
-- **Half-Lambert soft-light** — UV-mapped atlas, live re-upload when you edit a color.
+- **Eyedropper** — right-click any surface on the kart to sample its slot + CLUT index and open the color picker pre-loaded with that color.
+- **PSX-accurate shading** — untextured faces use per-vertex Gouraud colors; textured faces modulate by `2 × vertex_color` like the real PS1 GPU, so greyscale texture templates tint correctly.
 
 ### Profiles
 
-- **Ships with `vanilla-ntsc-u`** (base CTR) and a `saphi` stub.
-- **Switch Profile** action on the top toolbar (and File menu).
-- **Profile drives everything** downstream: which characters populate the preview dropdown, which CLUT coordinates are read from VRAM, and which paintjob goes where in `PAINTALL.bin`.
+Ships with `vanilla-ntsc-u` (base CTR) and `saphi`. The profile drives which characters populate the preview dropdown and which CLUT coordinates are read from VRAM. Switch Profile from the toolbar or File menu.
 
-### Import / export
+### Library I/O
 
-- **File → Open Library...** (Ctrl+O) — load every `*.json` under a directory as a `PaintjobLibrary`. Sorted-filename order controls the library index.
-- **File → Save Library As...** (Ctrl+Shift+S) — write each paintjob in the library to a directory, named `NN_<slug>.json` so filesystem sort round-trips the ordering.
-- **File → Import Paintjob...** — add a single `.json` file to the library (appends to the end).
-- **Right-click a paintjob in the sidebar** — Rename, Export as JSON, Export as Code, Replace from JSON, Delete.
-- **JSON** stores `{name, author, base_character_id, slots: {slot_name: [16 colors]}}`. No profile / mesh binding — a paintjob authored against Crash can be previewed on Cortex without modification.
-- **C source export** produces a plug-and-play `.c` + `paintjob.h` pair, named after the paintjob.
-- **`PAINTALL.bin` export** writes the `TexData` struct the vanilla CTR loads at PS1 address `0x801CE000` — three pointer tables + CLUT and RECT payloads, with pre-computed absolute PS1 pointers. Library size must equal `profile.paintjob_slots` length; unauthored slots backfill from each paintjob's home character's VRAM.
+- **File → Open Library...** (Ctrl+O) — load every `*.json` under a directory as a `PaintjobLibrary`.
+- **File → Save Library As...** (Ctrl+Shift+S) — write each paintjob to a directory as `NN_<slug>.json` so filesystem sort round-trips the ordering. **This is the designer's primary output.**
+- **Right-click a paintjob** in the sidebar for rename, set author, change base character, single-paintjob export, replace, and delete.
 
-### Quality of life
-
-- **Drag-and-drop** — drop a paintjob `.json` onto the window to append it to the library.
-- **Transparency-slot indicator** — an orange border on the first color of each row warns that index 0 is the PSX transparency sentinel.
+See [documentation/library_format.md](documentation/library_format.md) for the on-disk JSON schema consumer tools read, and [documentation/user-guide.md](documentation/user-guide.md) for everything else.
 
 ## Requirements
 
@@ -86,8 +70,9 @@ The GitHub Actions workflow in `.github/workflows/release.yml` builds Windows + 
 ```bash
 pip install pyinstaller
 pyinstaller --noconsole --name PaintjobDesigner \
+  --icon app.ico \
   --add-data "config/profiles;config/profiles" \
-  --add-data "paintjob_designer/exporters/templates;paintjob_designer/exporters/templates" \
+  --add-data "app.ico;." \
   --add-data "paintjob_designer/gui/widget/shaders;paintjob_designer/gui/widget/shaders" \
   main.py
 ```
@@ -112,12 +97,13 @@ config/
 
 paintjob_designer/
     core/                   DI container, binary / bitstream readers
-    models/                 Plain-dataclass domain types
-                              (PsxColor, Paintjob, PaintjobLibrary, Profile,
+    models/                 Pydantic v2 BaseModels with a committed JSON Schema
+                              (PsxColor, Paintjob, PaintjobLibrary,
+                               SlotColors, SlotRegionPixels, Profile,
                                PaintjobSlotProfile, CtrMesh, ...)
     color/
         converter           PSX15 <-> RGB888 conversion, hex formatting
-        transform           Bulk-transform logic (replace / hue / brightness / saturation / RGB delta)
+        transform           Bulk-transform logic (replace matches / replace hue / shift hue / saturation / brightness / RGB delta)
         gradient            Two-endpoint linear gradients in RGB or HSV space
     profile/                ProfileReader + ProfileRegistry (loads bundled
                             profile JSON; parses `paintjob_slots` binding)
@@ -133,22 +119,25 @@ paintjob_designer/
         atlas_uv_mapper     Byte-space TextureLayout UVs -> normalized atlas UVs
         orbit_camera        Yaw/pitch camera + bbox fit + view/projection matrices
         ray_picker          Möller-Trumbore ray/triangle picker for the eyedropper
-    exporters/
-        source_code_exporter    .c / paintjob.h pair
-        binary_exporter         PAINTALL.bin — N paintjobs × M characters
-        templates/              paintjob.h template
+    texture/
+        quantizer               PIL RGBA -> PSX 4bpp + 16-color CLUT
+        importer                PNG file + resize policy -> QuantizedTexture
     gui/
         main_window.py      Orchestrator
         widget/             KartViewer (GL), SlotEditor, SlotRow,
                             PaintjobLibrarySidebar, ColorSwatch,
-                            PsxColorButton, ColorPicker
+                            PsxColorButton, ColorPicker,
+                            TransformColorsPanel (modeless stacked-ops panel)
             shaders/        GLSL vert/frag
-        dialog/             ProfilePicker, SourceCodeExportOptions,
-                            TransformColors, GradientFill
+        dialog/             ProfilePicker, GradientFill, TextureImport
         handler/            Character / Color / Project handlers
         command/            Undo commands — one class per file
                             (SetSlotColor, ResetSlot, BulkTransform)
     services.py             DI container wiring
+
+schema/
+    library.json            Pydantic-generated JSON Schema for the library format
+                            (drift-checked by tests/paintjob/test_schema.py)
 
 .github/
     workflows/release.yml   Windows + Linux build + release workflow
@@ -156,4 +145,5 @@ paintjob_designer/
 
 ## Documentation
 
-- **[User Guide](documentation/user-guide.md)** — Non-obvious behaviors: library semantics, preview character vs home character, PSX transparency sentinel, profile switching, PAINTALL.bin layout, and more.
+- **[Library Format](documentation/library_format.md)** — JSON schema of the paintjob library directory. Authoritative contract for downstream consumer tools.
+- **[User Guide](documentation/user-guide.md)** — Non-obvious behaviors: library semantics, preview character, PSX transparency sentinel, profile switching, and more.
