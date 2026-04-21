@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSpinBox,
     QSplitter,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
     QInputDialog,
@@ -30,6 +31,7 @@ from paintjob_designer.config.iso_root_validator import IsoRootValidator
 from paintjob_designer.config.store import AppConfig, ConfigStore
 from paintjob_designer.core import Slugifier
 from paintjob_designer.ctr.vertex_assembler import VertexAssembler
+from paintjob_designer.gui.command.apply_palette_command import ApplyPaletteCommand
 from paintjob_designer.gui.command.bulk_transform_command import (
     BulkColorEdit,
     BulkTransformCommand,
@@ -37,6 +39,8 @@ from paintjob_designer.gui.command.bulk_transform_command import (
 from paintjob_designer.gui.command.reset_slot_command import ResetSlotCommand
 from paintjob_designer.gui.command.set_slot_color_command import SetSlotColorCommand
 from paintjob_designer.gui.dialog.gradient_fill_dialog import GradientFillDialog
+from paintjob_designer.gui.dialog.palette_apply_dialog import PaletteApplyDialog
+from paintjob_designer.gui.dialog.palette_edit_dialog import PaletteEditDialog
 from paintjob_designer.gui.dialog.profile_picker_dialog import (
     ProfilePickerDialog,
 )
@@ -49,6 +53,7 @@ from paintjob_designer.gui.handler.project_handler import ProjectHandler
 from paintjob_designer.gui.widget.color_picker import PsxColorPicker
 from paintjob_designer.gui.widget.kart_viewer import KartViewer
 from paintjob_designer.gui.widget.paintjob_library_sidebar import PaintjobLibrarySidebar
+from paintjob_designer.gui.widget.palette_sidebar import PaletteSidebar
 from paintjob_designer.gui.widget.slot_editor import SlotEditor
 from paintjob_designer.gui.widget.transform_panel import (
     TransformCandidate,
@@ -59,6 +64,8 @@ from paintjob_designer.models import (
     CharacterProfile,
     Paintjob,
     PaintjobLibrary,
+    Palette,
+    PaletteLibrary,
     Profile,
     PsxColor,
     SlotColors,
@@ -124,10 +131,20 @@ class MainWindow(QMainWindow):
         self._profile: Profile | None = None
 
         # Paintjob library — ordered list of all paintjobs the user is
-        # editing. The sidebar shows this library directly; `_current_paintjob`
-        # is whichever entry the user clicked.
-        self._library = PaintjobLibrary()
+        # editing. Restored from the persisted config so a restart doesn't
+        # lose in-progress work; the saved state rehydrates before the
+        # sidebar is built so the first paint shows it.
+        self._library = self._restore_library_from_config()
+        self._palette_library = self._restore_palette_library_from_config()
         self._current_paintjob: Paintjob | None = None
+
+        # Debounced autosave — mutation sites call `_schedule_autosave()`;
+        # the timer collapses the bursts that a live transform-slider drag
+        # produces into one disk write instead of hundreds.
+        self._autosave_timer = QTimer(self)
+        self._autosave_timer.setSingleShot(True)
+        self._autosave_timer.setInterval(500)
+        self._autosave_timer.timeout.connect(self._flush_autosave)
 
         # `_current_character` is the PREVIEW character — the mesh the 3D
         # viewer shows and the VRAM we sample defaults from. It's driven by
@@ -143,6 +160,12 @@ class MainWindow(QMainWindow):
         # doesn't clear it — Ctrl+Z still unwinds edits across character
         # boundaries, which matches what users expect from a single-editor app.
         self._undo_stack = QUndoStack(self)
+
+        # Every undo-routed edit (color set, reset, bulk transform, palette
+        # apply) advances the stack index. Hook that for autosave so the
+        # color-edit path doesn't need an explicit `_schedule_autosave()`
+        # at each mutation site.
+        self._undo_stack.indexChanged.connect(self._schedule_autosave)
 
         # Transform panel lifecycle fields — lazy-constructed on first
         # open, but the snapshot / dirty-keys pair needs to exist from
@@ -165,6 +188,9 @@ class MainWindow(QMainWindow):
 
         self._build_menu_bar()
         self._build_ui()
+        # Palettes aren't profile-bound; seed the sidebar from the restored
+        # state here so the tab is populated even before / without an ISO.
+        self._palette_sidebar.set_palettes(self._palette_library.palettes)
         self._bootstrap()
 
     def dragEnterEvent(self, event) -> None:
@@ -214,17 +240,13 @@ class MainWindow(QMainWindow):
 
         file_menu.addSeparator()
         self._add_action(
-            file_menu, "&Open Library...", self._on_open_library,
-            shortcut=QKeySequence("Ctrl+O"),
-        )
-
-        self._add_action(
-            file_menu, "&Save Library As...", self._on_save_library_as,
+            file_menu, "Export &Library As...", self._on_save_library_as,
             shortcut=QKeySequence("Ctrl+Shift+S"),
         )
 
         self._add_action(
-            file_menu, "&Import Paintjob...", self._on_import_paintjob,
+            file_menu, "&Import Paintjobs...", self._on_import_paintjob,
+            shortcut=QKeySequence("Ctrl+O"),
         )
 
         file_menu.addSeparator()
@@ -278,14 +300,33 @@ class MainWindow(QMainWindow):
         sidebar_container = QWidget()
         sidebar_layout = QVBoxLayout(sidebar_container)
         sidebar_layout.setContentsMargins(8, 8, 8, 8)
-        sidebar_layout.addWidget(QLabel("Paintjobs"))
+
         self._sidebar = PaintjobLibrarySidebar()
         self._sidebar.paintjob_selected.connect(self._on_paintjob_selected)
         self._sidebar.paintjob_context_requested.connect(self._on_sidebar_context)
         self._sidebar.new_paintjob_requested.connect(self._on_new_paintjob)
         self._sidebar.delete_paintjob_requested.connect(self._on_delete_paintjob)
         self._sidebar.paintjobs_reordered.connect(self._on_paintjobs_reordered)
-        sidebar_layout.addWidget(self._sidebar)
+
+        self._palette_sidebar = PaletteSidebar(self._color_converter)
+        self._palette_sidebar.new_palette_requested.connect(self._on_new_palette)
+        self._palette_sidebar.save_from_slot_requested.connect(
+            self._on_save_palette_from_slot,
+        )
+        self._palette_sidebar.delete_palette_requested.connect(
+            self._on_delete_palette,
+        )
+        self._palette_sidebar.edit_palette_requested.connect(
+            self._on_edit_palette,
+        )
+        self._palette_sidebar.rename_palette_requested.connect(
+            self._on_rename_palette,
+        )
+
+        self._sidebar_tabs = QTabWidget()
+        self._sidebar_tabs.addTab(self._sidebar, "Paintjobs")
+        self._sidebar_tabs.addTab(self._palette_sidebar, "Color Palettes")
+        sidebar_layout.addWidget(self._sidebar_tabs, 1)
         sidebar_layout.addWidget(self._build_animation_panel())
 
         viewer_container = QWidget()
@@ -355,7 +396,7 @@ class MainWindow(QMainWindow):
         toolbar.setMovable(False)
 
         self._action_save_library = toolbar.addAction(
-            "Save Library", self._on_save_library_as,
+            "Export Library", self._on_save_library_as,
         )
 
         toolbar.addSeparator()
@@ -436,10 +477,12 @@ class MainWindow(QMainWindow):
         # mesh/VRAM/atlas load.
         self._populate_preview_character_combo()
 
-        # Rebuild the sidebar from the (possibly empty) library. Sidebar
-        # selection is None at this point — the user has to either create a
-        # new paintjob or load one from disk to start editing.
-        self._sidebar.set_library(self._library, selected_index=None)
+        # Rebuild the sidebar from the library. If the library was restored
+        # from the autosave blob (first boot after a prior session), select
+        # the first paintjob so the editor reopens where the artist left
+        # off; fresh sessions with an empty library land with no selection.
+        initial = 0 if self._library.count() > 0 else None
+        self._sidebar.set_library(self._library, selected_index=initial)
         self._refresh_action_state()
 
     def _populate_preview_character_combo(self) -> None:
@@ -535,6 +578,7 @@ class MainWindow(QMainWindow):
         self._current_character = None
         self._current_bundle = None
         self._undo_stack.clear()
+        self._schedule_autosave()
 
         self._load_profile(self._config.last_profile_id)
         self.statusBar().showMessage(
@@ -556,6 +600,7 @@ class MainWindow(QMainWindow):
         self._undo_stack.clear()
 
         self._sidebar.set_library(self._library, selected_index=new_index)
+        self._schedule_autosave()
         self.statusBar().showMessage(f"Imported {path.name}")
 
     def _replace_paintjob_from_file(self, index: int, path: Path) -> None:
@@ -572,6 +617,7 @@ class MainWindow(QMainWindow):
         self._library.paintjobs[index] = loaded
         self._undo_stack.clear()
         self._sidebar.set_library(self._library, selected_index=index)
+        self._schedule_autosave()
         self.statusBar().showMessage(f"Replaced with {path.name}")
 
     def _on_sidebar_context(self, index: int, global_pos: QPoint) -> None:
@@ -611,20 +657,27 @@ class MainWindow(QMainWindow):
         menu.exec(global_pos)
 
     def _on_import_paintjob(self) -> None:
-        """Load a paintjob JSON and append it to the library."""
+        """Load one or more paintjob JSONs and append them to the library.
+
+        Multi-select is the entry point artists use to mass-restore a
+        previously-exported library directory (pick every `NN_*.json` at
+        once); picking a single file is still the single-paintjob import
+        case. Files load in selection order.
+        """
         if self._profile is None:
             return
 
-        path_str, _ = QFileDialog.getOpenFileName(
-            self, "Import paintjob",
+        paths, _ = QFileDialog.getOpenFileNames(
+            self, "Import paintjobs",
             self._config.iso_root or str(Path.home()),
             f"{_PAINTJOB_FILTER};;All files (*)",
         )
 
-        if not path_str:
+        if not paths:
             return
 
-        self._apply_paintjob_file_to_library(Path(path_str))
+        for path_str in paths:
+            self._apply_paintjob_file_to_library(Path(path_str))
 
     def _on_replace_paintjob_from_file(self, index: int) -> None:
         if index < 0 or index >= self._library.count():
@@ -658,6 +711,7 @@ class MainWindow(QMainWindow):
         # Preserve selection across the rebuild so the user stays on the
         # paintjob they just renamed.
         self._sidebar.set_library(self._library, selected_index=index)
+        self._schedule_autosave()
 
     def _on_set_author(self, index: int) -> None:
         """Edit the paintjob's `author` metadata field.
@@ -680,6 +734,7 @@ class MainWindow(QMainWindow):
 
         paintjob.author = new_author.strip()
         self._sidebar.set_library(self._library, selected_index=index)
+        self._schedule_autosave()
 
     def _on_change_base_character(self, index: int) -> None:
         if self._profile is None or index < 0 or index >= self._library.count():
@@ -704,6 +759,7 @@ class MainWindow(QMainWindow):
 
         paintjob.base_character_id = None if chosen == none_label else chosen
         self._sidebar.set_library(self._library, selected_index=index)
+        self._schedule_autosave()
 
         if paintjob is self._current_paintjob:
             self._reload_preview()
@@ -738,45 +794,6 @@ class MainWindow(QMainWindow):
             return
 
         self.statusBar().showMessage(f"Exported {Path(path_str).name}")
-
-    def _on_open_library(self) -> None:
-        """Replace the current library with every JSON under a chosen folder.
-
-        Intended for reopening a previously-saved library; the files load
-        in sorted-filename order so the `NN_<name>.json` convention
-        `save_library` writes round-trips the paintjob indexing.
-        """
-        if self._profile is None:
-            return
-
-        dir_str = QFileDialog.getExistingDirectory(
-            self, "Open paintjob library",
-            str(Path.home()),
-        )
-
-        if not dir_str:
-            return
-
-        try:
-            library = self._project_handler.load_library(Path(dir_str))
-        except (OSError, ValueError) as exc:
-            QMessageBox.critical(self, "Open library failed", str(exc))
-            return
-
-        self._library = library
-        self._current_paintjob = None
-        self._undo_stack.clear()
-
-        # Select the first paintjob if any; selection fires
-        # `_on_paintjob_selected` which reloads the preview.
-        initial = 0 if library.count() > 0 else None
-        self._sidebar.set_library(self._library, selected_index=initial)
-        if initial is None:
-            self._reload_preview()
-
-        self.statusBar().showMessage(
-            f"Loaded {library.count()} paintjob(s) from {dir_str}",
-        )
 
     def _on_save_library_as(self) -> None:
         """Write every paintjob in the library to a chosen folder."""
@@ -836,6 +853,284 @@ class MainWindow(QMainWindow):
         """
         return self._slugifier.slugify(paintjob.name) or paintjob.base_character_id or f"paintjob_{index:02d}"
 
+    def _restore_library_from_config(self) -> PaintjobLibrary:
+        """Rehydrate the persisted library from the config blob.
+
+        Returns a fresh empty library when the config has no saved library
+        yet or the saved shape fails validation — we never want a corrupt
+        autosave payload to prevent the app from starting. Corrupt blobs
+        get logged to the status bar after `_build_ui` runs via the
+        deferred warning list.
+        """
+        raw = self._config.library
+        if not isinstance(raw, dict):
+            return PaintjobLibrary()
+
+        try:
+            return PaintjobLibrary.model_validate(raw)
+        except Exception:
+            return PaintjobLibrary()
+
+    def _restore_palette_library_from_config(self) -> PaletteLibrary:
+        """Rehydrate the persisted palette library from the config list."""
+        raw = self._config.palettes
+        if not isinstance(raw, list):
+            return PaletteLibrary()
+
+        palettes: list[Palette] = []
+        for entry in raw:
+            if not isinstance(entry, dict):
+                continue
+
+            try:
+                palettes.append(Palette.model_validate(entry))
+            except Exception:
+                continue
+
+        return PaletteLibrary(palettes=palettes)
+
+    def _schedule_autosave(self) -> None:
+        """Kick the debounced autosave; coalesces bursty mutation sequences.
+
+        Idempotent within the debounce window — calling it 100 times in
+        500ms still results in one save.
+        """
+        self._autosave_timer.start()
+
+    def _flush_autosave(self) -> None:
+        """Serialize the current library + palette library into the config."""
+        try:
+            self._config.library = self._library.model_dump(by_alias=True)
+            self._config.palettes = [
+                p.model_dump() for p in self._palette_library.palettes
+            ]
+            self._config_store.save(self._config)
+        except OSError:
+            self.statusBar().showMessage(
+                "Autosave failed — check disk space / permissions.", 4000,
+            )
+
+    def closeEvent(self, event) -> None:
+        """Confirm on close, then flush a final autosave before exiting.
+
+        Unconditional confirm (not tied to a dirty flag) because autosave
+        covers persistence — the dialog's job is just to stop an accidental
+        window-close click from ending the session.
+        """
+        confirm = QMessageBox.question(
+            self, "Exit Paintjob Designer?",
+            "Exit Paintjob Designer?\n\n"
+            "Your library is autosaved and will reopen the way you left it.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if confirm != QMessageBox.StandardButton.Yes:
+            event.ignore()
+            return
+
+        # Rewind any live transform preview so the autosaved state is the
+        # last committed one, not the in-flight slider preview.
+        self._on_transform_panel_closing()
+
+        self._autosave_timer.stop()
+        self._flush_autosave()
+
+        event.accept()
+
+    def _on_new_palette(self) -> None:
+        """Create a blank palette and open the edit dialog to fill it."""
+        palette = Palette(name=f"Palette {len(self._palette_library.palettes) + 1}")
+        dialog = PaletteEditDialog(palette, self._color_converter, parent=self)
+        if dialog.exec() != PaletteEditDialog.DialogCode.Accepted:
+            return
+
+        new_palette = dialog.resulting_palette()
+        self._palette_library.palettes.append(new_palette)
+        self._palette_sidebar.set_palettes(
+            self._palette_library.palettes,
+            selected_index=len(self._palette_library.palettes) - 1,
+        )
+        self._schedule_autosave()
+
+    def _on_save_palette_from_slot(self) -> None:
+        """Seed a new palette from the currently-focused slot's 16 colors.
+
+        Uses the slot editor's `focused_slot()` — the same "current slot"
+        the Transform Colors panel targets for its This-Slot scope. No
+        focused slot → informational message; we deliberately don't guess.
+        """
+        if self._current_bundle is None or self._current_paintjob is None:
+            QMessageBox.information(
+                self, "No slot to capture",
+                "Select a paintjob and highlight a slot row first — the "
+                "palette captures that slot's 16 colors.",
+            )
+
+            return
+
+        slot_name = self._slot_editor.focused_slot()
+        if slot_name is None:
+            QMessageBox.information(
+                self, "No focused slot",
+                "Click a slot row in the editor to highlight it; the "
+                "palette captures the highlighted slot's colors.",
+            )
+
+            return
+
+        slot = self._current_bundle.slot_regions.slots.get(slot_name)
+        if slot is None:
+            return
+
+        colors = [
+            PsxColor(value=self._current_color(slot, i).value)
+            for i in range(SlotColors.SIZE)
+        ]
+
+        palette = Palette(name=f"{slot_name} palette", colors=colors)
+
+        dialog = PaletteEditDialog(palette, self._color_converter, parent=self)
+        if dialog.exec() != PaletteEditDialog.DialogCode.Accepted:
+            return
+
+        new_palette = dialog.resulting_palette()
+        self._palette_library.palettes.append(new_palette)
+        self._palette_sidebar.set_palettes(
+            self._palette_library.palettes,
+            selected_index=len(self._palette_library.palettes) - 1,
+        )
+        self._schedule_autosave()
+
+    def _on_delete_palette(self, index: int) -> None:
+        if index < 0 or index >= len(self._palette_library.palettes):
+            return
+
+        palette = self._palette_library.palettes[index]
+        label = palette.name.strip() or f"Palette {index + 1}"
+        confirm = QMessageBox.question(
+            self, "Delete palette",
+            f"Delete '{label}'? This can't be undone.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if confirm != QMessageBox.StandardButton.Yes:
+            return
+
+        self._palette_library.palettes.pop(index)
+        next_selection = None
+
+        if self._palette_library.palettes:
+            next_selection = min(index, len(self._palette_library.palettes) - 1)
+
+        self._palette_sidebar.set_palettes(
+            self._palette_library.palettes, selected_index=next_selection,
+        )
+        self._schedule_autosave()
+
+    def _on_edit_palette(self, index: int) -> None:
+        if index < 0 or index >= len(self._palette_library.palettes):
+            return
+
+        palette = self._palette_library.palettes[index]
+        dialog = PaletteEditDialog(palette, self._color_converter, parent=self)
+        if dialog.exec() != PaletteEditDialog.DialogCode.Accepted:
+            return
+
+        self._palette_library.palettes[index] = dialog.resulting_palette()
+        self._palette_sidebar.set_palettes(
+            self._palette_library.palettes, selected_index=index,
+        )
+        self._schedule_autosave()
+
+    def _on_rename_palette(self, index: int) -> None:
+        if index < 0 or index >= len(self._palette_library.palettes):
+            return
+
+        palette = self._palette_library.palettes[index]
+        new_name, ok = QInputDialog.getText(
+            self, "Rename palette",
+            "Name:", text=palette.name,
+        )
+
+        if not ok:
+            return
+
+        palette.name = new_name.strip()
+        self._palette_sidebar.set_palettes(
+            self._palette_library.palettes, selected_index=index,
+        )
+        self._schedule_autosave()
+
+    def _on_apply_palette_to_slot(self, palette_index: int, slot_name: str) -> None:
+        """Open the mapping dialog for `palette_index` targeting `slot_name`.
+
+        Invoked from the slot row's right-click "Apply Color Palette" submenu
+        so the artist picks palette + target slot in one gesture. The dialog's
+        row order IS the slot-index mapping; trailing slot colors beyond the
+        palette's length are left untouched.
+        """
+        if palette_index < 0 or palette_index >= len(self._palette_library.palettes):
+            return
+
+        if (
+            self._current_bundle is None
+            or not self._require_active_paintjob()
+        ):
+            return
+
+        slot = self._current_bundle.slot_regions.slots.get(slot_name)
+        if slot is None:
+            return
+
+        palette = self._palette_library.palettes[palette_index]
+        paintjob = self._current_paintjob
+
+        dialog = PaletteApplyDialog(
+            palette=palette,
+            paintjob_name=paintjob.name,
+            slot_name=slot_name,
+            color_converter=self._color_converter,
+            parent=self,
+        )
+
+        if dialog.exec() != PaletteApplyDialog.DialogCode.Accepted:
+            return
+
+        ordered = dialog.ordered_colors()
+        if not ordered:
+            return
+
+        edits: list[BulkColorEdit] = []
+        for color_index, new_color in enumerate(ordered[:SlotColors.SIZE]):
+            old = PsxColor(value=self._current_color(slot, color_index).value)
+
+            if old.value == new_color.value:
+                continue
+
+            edits.append(BulkColorEdit(
+                paintjob=paintjob,
+                slot=slot,
+                color_index=color_index,
+                old_color=old,
+                new_color=PsxColor(value=new_color.value),
+            ))
+
+        if not edits:
+            self.statusBar().showMessage(
+                f"Palette '{palette.name}' already matches {slot_name}.",
+            )
+
+            return
+
+        self.apply_bulk_edits_from_command(
+            [(e.paintjob, e.slot, e.color_index, e.new_color) for e in edits],
+        )
+
+        label = f"Apply palette '{palette.name or '(unnamed)'}' to {slot_name}"
+        self._undo_stack.push(ApplyPaletteCommand(self, label, edits))
+
     def _on_reset_camera(self) -> None:
         self._kart_viewer.reset_camera()
 
@@ -876,6 +1171,7 @@ class MainWindow(QMainWindow):
         self._current_character = None
         self._current_bundle = None
         self._undo_stack.clear()
+        self._schedule_autosave()
 
         self._load_profile(chosen)
         self._update_window_title()
@@ -1034,6 +1330,7 @@ class MainWindow(QMainWindow):
 
         index = self._library.add(paintjob)
         self._sidebar.set_library(self._library, selected_index=index)
+        self._schedule_autosave()
         # The sidebar's selection change fires `_on_paintjob_selected`
         # which loads the preview.
 
@@ -1094,6 +1391,7 @@ class MainWindow(QMainWindow):
 
         self._sidebar.set_library(self._library, selected_index=next_selection)
         self._reload_preview()
+        self._schedule_autosave()
 
     def _on_paintjobs_reordered(self, from_index: int, to_index: int) -> None:
         """Qt reordered the list view; mirror the move into the library.
@@ -1105,6 +1403,7 @@ class MainWindow(QMainWindow):
         self._library.move(from_index, to_index)
         # The view already moved; keep sidebar selection on the dragged row.
         self._sidebar.set_selected_index(to_index)
+        self._schedule_autosave()
 
     def _build_slot_triangle_mask(
         self, assembled, bundle: BroughtUpCharacter,
@@ -1468,6 +1767,8 @@ class MainWindow(QMainWindow):
                 lambda: self._open_gradient_fill_dialog(slot_name),
             )
 
+            self._add_apply_palette_submenu(menu, slot_name)
+
             # Texture import is only offered on slots whose VRAM rect is
             # dim-invariant across characters. Hiding the action on
             # non-portable slots (like `floor`) is cleaner than showing
@@ -1490,6 +1791,31 @@ class MainWindow(QMainWindow):
                     )
 
         menu.exec(global_pos)
+
+    def _add_apply_palette_submenu(self, menu: QMenu, slot_name: str) -> None:
+        """Append an "Apply Color Palette" submenu listing every saved palette.
+
+        Each palette entry is a leaf action that opens the apply-mapping
+        dialog pre-targeted at `slot_name`. When no palettes exist, the
+        submenu shows one disabled hint row instead of being empty (empty
+        submenus render as unclickable dead space and confuse users).
+        """
+        submenu = menu.addMenu("Apply Color Palette")
+        palettes = self._palette_library.palettes
+
+        if not palettes:
+            hint = submenu.addAction(
+                "(no palettes saved — create one in the Color Palettes tab)",
+            )
+            hint.setEnabled(False)
+            return
+
+        for i, palette in enumerate(palettes):
+            label = palette.name.strip() or f"Palette {i + 1}"
+            submenu.addAction(
+                label,
+                lambda _=False, pi=i, sn=slot_name: self._on_apply_palette_to_slot(pi, sn),
+            )
 
     def _open_gradient_fill_dialog(self, slot_name: str) -> None:
         if (
@@ -1637,6 +1963,7 @@ class MainWindow(QMainWindow):
             selected_index=self._library.paintjobs.index(paintjob),
         )
         self._populate_slot_editor()
+        self._schedule_autosave()
         self.statusBar().showMessage(
             f"Imported {path.name} → {slot_name}",
         )
@@ -1696,6 +2023,7 @@ class MainWindow(QMainWindow):
             selected_index=self._library.paintjobs.index(paintjob),
         )
         self._populate_slot_editor()
+        self._schedule_autosave()
         self.statusBar().showMessage(f"Removed imported texture on {slot_name}")
 
     def _show_transform_panel(self, slot_override: str | None = None) -> None:

@@ -23,6 +23,7 @@ from paintjob_designer.models.paintjob import (
     SlotColors,
     SlotRegionPixels,
 )
+from paintjob_designer.models.palette import Palette, PaletteLibrary
 from paintjob_designer.models.profile import (
     CharacterProfile,
     ClutCoord,
@@ -49,6 +50,8 @@ __all__ = [
     "VramPageDimensions",
     "Paintjob",
     "PaintjobLibrary",
+    "Palette",
+    "PaletteLibrary",
     "SlotColors",
     "SlotRegionPixels",
     "CANONICAL_SLOT_NAMES",

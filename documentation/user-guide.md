@@ -1,6 +1,8 @@
+[<- Back](./README.md)
+
 # User Guide
 
-Things that aren't obvious from the UI. The basics — click a swatch, pick a color — aren't covered here; read on for the gotchas.
+Things that aren't obvious from the UI. The basics — click a swatch, pick a color — aren't covered here; read on for the advanced details.
 
 ## Table of Contents
 

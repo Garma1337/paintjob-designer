@@ -1,3 +1,5 @@
+[<- Back](./README.md)
+
 # Paintjob Library Format
 
 This document describes the on-disk format the paintjob designer writes when you "Save Library As…". The idea is that authors of mods for CTR write their own tools that can consume a paintjob library to integrate it into their mod.
