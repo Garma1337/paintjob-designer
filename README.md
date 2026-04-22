@@ -23,22 +23,20 @@ Downstream mods (e.g. Saphi) own their own tools that consume the library and pr
 
 Ships with `vanilla-ntsc-u` (base CTR) and `saphi`. The profile drives which characters populate the preview dropdown and which CLUT coordinates are read from VRAM. Switch Profile from the toolbar or File menu.
 
-## Library I/O
-
-- **File → Open Library...** (Ctrl+O) — load every `*.json` under a directory as a `PaintjobLibrary`.
-- **File → Save Library As...** (Ctrl+Shift+S) — write each paintjob to a directory as `NN_<slug>.json` so filesystem sort round-trips the ordering. **This is the designer's primary output.**
-- **Right-click a paintjob** in the sidebar for rename, set author, change base character, single-paintjob export, replace, and delete.
-
 See [documentation/library_format.md](documentation/library_format.md) for the on-disk JSON schema consumer tools read, and [documentation/user-guide.md](documentation/user-guide.md) for everything else.
 
 # Requirements
 
-- Python 3.11+
+Make sure you have the following set up before the running the Paintjob Designer:
+
+- [Python](https://www.python.org/downloads/) 3.11+ installed
+- An extracted vanilla CTR ISO on disk (no copyrighted assets ship with the tool)
+
+If you are not using the portable version of the installer, the following Python libraries will be installed when running the `run.bat` / `run.sh`:
+
 - PySide6
 - PyOpenGL
 - numpy
-- An extracted CTR ISO on disk (you provide this — no copyrighted assets ship with the tool)
-
 
 # Documentation
 

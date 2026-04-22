@@ -49,16 +49,9 @@ jobs:
       - name: Run tests
         run: pytest tests/
 
-  build:
+  build-portable-windows:
     needs: [version, test]
-    strategy:
-      matrix:
-        include:
-          - os: windows-latest
-            artifact: PaintjobDesigner-windows
-          - os: ubuntu-latest
-            artifact: PaintjobDesigner-linux
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -72,24 +65,59 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Build executable
-        # Data files (config/profiles, shaders, app.ico) and the
-        # PySide6 module exclusion list live in PaintjobDesigner.spec
-        # so the build invocation stays a one-liner and local + CI
-        # builds stay in lockstep.
         run: pyinstaller PaintjobDesigner.spec
 
       - name: Compress output
         shell: bash
-        run: cd dist && 7z a -t7z -mx=9 ../PaintjobDesigner.7z PaintjobDesigner/
+        run: cd dist && 7z a -t7z -mx=9 ../PaintjobDesigner-windows-portable.7z PaintjobDesigner/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: PaintjobDesigner.7z
+          name: PaintjobDesigner-windows-portable
+          path: PaintjobDesigner-windows-portable.7z
+
+  build-source:
+    needs: [version, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stage source tree
+        run: |
+          mkdir -p stage/PaintjobDesigner
+          cp -r main.py paintjob_designer config app.ico requirements.txt README.md run.bat run.sh stage/PaintjobDesigner/
+          chmod +x stage/PaintjobDesigner/run.sh
+
+      - name: Package Windows source zip
+        run: |
+          rm stage/PaintjobDesigner/run.sh
+          cd stage && zip -r ../PaintjobDesigner-windows-source.zip PaintjobDesigner
+
+      - name: Restore run.sh for Linux package
+        run: |
+          cp run.sh stage/PaintjobDesigner/run.sh
+          chmod +x stage/PaintjobDesigner/run.sh
+          rm stage/PaintjobDesigner/run.bat
+
+      - name: Package Linux source 7z
+        run: |
+          cd stage && 7z a -t7z -mx=9 ../PaintjobDesigner-linux-source.7z PaintjobDesigner
+
+      - name: Upload Windows source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PaintjobDesigner-windows-source
+          path: PaintjobDesigner-windows-source.zip
+
+      - name: Upload Linux source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PaintjobDesigner-linux-source
+          path: PaintjobDesigner-linux-source.7z
 
   release:
-    needs: [version, build]
+    needs: [version, build-portable-windows, build-source]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -102,8 +130,9 @@ jobs:
       - name: Prepare release assets
         run: |
           mkdir -p release
-          cp artifacts/PaintjobDesigner-windows/PaintjobDesigner.7z release/PaintjobDesigner-windows.7z
-          cp artifacts/PaintjobDesigner-linux/PaintjobDesigner.7z release/PaintjobDesigner-linux.7z
+          cp artifacts/PaintjobDesigner-windows-portable/PaintjobDesigner-windows-portable.7z release/
+          cp artifacts/PaintjobDesigner-windows-source/PaintjobDesigner-windows-source.zip release/
+          cp artifacts/PaintjobDesigner-linux-source/PaintjobDesigner-linux-source.7z release/
 
       - name: Create tag
         run: |
@@ -119,5 +148,6 @@ jobs:
           name: Paintjob Designer v${{ needs.version.outputs.version }}
           generate_release_notes: true
           files: |
-            release/PaintjobDesigner-windows.7z
-            release/PaintjobDesigner-linux.7z
+            release/PaintjobDesigner-windows-portable.7z
+            release/PaintjobDesigner-windows-source.zip
+            release/PaintjobDesigner-linux-source.7z

@@ -52,6 +52,9 @@ schema/
 
 .github/
     workflows/release.yml   Windows + Linux build + release workflow
+
+run.bat                     Windows launcher — creates `.venv`, installs requirements, runs `main.py`
+run.sh                      Linux launcher — equivalent for POSIX shells
 ```
 
 # Environment Setup
@@ -59,14 +62,22 @@ schema/
 ```bash
 python -m venv .venv
 .venv\Scripts\Activate.ps1   # Windows PowerShell
-# or: source .venv/bin/activate  # Linux/macOS
+source .venv/bin/activate    # Linux/macOS
 
 pip install -r requirements.txt
 ```
 
-# Building an Executable
+# Release Artifacts
 
-The GitHub Actions workflow in `.github/workflows/release.yml` builds Windows + Linux one-dir bundles via PyInstaller and publishes them as `.7z` artifacts on manual trigger. To build locally:
+The GitHub Actions workflow in `.github/workflows/release.yml` is manually triggered and produces three `.7z` archives:
+
+- `PaintjobDesigner-windows-portable.7z` — standalone PyInstaller one-dir bundle for Windows. No Python install required. Built on a Windows runner via `pyinstaller PaintjobDesigner.spec`.
+- `PaintjobDesigner-windows-source.7z` — repo sources + `run.bat`. Requires a system Python. On first run, `run.bat` creates a local `.venv`, installs `requirements.txt` into it, and then launches `main.py` through the venv interpreter.
+- `PaintjobDesigner-linux-source.7z` — repo sources + `run.sh`. POSIX equivalent of the Windows source package.
+
+Only the portable Windows build uses PyInstaller; the two source packages are produced from a single Ubuntu job that copies the repo tree, strips the wrong-platform launcher, and invokes `7z`. This is what keeps build time + artifact size down compared to shipping a PyInstaller bundle for every platform.
+
+## Building the portable installer locally
 
 ```bash
 pyinstaller PaintjobDesigner.spec
