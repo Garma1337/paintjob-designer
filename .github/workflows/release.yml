@@ -86,17 +86,18 @@ jobs:
       - name: Stage source tree
         run: |
           mkdir -p stage/PaintjobDesigner
-          cp -r main.py paintjob_designer config app.ico requirements.txt README.md run.bat run.sh stage/PaintjobDesigner/
+          cp -r main.py paintjob_designer config app.ico requirements.txt README.md stage/PaintjobDesigner/
+          cp launcher/run.bat launcher/run.sh stage/PaintjobDesigner/
           chmod +x stage/PaintjobDesigner/run.sh
 
-      - name: Package Windows source zip
+      - name: Package Windows source 7z
         run: |
           rm stage/PaintjobDesigner/run.sh
-          cd stage && zip -r ../PaintjobDesigner-windows-source.zip PaintjobDesigner
+          cd stage && 7z a -t7z -mx=9 ../PaintjobDesigner-windows-source.7z PaintjobDesigner
 
       - name: Restore run.sh for Linux package
         run: |
-          cp run.sh stage/PaintjobDesigner/run.sh
+          cp launcher/run.sh stage/PaintjobDesigner/run.sh
           chmod +x stage/PaintjobDesigner/run.sh
           rm stage/PaintjobDesigner/run.bat
 
@@ -108,7 +109,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: PaintjobDesigner-windows-source
-          path: PaintjobDesigner-windows-source.zip
+          path: PaintjobDesigner-windows-source.7z
 
       - name: Upload Linux source artifact
         uses: actions/upload-artifact@v4
@@ -131,7 +132,7 @@ jobs:
         run: |
           mkdir -p release
           cp artifacts/PaintjobDesigner-windows-portable/PaintjobDesigner-windows-portable.7z release/
-          cp artifacts/PaintjobDesigner-windows-source/PaintjobDesigner-windows-source.zip release/
+          cp artifacts/PaintjobDesigner-windows-source/PaintjobDesigner-windows-source.7z release/
           cp artifacts/PaintjobDesigner-linux-source/PaintjobDesigner-linux-source.7z release/
 
       - name: Create tag
@@ -149,5 +150,5 @@ jobs:
           generate_release_notes: true
           files: |
             release/PaintjobDesigner-windows-portable.7z
-            release/PaintjobDesigner-windows-source.zip
+            release/PaintjobDesigner-windows-source.7z
             release/PaintjobDesigner-linux-source.7z

@@ -53,8 +53,10 @@ schema/
 .github/
     workflows/release.yml   Windows + Linux build + release workflow
 
-run.bat                     Windows launcher — creates `.venv`, installs requirements, runs `main.py`
-run.sh                      Linux launcher — equivalent for POSIX shells
+launcher/
+    run.bat                 Windows launcher — creates `.venv`, installs requirements, runs `main.py`
+    run.sh                  Linux launcher — equivalent for POSIX shells
+                            (workflow copies these to the archive root on release)
 ```
 
 # Environment Setup
