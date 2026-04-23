@@ -36,6 +36,7 @@ from paintjob_designer.gui.controller.transform_panel_coordinator import Transfo
 from paintjob_designer.gui.dialog.gradient_fill_dialog import GradientFillDialog
 from paintjob_designer.gui.dialog.palette_apply_dialog import PaletteApplyDialog
 from paintjob_designer.gui.dialog.profile_picker_dialog import ProfilePickerDialog
+from paintjob_designer.gui.editor_mode import EditorMode
 from paintjob_designer.gui.handler.character_handler import BroughtUpCharacter, CharacterHandler
 from paintjob_designer.gui.handler.color_handler import ColorHandler
 from paintjob_designer.gui.handler.project_handler import ProjectHandler
@@ -154,7 +155,7 @@ class MainWindow(QMainWindow):
             self._restore_palette_library_from_config(),
         )
 
-        self._editor_mode: str = "paintjob"
+        self._editor_mode: EditorMode = EditorMode.PAINTJOB
         self._preview_paintjob: Paintjob | None = None
         self._preview_skin: Skin | None = None
 
@@ -173,11 +174,11 @@ class MainWindow(QMainWindow):
         self._current_bundle: BroughtUpCharacter | None = None
 
         # Per-tab preview-character memory: keyed by editor mode
-        # ("paintjob" / "skin"), value is the last character_id the user
+        # (EditorMode.PAINTJOB / SKIN), value is the last character_id the user
         # picked while that tab was active. On tab change we restore that
         # character if it's still in the new combo's list, falling back
         # to the first compatible character when not.
-        self._remembered_character_id: dict[str, str] = {}
+        self._remembered_character_id: dict[EditorMode, str] = {}
 
         # Slot → triangle indices lookup for focus-highlight in the 3D view.
         self._slot_triangle_mask: dict[str, list[int]] = {}
@@ -637,7 +638,7 @@ class MainWindow(QMainWindow):
 
     def _require_active_asset(self) -> bool:
         """Gate for actions that edit whatever the active mode exposes."""
-        if self._editor_mode == "preview":
+        if self._editor_mode == EditorMode.PREVIEW:
             QMessageBox.information(
                 self, "Preview mode is read-only",
                 "The Preview tab combines existing paintjobs and skins to "
@@ -650,7 +651,7 @@ class MainWindow(QMainWindow):
         if self._active_asset() is not None:
             return True
 
-        if self._editor_mode == "skin":
+        if self._editor_mode == EditorMode.SKIN:
             QMessageBox.information(
                 self, "No skin selected",
                 "Create a skin (Skins tab → New) or pick one from the list "
@@ -711,7 +712,7 @@ class MainWindow(QMainWindow):
 
         self._sidebar_tabs.setCurrentWidget(self._paintjobs_tab)
         self._paintjob_controller.select_index(index)
-        self._editor_mode = "paintjob"
+        self._editor_mode = EditorMode.PAINTJOB
         self._transform.show()
 
     def _on_transform_skin_requested(self, index: int) -> None:
@@ -721,7 +722,7 @@ class MainWindow(QMainWindow):
 
         self._sidebar_tabs.setCurrentWidget(self._skin_sidebar)
         self._skin_controller.select_index(index)
-        self._editor_mode = "skin"
+        self._editor_mode = EditorMode.SKIN
         self._transform.show()
 
     def _restore_library_from_config(self) -> PaintjobLibrary:
@@ -982,7 +983,7 @@ class MainWindow(QMainWindow):
         self._current_character = character
         # Per-tab memory: this is now the character to restore next time
         # the user comes back to this tab.
-        if self._editor_mode in ("paintjob", "skin"):
+        if self._editor_mode in (EditorMode.PAINTJOB, EditorMode.SKIN):
             self._remembered_character_id[self._editor_mode] = character.id
 
         self._reload_preview()
@@ -1059,10 +1060,10 @@ class MainWindow(QMainWindow):
     def _active_asset(self) -> Paintjob | Skin | None:
         """The asset the viewer is currently rendering. Preview mode returns
         a synthesized Paintjob merging the chosen paintjob + skin slots."""
-        if self._editor_mode == "preview":
+        if self._editor_mode == EditorMode.PREVIEW:
             return self._build_preview_composite()
 
-        if self._editor_mode == "skin":
+        if self._editor_mode == EditorMode.SKIN:
             return self._current_skin
 
         return self._current_paintjob
@@ -1090,22 +1091,22 @@ class MainWindow(QMainWindow):
         if self._current_character is None:
             return set()
 
-        if self._editor_mode == "preview":
+        if self._editor_mode == EditorMode.PREVIEW:
             return (
                 {s.name for s in self._current_character.kart_slots}
                 | {s.name for s in self._current_character.skin_slots}
             )
 
-        if self._editor_mode == "skin":
+        if self._editor_mode == EditorMode.SKIN:
             return {s.name for s in self._current_character.skin_slots}
 
         return {s.name for s in self._current_character.kart_slots}
 
     def _active_vertex_overrides(self) -> dict[int, Rgb888]:
-        if self._editor_mode == "preview" and self._preview_skin is not None:
+        if self._editor_mode == EditorMode.PREVIEW and self._preview_skin is not None:
             return self._preview_skin.vertex_overrides
 
-        if self._editor_mode == "skin" and self._current_skin is not None:
+        if self._editor_mode == EditorMode.SKIN and self._current_skin is not None:
             return self._current_skin.vertex_overrides
 
         return {}
@@ -1127,7 +1128,7 @@ class MainWindow(QMainWindow):
 
         self._vertex_editor.set_colors(effective)
         self._vertex_editor.set_editable(
-            self._editor_mode == "skin" and self._current_skin is not None,
+            self._editor_mode == EditorMode.SKIN and self._current_skin is not None,
         )
 
     def _on_sidebar_tab_changed(self, index: int) -> None:
@@ -1142,11 +1143,11 @@ class MainWindow(QMainWindow):
         widget = self._sidebar_tabs.widget(index)
 
         if widget is self._paintjobs_tab:
-            new_mode = "paintjob"
+            new_mode = EditorMode.PAINTJOB
         elif widget is self._skin_sidebar:
-            new_mode = "skin"
+            new_mode = EditorMode.SKIN
         elif widget is getattr(self, "_preview_tab", None):
-            new_mode = "preview"
+            new_mode = EditorMode.PREVIEW
         else:
             return
 
@@ -1158,7 +1159,7 @@ class MainWindow(QMainWindow):
         self._update_editors_for_mode()
         self._clear_preview_render()
 
-        if new_mode == "preview":
+        if new_mode == EditorMode.PREVIEW:
             # Preview tab drives composition from its own combos; the top
             # "Preview on:" strip is redundant there.
             self._preview_strip.setVisible(False)
@@ -1167,7 +1168,7 @@ class MainWindow(QMainWindow):
 
         self._preview_strip.setVisible(True)
         controller = (
-            self._paintjob_controller if new_mode == "paintjob"
+            self._paintjob_controller if new_mode == EditorMode.PAINTJOB
             else self._skin_controller
         )
 
@@ -1182,7 +1183,7 @@ class MainWindow(QMainWindow):
         # Asset already selected for this tab — repopulate the combo for
         # it and restore the remembered preview character.
         asset = controller.current
-        if new_mode == "paintjob":
+        if new_mode == EditorMode.PAINTJOB:
             characters = self._characters_matching_kart_type(asset.kart_type)
         else:
             characters = self._characters_for_skin(asset)
@@ -1192,9 +1193,9 @@ class MainWindow(QMainWindow):
 
     def _update_editors_for_mode(self) -> None:
         """Enable or disable the right-pane editor tabs based on current mode."""
-        editable = self._editor_mode in ("paintjob", "skin")
+        editable = self._editor_mode in (EditorMode.PAINTJOB, EditorMode.SKIN)
         self._slot_editor.setEnabled(editable)
-        self._vertex_editor.setEnabled(editable and self._editor_mode == "skin")
+        self._vertex_editor.setEnabled(editable and self._editor_mode == EditorMode.SKIN)
 
     def _sync_preview_sidebar_sources(self) -> None:
         """Push current characters + libraries into the Preview sidebar."""
@@ -1226,7 +1227,7 @@ class MainWindow(QMainWindow):
         else:
             self._preview_skin = None
 
-        if self._editor_mode != "preview":
+        if self._editor_mode != EditorMode.PREVIEW:
             return
 
         if character is None:
@@ -1391,7 +1392,7 @@ class MainWindow(QMainWindow):
     def _on_vertex_transform_requested(self) -> None:
         """Open the vertex transform dialog and apply the result."""
         if (
-            self._editor_mode != "skin"
+            self._editor_mode != EditorMode.SKIN
             or self._current_skin is None
             or self._current_bundle is None
         ):
@@ -1616,7 +1617,7 @@ class MainWindow(QMainWindow):
         # Bulk operations are available in either edit mode; each writes
         # to the active asset (paintjob or skin). Preview mode is
         # read-only — no menu.
-        if self._editor_mode not in ("paintjob", "skin"):
+        if self._editor_mode not in (EditorMode.PAINTJOB, EditorMode.SKIN):
             return
 
         menu = QMenu(self)
@@ -1940,7 +1941,7 @@ class MainWindow(QMainWindow):
                 index = self._skin_library.skins.index(asset)
             except ValueError:
                 return
-            self._editor_mode = "skin"
+            self._editor_mode = EditorMode.SKIN
             self._skin_controller.select_index(index)
             self._reload_preview()
             return
@@ -1953,7 +1954,7 @@ class MainWindow(QMainWindow):
             # Asset isn't in the library anymore (deletion should have
             # cleared undo, so this is a rare safety net).
             return
-        self._editor_mode = "paintjob"
+        self._editor_mode = EditorMode.PAINTJOB
         self._paintjob_controller.select_paintjob(asset)
         self._reload_preview()
 

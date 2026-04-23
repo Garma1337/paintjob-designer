@@ -6,37 +6,49 @@ from pydantic import BaseModel, ConfigDict, model_serializer, model_validator
 from pydantic.json_schema import GetJsonSchemaHandler
 from pydantic_core import CoreSchema
 
+from paintjob_designer.constants import (
+    PSX_BITS_PER_COMPONENT,
+    PSX_BLUE_SHIFT,
+    PSX_COMPONENT_MASK,
+    PSX_COMPONENT_MAX,
+    PSX_GREEN_SHIFT,
+    PSX_RED_SHIFT,
+    PSX_RGB_MASK,
+    PSX_STP_SHIFT,
+    PSX_U16_MASK,
+)
+
 
 class PsxColor(BaseModel):
     """PSX 15-bit BGR color with stencil bit."""
 
     model_config = ConfigDict(frozen=False)
 
-    BITS_PER_COMPONENT: ClassVar[int] = 5
-    MAX_COMPONENT: ClassVar[int] = 31
+    BITS_PER_COMPONENT: ClassVar[int] = PSX_BITS_PER_COMPONENT
+    MAX_COMPONENT: ClassVar[int] = PSX_COMPONENT_MAX
 
     value: int = 0
 
     @property
     def r5(self) -> int:
-        return self.value & 0x1F
+        return (self.value >> PSX_RED_SHIFT) & PSX_COMPONENT_MASK
 
     @property
     def g5(self) -> int:
-        return (self.value >> 5) & 0x1F
+        return (self.value >> PSX_GREEN_SHIFT) & PSX_COMPONENT_MASK
 
     @property
     def b5(self) -> int:
-        return (self.value >> 10) & 0x1F
+        return (self.value >> PSX_BLUE_SHIFT) & PSX_COMPONENT_MASK
 
     @property
     def stp(self) -> int:
-        return (self.value >> 15) & 0x1
+        return (self.value >> PSX_STP_SHIFT) & 0x1
 
     @property
     def is_transparent(self) -> bool:
         """True when CTR will render this texel as transparent in-game."""
-        return (self.value & 0x7FFF) == 0
+        return (self.value & PSX_RGB_MASK) == 0
 
     @staticmethod
     def parse_hex(hex_str: str) -> int:
@@ -45,7 +57,7 @@ class PsxColor(BaseModel):
 
         if len(s) == 4:
             try:
-                return int(s, 16) & 0xFFFF
+                return int(s, 16) & PSX_U16_MASK
             except ValueError as exc:
                 raise ValueError(f"Invalid PSX hex color {hex_str!r}") from exc
 
@@ -57,10 +69,10 @@ class PsxColor(BaseModel):
             except ValueError as exc:
                 raise ValueError(f"Invalid RGB hex color {hex_str!r}") from exc
 
-            r5 = (r >> 3) & 0x1F
-            g5 = (g >> 3) & 0x1F
-            b5 = (b >> 3) & 0x1F
-            return (b5 << 10) | (g5 << 5) | r5
+            r5 = (r >> 3) & PSX_COMPONENT_MASK
+            g5 = (g >> 3) & PSX_COMPONENT_MASK
+            b5 = (b >> 3) & PSX_COMPONENT_MASK
+            return (b5 << PSX_BLUE_SHIFT) | (g5 << PSX_GREEN_SHIFT) | r5
 
         raise ValueError(
             f"Expected 4-digit PSX hex (#xxxx) or 6-digit RGB hex, got {hex_str!r}"
@@ -68,7 +80,7 @@ class PsxColor(BaseModel):
 
     @model_serializer
     def _to_hex(self) -> str:
-        return f"#{self.value & 0xFFFF:04x}"
+        return f"#{self.value & PSX_U16_MASK:04x}"
 
     @model_validator(mode="before")
     @classmethod

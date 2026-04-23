@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QWidget
 from paintjob_designer.color.converter import ColorConverter
 from paintjob_designer.color.transform import ColorTransformer
 from paintjob_designer.gui.command.bulk_transform_command import BulkColorEdit, BulkTransformCommand
+from paintjob_designer.gui.editor_mode import EditorMode
 from paintjob_designer.gui.handler.color_handler import ColorHandler
 from paintjob_designer.gui.widget.slot_editor import SlotEditor
 from paintjob_designer.gui.widget.transform_panel import TransformCandidate, TransformColorsPanel
@@ -40,7 +41,7 @@ class TransformPanelCoordinator(QObject):
         bundle_provider: Callable[[], object | None],
         asset_provider: Callable[[], Paintjob | Skin | None],
         character_provider: Callable[[], CharacterProfile | None],
-        editor_mode_provider: Callable[[], str],
+        editor_mode_provider: Callable[[], EditorMode],
         iso_root_provider: Callable[[], str],
         undo_stack: QUndoStack,
         parent_widget: QWidget | None = None,
@@ -66,7 +67,7 @@ class TransformPanelCoordinator(QObject):
     def show(self, slot_override: str | None = None) -> None:
         # Refuse to open in preview mode (read-only) or when there's no
         # active asset / bundle to mutate.
-        if self._editor_mode_provider() not in ("paintjob", "skin"):
+        if self._editor_mode_provider() not in (EditorMode.PAINTJOB, EditorMode.SKIN):
             return
         if self._bundle_provider() is None or self._asset_provider() is None:
             return
@@ -107,11 +108,12 @@ class TransformPanelCoordinator(QObject):
         mode = self._editor_mode_provider()
         kart_slot_candidates = (
             self._build_candidates(self._slots_in_group("kart"))
-            if mode == "paintjob" else []
+            if mode == EditorMode.PAINTJOB else []
         )
+
         skin_slot_candidates = (
             self._build_candidates(self._slots_in_group("skin"))
-            if mode == "skin" else []
+            if mode == EditorMode.SKIN else []
         )
 
         self._panel.set_candidates(

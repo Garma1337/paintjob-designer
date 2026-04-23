@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 
 from paintjob_designer.color.converter import ColorConverter
 from paintjob_designer.color.gradient import GradientGenerator, GradientSpace
+from paintjob_designer.constants import PSX_TRANSPARENT_VALUE
 from paintjob_designer.gui.widget.psx_color_button import PsxColorButton
 from paintjob_designer.models import PsxColor, SlotColors
 
@@ -55,7 +56,10 @@ class GradientFillDialog(QDialog):
         # bad default, so start from the slot's first non-sentinel entry and
         # the last entry.
         default_start = self.first_non_sentinel(current_colors)
-        default_end = current_colors[-1] if current_colors else PsxColor(value=0x8000)
+        default_end = (
+            current_colors[-1] if current_colors
+            else PsxColor(value=PSX_TRANSPARENT_VALUE)
+        )
 
         self._start_button = PsxColorButton(self._converter, default_start)
         self._start_button.color_picked.connect(lambda _: self._refresh_preview())
@@ -111,7 +115,7 @@ class GradientFillDialog(QDialog):
             if c.value != 0:
                 return c
 
-        return PsxColor(value=0x8000)
+        return PsxColor(value=PSX_TRANSPARENT_VALUE)
 
     def _on_range_changed(self) -> None:
         # Keep `from <= to`. Fudge the counterpart spin so the user can drag

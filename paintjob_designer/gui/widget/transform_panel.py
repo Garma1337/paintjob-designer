@@ -23,6 +23,7 @@ from paintjob_designer.color.transform import (
     TransformMode,
     TransformParams,
 )
+from paintjob_designer.constants import PSX_TRANSPARENT_VALUE, RGB_COMPONENT_MAX
 from paintjob_designer.gui.command.bulk_transform_command import BulkColorEdit
 from paintjob_designer.gui.widget.psx_color_button import PsxColorButton
 from paintjob_designer.models import Paintjob, PsxColor, SlotRegions
@@ -387,8 +388,8 @@ class _OperationSection(QGroupBox):
         # sliders, and the checkbox handles on/off.
 
     def _build_replace(self, layout: QFormLayout) -> None:
-        self._replace_match = PsxColor(value=0x8000)
-        self._replace_target = PsxColor(value=0x8000)
+        self._replace_match = PsxColor(value=PSX_TRANSPARENT_VALUE)
+        self._replace_target = PsxColor(value=PSX_TRANSPARENT_VALUE)
 
         self._match_button = PsxColorButton(self._converter, self._replace_match)
         self._match_button.color_picked.connect(self._on_match_picked)
@@ -415,8 +416,8 @@ class _OperationSection(QGroupBox):
         self.params_changed.emit()
 
     def _build_replace_hue(self, layout: QFormLayout) -> None:
-        self._hue_source = PsxColor(value=0x8000)
-        self._hue_target = PsxColor(value=0x8000)
+        self._hue_source = PsxColor(value=PSX_TRANSPARENT_VALUE)
+        self._hue_target = PsxColor(value=PSX_TRANSPARENT_VALUE)
 
         self._hue_source_button = PsxColorButton(self._converter, self._hue_source)
         self._hue_source_button.color_picked.connect(self._on_hue_source_picked)
@@ -473,9 +474,15 @@ class _OperationSection(QGroupBox):
         )
 
     def _build_rgb_delta(self, layout: QFormLayout) -> None:
-        self._rgb_r_slider, self._rgb_r_value = self._slider(-255, 255, "")
-        self._rgb_g_slider, self._rgb_g_value = self._slider(-255, 255, "")
-        self._rgb_b_slider, self._rgb_b_value = self._slider(-255, 255, "")
+        self._rgb_r_slider, self._rgb_r_value = self._slider(
+            -RGB_COMPONENT_MAX, RGB_COMPONENT_MAX, "",
+        )
+        self._rgb_g_slider, self._rgb_g_value = self._slider(
+            -RGB_COMPONENT_MAX, RGB_COMPONENT_MAX, "",
+        )
+        self._rgb_b_slider, self._rgb_b_value = self._slider(
+            -RGB_COMPONENT_MAX, RGB_COMPONENT_MAX, "",
+        )
         layout.addRow("Red:", self._wrap(self._rgb_r_slider, self._rgb_r_value))
         layout.addRow("Green:", self._wrap(self._rgb_g_slider, self._rgb_g_value))
         layout.addRow("Blue:", self._wrap(self._rgb_b_slider, self._rgb_b_value))

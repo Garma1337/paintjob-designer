@@ -5,6 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, PlainSerializer
 
+from paintjob_designer.constants import CLUT_PALETTE_SIZE
 from paintjob_designer.models.color import PsxColor
 from paintjob_designer.models.profile import KartType
 
@@ -61,7 +62,7 @@ class SlotColors(BaseModel):
 
     model_config = ConfigDict(frozen=False)
 
-    SIZE: ClassVar[int] = 16
+    SIZE: ClassVar[int] = CLUT_PALETTE_SIZE
 
     colors: list[PsxColor] = Field(default_factory=list)
     pixels: list[SlotRegionPixels] = Field(default_factory=list)

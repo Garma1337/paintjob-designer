@@ -1,5 +1,13 @@
 # coding: utf-8
 
+from paintjob_designer.constants import (
+    PSX_BLUE_SHIFT,
+    PSX_COMPONENT_MASK,
+    PSX_GREEN_SHIFT,
+    PSX_STP_SHIFT,
+    PSX_U16_MASK,
+    RGB_COMPONENT_MAX,
+)
 from paintjob_designer.models import PsxColor, Rgb888
 
 
@@ -14,10 +22,15 @@ class ColorConverter:
         )
 
     def rgb_to_psx(self, rgb: Rgb888, stp: int = 0) -> PsxColor:
-        r5 = (rgb.r >> 3) & 0x1F
-        g5 = (rgb.g >> 3) & 0x1F
-        b5 = (rgb.b >> 3) & 0x1F
-        value = ((stp & 0x1) << 15) | (b5 << 10) | (g5 << 5) | r5
+        r5 = (rgb.r >> 3) & PSX_COMPONENT_MASK
+        g5 = (rgb.g >> 3) & PSX_COMPONENT_MASK
+        b5 = (rgb.b >> 3) & PSX_COMPONENT_MASK
+        value = (
+            ((stp & 0x1) << PSX_STP_SHIFT)
+            | (b5 << PSX_BLUE_SHIFT)
+            | (g5 << PSX_GREEN_SHIFT)
+            | r5
+        )
         return PsxColor(value=value)
 
     def rgb_to_hex(self, rgb: Rgb888) -> str:
@@ -56,7 +69,7 @@ class ColorConverter:
         s = hex_str.strip().lstrip("#")
         if len(s) == 4:
             try:
-                return PsxColor(value=int(s, 16) & 0xFFFF)
+                return PsxColor(value=int(s, 16) & PSX_U16_MASK)
             except ValueError as exc:
                 raise ValueError(f"Invalid PSX hex color {hex_str!r}") from exc
 
@@ -69,4 +82,4 @@ class ColorConverter:
 
     def _expand_5_to_8(self, v5: int) -> int:
         """Expand a 5-bit component to 8 bits using bit-replication: (v<<3)|(v>>2)."""
-        return ((v5 << 3) | (v5 >> 2)) & 0xFF
+        return ((v5 << 3) | (v5 >> 2)) & RGB_COMPONENT_MAX

@@ -1,5 +1,6 @@
 # coding: utf-8
 
+from paintjob_designer.constants import RGB_COMPONENT_MAX
 from paintjob_designer.models import (
     AssembledMesh,
     CtrMesh,
@@ -141,10 +142,18 @@ class VertexAssembler:
 
         override = overrides.get(draw.color_index)
         if override is not None:
-            return override.r / 255.0, override.g / 255.0, override.b / 255.0
+            return (
+                override.r / RGB_COMPONENT_MAX,
+                override.g / RGB_COMPONENT_MAX,
+                override.b / RGB_COMPONENT_MAX,
+            )
 
         c = mesh.gouraud_colors[draw.color_index]
-        return c.r / 255.0, c.g / 255.0, c.b / 255.0
+        return (
+            c.r / RGB_COMPONENT_MAX,
+            c.g / RGB_COMPONENT_MAX,
+            c.b / RGB_COMPONENT_MAX,
+        )
 
     def _decompress_vertices(
         self,

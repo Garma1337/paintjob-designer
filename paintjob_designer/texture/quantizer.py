@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from PIL import Image
 
 from paintjob_designer.color.converter import ColorConverter
+from paintjob_designer.constants import CLUT_PALETTE_SIZE
 from paintjob_designer.models import PsxColor, Rgb888
 
 
@@ -21,7 +22,7 @@ class TextureQuantizer:
     """Converts an RGBA image into PSX 4bpp pixels + a 16-entry CLUT."""
 
     _ALPHA_THRESHOLD = 128
-    _PALETTE_SIZE = 16
+    _PALETTE_SIZE = CLUT_PALETTE_SIZE
     _NON_TRANSPARENT_SLOTS = _PALETTE_SIZE - 1  # slot 0 reserved
 
     def __init__(self, color_converter: ColorConverter) -> None:

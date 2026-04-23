@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from paintjob_designer.color.converter import ColorConverter
+from paintjob_designer.constants import RGB_COMPONENT_MAX
 from paintjob_designer.models import PsxColor, Rgb888
 
 
@@ -69,7 +70,11 @@ class ColorTransformer:
             g = self.clamp_u8(g + params.rgb_delta_g)
             b = self.clamp_u8(b + params.rgb_delta_b)
         else:
-            h, s, v = colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
+            h, s, v = colorsys.rgb_to_hsv(
+                r / RGB_COMPONENT_MAX,
+                g / RGB_COMPONENT_MAX,
+                b / RGB_COMPONENT_MAX,
+            )
 
             if params.mode == TransformMode.SHIFT_HUE:
                 h = (h + params.hue_shift_degrees / 360.0) % 1.0
@@ -79,7 +84,9 @@ class ColorTransformer:
                 v = self.clamp_unit(v + params.brightness_shift)
 
             r_f, g_f, b_f = colorsys.hsv_to_rgb(h, s, v)
-            r, g, b = round(r_f * 255), round(g_f * 255), round(b_f * 255)
+            r = round(r_f * RGB_COMPONENT_MAX)
+            g = round(g_f * RGB_COMPONENT_MAX)
+            b = round(b_f * RGB_COMPONENT_MAX)
 
         return self._converter.rgb_to_psx(Rgb888(r=r, g=g, b=b), stp=color.stp)
 
@@ -99,7 +106,9 @@ class ColorTransformer:
 
         src_rgb = self._converter.psx_to_rgb(params.source_color)
         src_h, src_s, _ = colorsys.rgb_to_hsv(
-            src_rgb.r / 255.0, src_rgb.g / 255.0, src_rgb.b / 255.0,
+            src_rgb.r / RGB_COMPONENT_MAX,
+            src_rgb.g / RGB_COMPONENT_MAX,
+            src_rgb.b / RGB_COMPONENT_MAX,
         )
         if src_s < self._HUE_SATURATION_FLOOR:
             # Source is near-gray — no meaningful hue to match against.
@@ -107,11 +116,17 @@ class ColorTransformer:
 
         tgt_rgb = self._converter.psx_to_rgb(params.target_color)
         tgt_h, _, _ = colorsys.rgb_to_hsv(
-            tgt_rgb.r / 255.0, tgt_rgb.g / 255.0, tgt_rgb.b / 255.0,
+            tgt_rgb.r / RGB_COMPONENT_MAX,
+            tgt_rgb.g / RGB_COMPONENT_MAX,
+            tgt_rgb.b / RGB_COMPONENT_MAX,
         )
 
         rgb = self._converter.psx_to_rgb(color)
-        h, s, v = colorsys.rgb_to_hsv(rgb.r / 255.0, rgb.g / 255.0, rgb.b / 255.0)
+        h, s, v = colorsys.rgb_to_hsv(
+            rgb.r / RGB_COMPONENT_MAX,
+            rgb.g / RGB_COMPONENT_MAX,
+            rgb.b / RGB_COMPONENT_MAX,
+        )
         if s < self._HUE_SATURATION_FLOOR:
             return color
 
@@ -124,7 +139,11 @@ class ColorTransformer:
 
         r_f, g_f, b_f = colorsys.hsv_to_rgb(new_h, s, v)
         return self._converter.rgb_to_psx(
-            Rgb888(r=round(r_f * 255), g=round(g_f * 255), b=round(b_f * 255)),
+            Rgb888(
+                r=round(r_f * RGB_COMPONENT_MAX),
+                g=round(g_f * RGB_COMPONENT_MAX),
+                b=round(b_f * RGB_COMPONENT_MAX),
+            ),
             stp=color.stp,
         )
 
@@ -136,7 +155,7 @@ class ColorTransformer:
 
     @staticmethod
     def clamp_u8(v: int) -> int:
-        return max(0, min(255, v))
+        return max(0, min(RGB_COMPONENT_MAX, v))
 
     @staticmethod
     def clamp_unit(v: float) -> float:

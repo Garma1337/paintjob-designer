@@ -1,6 +1,7 @@
 # coding: utf-8
 
 from paintjob_designer.color.converter import ColorConverter
+from paintjob_designer.constants import PSX_RGB_MASK, RGB_COMPONENT_MAX
 from paintjob_designer.models import BitDepth, PsxColor, SlotRegion, VramPage
 
 
@@ -110,8 +111,8 @@ class VramRegionDecoder:
         # Mirrors the LUT: any black texel (RGB 0,0,0) renders transparent
         # in-game regardless of the stp bit, so both 0x0000 and 0x8000
         # become alpha=0 here. ColorConverter handles the non-black cases.
-        if (value & 0x7FFF) == 0:
+        if (value & PSX_RGB_MASK) == 0:
             return b"\x00\x00\x00\x00"
 
         rgb = self._colors.psx_to_rgb(PsxColor(value=value))
-        return bytes((rgb.r, rgb.g, rgb.b, 0xFF))
+        return bytes((rgb.r, rgb.g, rgb.b, RGB_COMPONENT_MAX))

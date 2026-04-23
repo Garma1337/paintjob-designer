@@ -15,10 +15,11 @@ from PySide6.QtWidgets import (
 )
 
 from paintjob_designer.color.converter import ColorConverter
+from paintjob_designer.constants import CLUT_PALETTE_SIZE
 from paintjob_designer.gui.widget.psx_color_button import PsxColorButton
 from paintjob_designer.models import Palette, PsxColor
 
-_MAX_COLORS = 16
+_MAX_COLORS = CLUT_PALETTE_SIZE
 
 
 class PaletteEditDialog(QDialog):

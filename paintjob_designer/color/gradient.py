@@ -4,6 +4,7 @@ import colorsys
 from enum import Enum
 
 from paintjob_designer.color.converter import ColorConverter
+from paintjob_designer.constants import RGB_COMPONENT_MAX
 from paintjob_designer.models import PsxColor, Rgb888
 
 
@@ -58,10 +59,14 @@ class GradientGenerator:
         self, start: Rgb888, end: Rgb888, t: float,
     ) -> tuple[int, int, int]:
         sh, ss, sv = colorsys.rgb_to_hsv(
-            start.r / 255.0, start.g / 255.0, start.b / 255.0,
+            start.r / RGB_COMPONENT_MAX,
+            start.g / RGB_COMPONENT_MAX,
+            start.b / RGB_COMPONENT_MAX,
         )
         eh, es, ev = colorsys.rgb_to_hsv(
-            end.r / 255.0, end.g / 255.0, end.b / 255.0,
+            end.r / RGB_COMPONENT_MAX,
+            end.g / RGB_COMPONENT_MAX,
+            end.b / RGB_COMPONENT_MAX,
         )
 
         # Take the shorter arc around the hue wheel (e.g. red→magenta, not
@@ -78,4 +83,8 @@ class GradientGenerator:
         v = sv + (ev - sv) * t
 
         r_f, g_f, b_f = colorsys.hsv_to_rgb(h, s, v)
-        return round(r_f * 255), round(g_f * 255), round(b_f * 255)
+        return (
+            round(r_f * RGB_COMPONENT_MAX),
+            round(g_f * RGB_COMPONENT_MAX),
+            round(b_f * RGB_COMPONENT_MAX),
+        )
