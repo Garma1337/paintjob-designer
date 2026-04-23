@@ -17,14 +17,7 @@ class SizeMismatchMode(Enum):
 
 
 class TextureImporter:
-    """Loads a PNG file and produces a target-sized `QuantizedTexture`.
-
-    Separates file I/O + resize policy from the quantization step so the
-    pure quantizer stays easy to test. The UI layer passes a user-chosen
-    `SizeMismatchMode` through to this class; the class raises a clear
-    `ValueError` when the policy can't be satisfied (e.g. crop requested
-    on a too-small source).
-    """
+    """Loads a PNG file and produces a target-sized `QuantizedTexture`."""
 
     def __init__(self, quantizer: TextureQuantizer) -> None:
         self._quantizer = quantizer

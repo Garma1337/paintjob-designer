@@ -3,7 +3,7 @@
 import base64
 import json
 
-from paintjob_designer.models import Paintjob, SlotColors, SlotRegionPixels
+from paintjob_designer.models import KartType, Paintjob, SlotColors, SlotRegionPixels
 from tests.conftest import slot_of
 
 
@@ -14,11 +14,19 @@ class TestPaintjobWriter:
 
         doc = json.loads(paintjob_writer.serialize(paintjob))
 
-        assert doc["schema_version"] == 1
+        assert doc["schema_version"] == 2
         assert doc["name"] == "Lime"
         assert doc["author"] == "Garma"
+        assert doc["kart_type"] == "kart"
         assert doc["base_character_id"] is None
         assert doc["slots"] == {}
+
+    def test_serializes_hovercraft_kart_type(self, paintjob_writer):
+        paintjob = Paintjob(name="Hover", kart_type=KartType.HOVERCRAFT)
+
+        doc = json.loads(paintjob_writer.serialize(paintjob))
+
+        assert doc["kart_type"] == "hovercraft"
 
     def test_serializes_slot_as_object_with_colors_and_pixels(self, paintjob_writer):
         paintjob = Paintjob(

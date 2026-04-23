@@ -1,0 +1,130 @@
+{
+  "$defs": {
+    "PsxColor": {
+      "description": "PSX 15-bit BGR color as a 4-digit hex string `#xxxx`. Bit 15 is the stp (stencil / semi-transparency) flag, bits 14-10 blue, 9-5 green, 4-0 red. Value `#0000` is the PSX transparency sentinel. Legacy 6-digit RGB hex (`#rrggbb`) is accepted on input and treated as stp=0.",
+      "examples": [
+        "#0000",
+        "#7fff",
+        "#8000"
+      ],
+      "pattern": "^#[0-9a-fA-F]{4}([0-9a-fA-F]{2})?$",
+      "title": "PsxColor",
+      "type": "string"
+    },
+    "Rgb888": {
+      "properties": {
+        "r": {
+          "default": 0,
+          "title": "R",
+          "type": "integer"
+        },
+        "g": {
+          "default": 0,
+          "title": "G",
+          "type": "integer"
+        },
+        "b": {
+          "default": 0,
+          "title": "B",
+          "type": "integer"
+        }
+      },
+      "title": "Rgb888",
+      "type": "object"
+    },
+    "SlotColors": {
+      "description": "One CLUT slot on a paintjob: 16 colors + optional per-region pixels.",
+      "properties": {
+        "colors": {
+          "items": {
+            "$ref": "#/$defs/PsxColor"
+          },
+          "title": "Colors",
+          "type": "array"
+        },
+        "pixels": {
+          "items": {
+            "$ref": "#/$defs/SlotRegionPixels"
+          },
+          "title": "Pixels",
+          "type": "array"
+        }
+      },
+      "title": "SlotColors",
+      "type": "object"
+    },
+    "SlotRegionPixels": {
+      "description": "4bpp pixel payload for one VRAM region of a slot.",
+      "properties": {
+        "vram_x": {
+          "default": 0,
+          "title": "Vram X",
+          "type": "integer"
+        },
+        "vram_y": {
+          "default": 0,
+          "title": "Vram Y",
+          "type": "integer"
+        },
+        "width": {
+          "default": 0,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "default": 0,
+          "title": "Height",
+          "type": "integer"
+        },
+        "data": {
+          "contentEncoding": "base64",
+          "default": "",
+          "format": "binary",
+          "title": "Data",
+          "type": "string"
+        }
+      },
+      "title": "SlotRegionPixels",
+      "type": "object"
+    }
+  },
+  "description": "A character-bound recolor: skin-slot CLUT overrides + gouraud\nvertex color overrides.",
+  "properties": {
+    "schema_version": {
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "name": {
+      "default": "",
+      "title": "Name",
+      "type": "string"
+    },
+    "author": {
+      "default": "",
+      "title": "Author",
+      "type": "string"
+    },
+    "character_id": {
+      "default": "",
+      "title": "Character Id",
+      "type": "string"
+    },
+    "slots": {
+      "additionalProperties": {
+        "$ref": "#/$defs/SlotColors"
+      },
+      "title": "Slots",
+      "type": "object"
+    },
+    "vertex_overrides": {
+      "additionalProperties": {
+        "$ref": "#/$defs/Rgb888"
+      },
+      "title": "Vertex Overrides",
+      "type": "object"
+    }
+  },
+  "title": "Skin",
+  "type": "object"
+}

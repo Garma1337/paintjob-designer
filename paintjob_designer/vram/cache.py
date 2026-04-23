@@ -12,12 +12,7 @@ _SHARED_VRM_RELATIVE = "bigfile/packs/shared.vrm"
 
 
 class VramCache:
-    """Keeps a single decoded `VramPage` in memory, keyed by iso_root.
-
-    Shared by every handler that needs VRAM (character bring-up, color edits,
-    future 3D viewer) so the 1 MB `shared.vrm` decode happens exactly once per
-    iso_root change.
-    """
+    """Keeps a single decoded `VramPage` in memory, keyed by iso_root."""
 
     def __init__(self, vram_reader: VramReader) -> None:
         self._reader = vram_reader

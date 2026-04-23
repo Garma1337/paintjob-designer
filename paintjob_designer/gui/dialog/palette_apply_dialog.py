@@ -21,12 +21,7 @@ from paintjob_designer.models import Palette, PsxColor
 
 
 class _MappingRowDelegate(QStyledItemDelegate):
-    """Row showing `slot[NN] ← palette color (#xxxx)` with a chip.
-
-    Position in the list IS the target slot color index — drag to reorder
-    to remap. The leading index label updates as rows move because the row
-    redraws on every model change.
-    """
+    """Row showing `slot[NN] ← palette color (#xxxx)` with a chip."""
 
     COLOR_ROLE = Qt.ItemDataRole.UserRole + 1
 
@@ -110,13 +105,7 @@ class _MappingRowDelegate(QStyledItemDelegate):
 
 
 class PaletteApplyDialog(QDialog):
-    """Reorderable mapping of a palette's entries onto a slot's color indices.
-
-    Position in the list IS the target slot color index: the entry at row 0
-    overwrites slot color 0, row 1 overwrites slot color 1, and so on. The
-    user drags rows to change the mapping. Any slot colors past the palette's
-    length are left untouched.
-    """
+    """Reorderable mapping of a palette's entries onto a slot's color indices."""
 
     def __init__(
         self,

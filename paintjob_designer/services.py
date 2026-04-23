@@ -12,10 +12,20 @@ from paintjob_designer.ctr.animation import AnimationDecoder
 from paintjob_designer.ctr.reader import CtrModelReader
 from paintjob_designer.ctr.vertex_assembler import VertexAssembler
 from paintjob_designer.gui.app_icon import AppIcon
+from paintjob_designer.gui.controller.character_picker import CharacterPicker
+from paintjob_designer.gui.controller.paintjob_library_controller import PaintjobLibraryController
+from paintjob_designer.gui.controller.palette_library_controller import PaletteLibraryController
+from paintjob_designer.gui.controller.profile_holder import ProfileHolder
+from paintjob_designer.gui.controller.skin_library_controller import SkinLibraryController
 from paintjob_designer.gui.handler.character_handler import CharacterHandler
 from paintjob_designer.gui.handler.color_handler import ColorHandler
 from paintjob_designer.gui.handler.project_handler import ProjectHandler
+from paintjob_designer.gui.util.dialogs import FilePicker, InputPrompt, MessageDialog
+from paintjob_designer.gui.util.library_writer import LibraryWriter
 from paintjob_designer.gui.widget.color_picker import PsxColorPicker
+from paintjob_designer.gui.widget.paintjob_library_sidebar import PaintjobLibrarySidebar
+from paintjob_designer.gui.widget.palette_sidebar import PaletteSidebar
+from paintjob_designer.gui.widget.skin_library_sidebar import SkinLibrarySidebar
 from paintjob_designer.paintjob.reader import PaintjobReader
 from paintjob_designer.paintjob.writer import PaintjobWriter
 from paintjob_designer.profile.reader import ProfileReader
@@ -24,6 +34,8 @@ from paintjob_designer.render.atlas_renderer import AtlasRenderer
 from paintjob_designer.render.atlas_uv_mapper import AtlasUvMapper
 from paintjob_designer.render.ray_picker import RayTrianglePicker
 from paintjob_designer.render.slot_region_deriver import SlotRegionDeriver
+from paintjob_designer.skin.reader import SkinReader
+from paintjob_designer.skin.writer import SkinWriter
 from paintjob_designer.texture.importer import TextureImporter
 from paintjob_designer.texture.quantizer import TextureQuantizer
 from paintjob_designer.vram.cache import VramCache
@@ -31,11 +43,7 @@ from paintjob_designer.vram.reader import VramReader
 
 
 def _default_config_path() -> Path:
-    """Resolve the platform's app-data directory for `paintjob-designer/config.json`.
-
-    Lazily imports Qt so `services.py` stays importable in headless contexts that
-    don't resolve `config_store` (tests, CLI tools).
-    """
+    """Resolve the platform's app-data path for the persisted config blob."""
     from PySide6.QtCore import QStandardPaths
     base = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation)
     return Path(base) / "paintjob-designer" / "config.json"
@@ -64,6 +72,14 @@ container.register("atlas_uv_mapper", lambda c: AtlasUvMapper())
 container.register("psx_color_picker", lambda c: PsxColorPicker(c.resolve("color_converter")))
 container.register("paintjob_reader", lambda c: PaintjobReader())
 container.register("paintjob_writer", lambda c: PaintjobWriter())
+container.register("skin_writer", lambda c: SkinWriter())
+container.register("skin_reader", lambda c: SkinReader())
+container.register("message_dialog", lambda c: MessageDialog())
+container.register("file_picker", lambda c: FilePicker())
+container.register("input_prompt", lambda c: InputPrompt())
+container.register("library_writer", lambda c: LibraryWriter())
+container.register("profile_holder", lambda c: ProfileHolder())
+container.register("character_picker", lambda c: CharacterPicker(c.resolve("profile_holder").get))
 container.register("texture_quantizer", lambda c: TextureQuantizer(c.resolve("color_converter")))
 container.register("texture_importer", lambda c: TextureImporter(c.resolve("texture_quantizer")))
 container.register("character_handler", lambda c: CharacterHandler(
@@ -79,4 +95,34 @@ container.register("color_handler", lambda c: ColorHandler(
 container.register("project_handler", lambda c: ProjectHandler(
     c.resolve("paintjob_reader"),
     c.resolve("paintjob_writer"),
+))
+container.register("paintjob_library_controller", lambda c: PaintjobLibraryController(
+    PaintjobLibrarySidebar(),
+    c.resolve("project_handler"),
+    c.resolve("paintjob_writer"),
+    c.resolve("library_writer"),
+    c.resolve("message_dialog"),
+    c.resolve("file_picker"),
+    c.resolve("input_prompt"),
+    c.resolve("slugifier"),
+    c.resolve("character_picker"),
+    c.resolve("color_handler"),
+))
+container.register("skin_library_controller", lambda c: SkinLibraryController(
+    SkinLibrarySidebar(),
+    c.resolve("skin_reader"),
+    c.resolve("skin_writer"),
+    c.resolve("library_writer"),
+    c.resolve("message_dialog"),
+    c.resolve("file_picker"),
+    c.resolve("input_prompt"),
+    c.resolve("slugifier"),
+    c.resolve("character_picker"),
+    c.resolve("color_handler"),
+))
+container.register("palette_library_controller", lambda c: PaletteLibraryController(
+    PaletteSidebar(c.resolve("color_converter")),
+    c.resolve("color_converter"),
+    c.resolve("message_dialog"),
+    c.resolve("input_prompt"),
 ))

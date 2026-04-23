@@ -8,30 +8,14 @@ from paintjob_designer.models import PsxColor, Rgb888
 
 
 class GradientSpace(Enum):
-    """Color space the interpolation is carried out in.
-
-    RGB is linear-in-channel — simplest, works for most palette ramps.
-    HSV interpolates hue along the shorter arc of the wheel, which produces
-    more saturated midpoints for gradients that cross primary colors (e.g.
-    red → blue through purple instead of the desaturated mid-RGB lerp).
-    """
+    """Color space the interpolation is carried out in."""
 
     RGB = "rgb"
     HSV = "hsv"
 
 
 class GradientGenerator:
-    """Produces PSX-quantized gradients between two `PsxColor` endpoints.
-
-    Stateless, but a class rather than a free function so it can be
-    registered in the DI container and injected where needed — keeps the
-    rest of the codebase consistent with the `ColorConverter` /
-    `ColorTransformer` pattern.
-
-    Converts via an injected `ColorConverter`: the converter already owns
-    the authoritative 5-5-5 ↔ 8-8-8 conversion and the u16 pack/unpack, so
-    the gradient module has no reason to reimplement either.
-    """
+    """Produces PSX-quantized gradients between two `PsxColor` endpoints."""
 
     def __init__(self, color_converter: ColorConverter) -> None:
         self._converter = color_converter
@@ -43,15 +27,7 @@ class GradientGenerator:
         count: int,
         space: GradientSpace,
     ) -> list[PsxColor]:
-        """Produce `count` PSX-quantized colors along the gradient.
-
-        Both endpoints are included (so `count >= 2`). Intermediate colors
-        inherit `start.stp` — a single slot typically shares its
-        transparency-bit state, so a gradient that mixes a `stp=0` and
-        `stp=1` endpoint would otherwise produce a confusing
-        half-transparent ramp. If the artist needs the other stp state,
-        they can fix the endpoint post-fill.
-        """
+        """Produce `count` PSX-quantized colors along the gradient."""
         if count <= 0:
             return []
 

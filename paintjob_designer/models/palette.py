@@ -6,13 +6,7 @@ from paintjob_designer.models.color import PsxColor
 
 
 class Palette(BaseModel):
-    """A named list of PSX colors the artist has saved for reuse.
-
-    Short (1–16 entries). When applied to a slot, each palette entry maps
-    to the corresponding slot color index by list position; artists can
-    reorder the entries before apply to change that mapping. Shorter
-    palettes leave the trailing slot colors untouched.
-    """
+    """A named list of PSX colors the artist has saved for reuse."""
 
     model_config = ConfigDict(frozen=False)
 

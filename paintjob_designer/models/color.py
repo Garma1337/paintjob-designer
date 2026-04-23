@@ -8,18 +8,7 @@ from pydantic_core import CoreSchema
 
 
 class PsxColor(BaseModel):
-    """PSX 15-bit BGR color with stencil bit.
-
-    Bit layout (16-bit little-endian short):
-        stp | bbbbb | ggggg | rrrrr
-         15 | 14-10 |  9-5  |  4-0
-
-    Stored as a single `value: int` so the stp bit round-trips losslessly
-    through serialization. Serializes as a 4-digit PSX u16 hex string
-    `"#xxxx"` (preserving stp) and accepts either that form or legacy
-    6-digit RGB hex (`"#rrggbb"`, treated as stp=0) when validating
-    from JSON.
-    """
+    """PSX 15-bit BGR color with stencil bit."""
 
     model_config = ConfigDict(frozen=False)
 
@@ -44,15 +33,14 @@ class PsxColor(BaseModel):
     def stp(self) -> int:
         return (self.value >> 15) & 0x1
 
+    @property
+    def is_transparent(self) -> bool:
+        """True when CTR will render this texel as transparent in-game."""
+        return (self.value & 0x7FFF) == 0
+
     @staticmethod
     def parse_hex(hex_str: str) -> int:
-        """Parse PSX u16 hex (`#xxxx`) or legacy RGB hex (`#rrggbb`) into a u16 value.
-
-        RGB hex maps to stp=0 + 5-bit-per-channel quantization, matching the
-        pre-pydantic reader's backward-compat behavior. Exposed on the class
-        (rather than a module-level helper) so the hex-format contract stays
-        co-located with the type that defines it.
-        """
+        """Parse PSX u16 hex (`#xxxx`) or legacy RGB hex (`#rrggbb`) into a u16 value."""
         s = hex_str.strip().lstrip("#")
 
         if len(s) == 4:
@@ -85,13 +73,7 @@ class PsxColor(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def _from_hex(cls, data: Any) -> Any:
-        """Accept a hex string or existing dict/model — anything else passes through.
-
-        Strings are the library JSON's native color format; dicts are what
-        pydantic itself produces when round-tripping through `model_dump()`
-        (we override the dump to a string, but existing `PsxColor(value=...)`
-        constructions pass a dict-like kwarg flow that hits this path).
-        """
+        """Accept a hex string or existing dict/model — anything else passes through."""
         if isinstance(data, str):
             return {"value": cls.parse_hex(data)}
 
@@ -101,13 +83,7 @@ class PsxColor(BaseModel):
     def __get_pydantic_json_schema__(
         cls, schema: CoreSchema, handler: GetJsonSchemaHandler,
     ) -> dict:
-        """Emit a string schema that matches the serialized hex form.
-
-        Pydantic's default schema generator describes the underlying
-        `value: int` field, but the JSON this model actually produces
-        (via `_to_hex`) is a string like `"#7fff"`. Override the schema
-        so external consumers see the correct on-the-wire shape.
-        """
+        """Emit a string schema that matches the serialized hex form."""
         return {
             "type": "string",
             "title": "PsxColor",

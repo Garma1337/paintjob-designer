@@ -8,13 +8,7 @@ from paintjob_designer.models.profile import ClutCoord
 
 @dataclass
 class SlotRegion:
-    """One rectangular texture region that samples through a paintjob slot's CLUT.
-
-    Coordinates are in the 1024x512 16bpp VRAM pixel grid. For a 4bpp texture, each
-    VRAM u16 holds four CLUT indices (low nibble first); `vram_width` is therefore
-    smaller than the underlying pixel count — the 4bpp pixel count is
-    `vram_width * stretch`, where `stretch = 4` for Bit4, 2 for Bit8, 1 otherwise.
-    """
+    """One rectangular texture region that samples through a paintjob slot's CLUT."""
     vram_x: int = 0
     vram_y: int = 0
     vram_width: int = 0
@@ -34,14 +28,7 @@ class SlotRegions:
 
 @dataclass
 class CharacterSlotRegions:
-    """Slot regions for one character.
-
-    `slots` holds regions whose CLUT matches a paintjob slot — those are the
-    only ones the user can recolor. `unmatched_regions` holds everything else
-    the mesh actually samples (driver figures, wheels, tires, shared assets);
-    they still need to be decoded for a correct 3D render but always use the
-    default VRAM CLUT, never a paintjob override.
-    """
+    """Slot regions for one character."""
     character_id: str = ""
     slots: dict[str, SlotRegions] = field(default_factory=dict)
     unmatched_regions: list[SlotRegions] = field(default_factory=list)

@@ -9,15 +9,7 @@ from paintjob_designer.models import PsxColor, Rgb888
 
 
 class PsxColorButton(QPushButton):
-    """Push-button that shows a PSX color and opens `QColorDialog` on click.
-
-    Extracted from the Transform Colors + Gradient Fill dialogs — both had a
-    near-identical private `_ColorButton`, which is exactly the kind of
-    drift-prone duplication that's easy to let grow quietly.
-
-    The stylesheet is scoped to the button's object name so it doesn't
-    cascade into the dialog's other QPushButtons (Apply / Cancel / Preview).
-    """
+    """Push-button that shows a PSX color and opens `QColorDialog` on click."""
 
     color_picked = Signal(PsxColor)
 
@@ -60,19 +52,27 @@ class PsxColorButton(QPushButton):
 
     def _open_picker(self) -> None:
         current = self._converter.psx_to_rgb(self._color)
-        initial_q = QColor(current.r, current.g, current.b)
-        chosen = QColorDialog.getColor(
-            initial_q,
-            self,
-            "Pick color",
-            QColorDialog.ColorDialogOption.DontUseNativeDialog,
+        initial_alpha = 0 if self._color.is_transparent else 255
+        initial_q = QColor(current.r, current.g, current.b, initial_alpha)
+
+        options = (
+            QColorDialog.ColorDialogOption.DontUseNativeDialog
+            | QColorDialog.ColorDialogOption.ShowAlphaChannel
         )
+
+        chosen = QColorDialog.getColor(initial_q, self, "Pick color", options)
         if not chosen.isValid():
             return
 
-        psx = self._converter.rgb_to_psx(
-            Rgb888(r=chosen.red(), g=chosen.green(), b=chosen.blue()),
-            stp=self._color.stp,
-        )
+        # Alpha is binary on PSX: half-opacity isn't representable, so any
+        # picked alpha below 128 collapses to the transparent sentinel.
+        if chosen.alpha() < 128:
+            psx = PsxColor(value=0)
+        else:
+            psx = self._converter.rgb_to_psx(
+                Rgb888(r=chosen.red(), g=chosen.green(), b=chosen.blue()),
+                stp=self._color.stp,
+            )
+
         self.set_color(psx)
         self.color_picked.emit(psx)

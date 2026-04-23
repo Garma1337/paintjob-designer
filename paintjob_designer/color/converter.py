@@ -4,11 +4,7 @@ from paintjob_designer.models import PsxColor, Rgb888
 
 
 class ColorConverter:
-    """Converts between PSX 15-bit BGR and RGB888, and parses/formats hex strings.
-
-    PSX colors have a 5-bit-per-component grid; converting RGB -> PSX -> RGB is
-    lossy and produces a "snapped" RGB value that matches what the GPU will display.
-    """
+    """Converts between PSX 15-bit BGR and RGB888, and parses/formats hex strings."""
 
     def psx_to_rgb(self, color: PsxColor) -> Rgb888:
         return Rgb888(
@@ -52,21 +48,11 @@ class ColorConverter:
         return self.rgb_to_psx(self.hex_to_rgb(hex_str), stp=stp)
 
     def psx_to_u16_hex(self, color: PsxColor) -> str:
-        """Serialize the full 16-bit PSX value as a `#xxxx` hex string.
-
-        Unlike `psx_to_hex` this preserves the stp bit (bit 15) — important
-        for roundtripping through JSON, since a black color with stp=1 renders
-        as opaque black, but the same RGB with stp=0 renders transparent
-        (value==0 is PSX's transparent sentinel).
-        """
+        """Serialize the full 16-bit PSX value as a `#xxxx` hex string."""
         return f"#{color.value:04x}"
 
     def u16_hex_to_psx(self, hex_str: str) -> PsxColor:
-        """Parse a `#xxxx` u16 hex string (produced by `psx_to_u16_hex`).
-
-        Also accepts the legacy 6-digit `#rrggbb` form for backwards compat,
-        treating it as stp=0.
-        """
+        """Parse a `#xxxx` u16 hex string (produced by `psx_to_u16_hex`)."""
         s = hex_str.strip().lstrip("#")
         if len(s) == 4:
             try:

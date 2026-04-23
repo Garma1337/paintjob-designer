@@ -2,18 +2,7 @@
 
 
 class BitStreamReader:
-    """LSB-first bit reader over a byte buffer, with a quirky per-u32 bit-reversal.
-
-    Port of `BitStreamReader.cs` in ctr-tools. The CTR
-    compressed-animation bitstream is encoded in 4-byte blocks where each block is
-    read little-endian, then bit-reversed before bits are pulled LSB-first. Net
-    effect is that the *last* byte of each block is consumed first, MSB to LSB,
-    then the third byte, and so on.
-
-    Reads past the end return 0 rather than raising — the decompressor over-reads
-    intentionally (it consumes up to `num_verts × max_bits` bits, which can exceed
-    the real payload for the last frame).
-    """
+    """LSB-first bit reader over a byte buffer, with a quirky per-u32 bit-reversal."""
 
     def __init__(self, data: bytes) -> None:
         self._data = data

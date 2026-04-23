@@ -44,7 +44,7 @@ def _minimal_character_profile() -> CharacterProfile:
         id="crash",
         display_name="Crash",
         mesh_source="bigfile/models/racers/hi/crash.ctr",
-        slots=[
+        kart_slots=[
             SlotProfile(name="front", clut=ClutCoord(x=0, y=0)),
         ],
     )

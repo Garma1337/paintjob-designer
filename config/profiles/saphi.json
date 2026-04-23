@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "saphi-ntsc-u",
   "display_name": "Saphi Track ROM (NTSC-U based)",
   "vram_page": {
@@ -11,7 +11,8 @@
       "id": "crash",
       "display_name": "Crash Bandicoot",
       "mesh_source": "bigfile/models/racers/hi/crash.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -43,7 +44,8 @@
           "clut_menu": {
             "x": 624,
             "y": 220
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -100,13 +102,15 @@
             "y": 503
           }
         }
-      ]
+      ],
+      "skin_slots": []
     },
     {
       "id": "cortex",
       "display_name": "Dr. Neo Cortex",
       "mesh_source": "bigfile/models/racers/hi/cortex.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -138,7 +142,8 @@
           "clut_menu": {
             "x": 624,
             "y": 219
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -195,13 +200,15 @@
             "y": 508
           }
         }
-      ]
+      ],
+      "skin_slots": []
     },
     {
       "id": "tiny",
       "display_name": "Tiny Tiger",
       "mesh_source": "bigfile/models/racers/hi/tiny.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -233,7 +240,8 @@
           "clut_menu": {
             "x": 944,
             "y": 506
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -290,13 +298,15 @@
             "y": 510
           }
         }
-      ]
+      ],
+      "skin_slots": []
     },
     {
       "id": "coco",
       "display_name": "Coco Bandicoot",
       "mesh_source": "bigfile/models/racers/hi/coco.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -328,7 +338,8 @@
           "clut_menu": {
             "x": 944,
             "y": 505
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -385,13 +396,15 @@
             "y": 507
           }
         }
-      ]
+      ],
+      "skin_slots": []
     },
     {
       "id": "ngin",
       "display_name": "N. Gin",
       "mesh_source": "bigfile/models/racers/hi/ngin.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -423,7 +436,8 @@
           "clut_menu": {
             "x": 944,
             "y": 503
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -480,13 +494,15 @@
             "y": 506
           }
         }
-      ]
+      ],
+      "skin_slots": []
     },
     {
       "id": "dingo",
       "display_name": "Dingodile",
       "mesh_source": "bigfile/models/racers/hi/dingo.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -518,7 +534,8 @@
           "clut_menu": {
             "x": 944,
             "y": 501
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -575,13 +592,15 @@
             "y": 507
           }
         }
-      ]
+      ],
+      "skin_slots": []
     },
     {
       "id": "polar",
       "display_name": "Polar",
       "mesh_source": "bigfile/models/racers/hi/polar.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -613,7 +632,8 @@
           "clut_menu": {
             "x": 944,
             "y": 500
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -670,13 +690,15 @@
             "y": 509
           }
         }
-      ]
+      ],
+      "skin_slots": []
     },
     {
       "id": "pura",
       "display_name": "Pura",
       "mesh_source": "bigfile/models/racers/hi/pura.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -708,7 +730,8 @@
           "clut_menu": {
             "x": 944,
             "y": 499
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -765,13 +788,15 @@
             "y": 508
           }
         }
-      ]
+      ],
+      "skin_slots": []
     },
     {
       "id": "pinstripe",
       "display_name": "Pinstripe Potoroo",
       "mesh_source": "bigfile/models/racers/hi/pinstripe.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -803,7 +828,8 @@
           "clut_menu": {
             "x": 944,
             "y": 498
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -860,13 +886,15 @@
             "y": 507
           }
         }
-      ]
+      ],
+      "skin_slots": []
     },
     {
       "id": "papu",
       "display_name": "Papu Papu",
       "mesh_source": "bigfile/models/racers/hi/papu.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -898,7 +926,8 @@
           "clut_menu": {
             "x": 624,
             "y": 220
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -955,13 +984,15 @@
             "y": 508
           }
         }
-      ]
+      ],
+      "skin_slots": []
     },
     {
       "id": "roo",
       "display_name": "Ripper Roo",
       "mesh_source": "bigfile/models/racers/hi/roo.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -993,7 +1024,8 @@
           "clut_menu": {
             "x": 624,
             "y": 511
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -1050,13 +1082,15 @@
             "y": 505
           }
         }
-      ]
+      ],
+      "skin_slots": []
     },
     {
       "id": "joe",
       "display_name": "Komodo Joe",
       "mesh_source": "bigfile/models/racers/hi/joe.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -1088,7 +1122,8 @@
           "clut_menu": {
             "x": 624,
             "y": 510
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -1145,13 +1180,15 @@
             "y": 510
           }
         }
-      ]
+      ],
+      "skin_slots": []
     },
     {
       "id": "tropy",
       "display_name": "N. Tropy",
       "mesh_source": "bigfile/models/racers/hi/ntropy.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -1183,7 +1220,8 @@
           "clut_menu": {
             "x": 624,
             "y": 507
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -1240,13 +1278,15 @@
             "y": 509
           }
         }
-      ]
+      ],
+      "skin_slots": []
     },
     {
       "id": "penta",
       "display_name": "Penta Penguin",
       "mesh_source": "bigfile/models/racers/hi/pen.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -1278,7 +1318,8 @@
           "clut_menu": {
             "x": 624,
             "y": 506
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -1335,13 +1376,15 @@
             "y": 505
           }
         }
-      ]
+      ],
+      "skin_slots": []
     },
     {
       "id": "fakecrash",
       "display_name": "Fake Crash",
       "mesh_source": "bigfile/models/racers/hi/fake.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -1373,7 +1416,8 @@
           "clut_menu": {
             "x": 624,
             "y": 505
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -1430,7 +1474,8 @@
             "y": 511
           }
         }
-      ]
+      ],
+      "skin_slots": []
     }
   ],
   "paintjob_slots": [

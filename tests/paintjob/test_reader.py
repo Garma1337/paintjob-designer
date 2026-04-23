@@ -36,7 +36,9 @@ class TestPaintjobReader:
     def test_reads_metadata(self, paintjob_reader):
         paintjob = paintjob_reader.read(_paintjob_json())
 
-        assert paintjob.schema_version == 1
+        # Reader normalizes the in-memory schema_version to the current
+        # value, even when the file on disk used an older schema.
+        assert paintjob.schema_version == 2
         assert paintjob.name == "Lime Racer"
         assert paintjob.author == "Garma"
 

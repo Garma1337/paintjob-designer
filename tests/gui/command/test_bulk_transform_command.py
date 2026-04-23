@@ -22,9 +22,9 @@ class _RecordingWindow:
         self.bulk_calls.append(list(operations))
 
 
-def _edit(paintjob, slot_name: str, color_index: int, old: int, new: int) -> BulkColorEdit:
+def _edit(asset, slot_name: str, color_index: int, old: int, new: int) -> BulkColorEdit:
     return BulkColorEdit(
-        paintjob=paintjob,
+        asset=asset,
         slot=SlotRegions(slot_name=slot_name),
         color_index=color_index,
         old_color=PsxColor(value=old),
@@ -60,9 +60,9 @@ class TestInitialRedoIsNoOp:
         assert len(ops) == 2
 
         # Forward order on redo: first edit first.
-        pj0, slot0, idx0, color0 = ops[0]
-        pj1, slot1, idx1, color1 = ops[1]
-        assert pj0 is paintjob and pj1 is paintjob
+        a0, slot0, idx0, color0 = ops[0]
+        a1, slot1, idx1, color1 = ops[1]
+        assert a0 is paintjob and a1 is paintjob
         assert slot0.slot_name == "front"
         assert slot1.slot_name == "back"
         assert color0.value == 0x1111

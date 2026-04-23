@@ -5,12 +5,7 @@ from paintjob_designer.models import CtrDelta, Vector3b
 
 
 class AnimationDecoder:
-    """Decodes CTR compressed animation frames.
-
-    Port of `CtrFrame.cs:DecompressVertices` /
-    `DeltaToVertex` / `GetTemporalValue` plus `CtrDelta.cs:unpackValue`
-    in ctr-tools.
-    """
+    """Decodes CTR compressed animation frames."""
 
     def unpack_delta(self, value: int) -> CtrDelta:
         """Decode a 4-byte packed `CtrDelta` from its u32 representation."""
@@ -26,15 +21,7 @@ class AnimationDecoder:
     def decompress_vertices(
         self, bitstream: BitStreamReader, deltas: list[CtrDelta],
     ) -> list[Vector3b]:
-        """Reconstruct one frame's vertex bytes from the bitstream + per-vertex deltas.
-
-        Keeps a running base (X, Y, Z) across vertices:
-            - If the delta's bit-width for an axis is 7, reset that axis's base to 0.
-            - Read a signed temporal value from the bitstream.
-            - axis_byte = (base + base_delta + temporal) mod 256.
-              (For X specifically, base_delta is left-shifted by 1.)
-            - The resulting Vector3b swaps Y and Z when packed (matches ctr-tools).
-        """
+        """Reconstruct one frame's vertex bytes from the bitstream + per-vertex deltas."""
         result: list[Vector3b] = []
         base_x = 0
         base_y = 0
@@ -64,11 +51,7 @@ class AnimationDecoder:
         return result
 
     def _temporal_value(self, bitstream: BitStreamReader, delta_bits: int) -> int:
-        """Read a signed temporal value from the bitstream using `delta_bits` width.
-
-        First bit is the sign: 1 -> start at -(1 << delta_bits), 0 -> start at 0.
-        Then `delta_bits` more bits are OR'd in MSB-first.
-        """
+        """Read a signed temporal value from the bitstream using `delta_bits` width."""
         result = -(1 << delta_bits) if bitstream.take_bit() == 1 else 0
         for i in range(delta_bits):
             result |= bitstream.take_bit() << (delta_bits - 1 - i)

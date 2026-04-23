@@ -7,17 +7,7 @@ from PySide6.QtGui import QIcon
 
 
 class AppIcon:
-    """Loads the application icon from the bundled `assets/icon.ico`.
-
-    Handles the dev-checkout vs PyInstaller-frozen path split in one
-    place: in a source tree the file lives at `<repo>/assets/icon.ico`,
-    in a frozen build PyInstaller extracts bundled data under
-    `sys._MEIPASS`. Both resolve to the same logical asset.
-
-    Kept as a class (rather than a free function) so call sites can
-    inject a test double or swap in a different asset without reaching
-    for monkeypatch at import time.
-    """
+    """Loads the application icon from the bundled `assets/icon.ico`."""
 
     _FILENAME = "app.ico"
 

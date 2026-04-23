@@ -9,7 +9,7 @@ from paintjob_designer.models import Paintjob
 _SCHEMA_PATH = (
     Path(__file__).resolve().parent.parent.parent
     / "schema"
-    / "library.json"
+    / "paintjobs_library_schema.json"
 )
 
 
@@ -28,8 +28,9 @@ class TestLibraryJsonSchema:
         committed = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
 
         assert generated == committed, (
-            "Committed schema/library.json is out of sync with the pydantic "
-            "Paintjob model. Regenerate with `python tools/dump_schema.py`."
+            "Committed schema/paintjobs_library_schema.json is out of sync "
+            "with the pydantic Paintjob model. Regenerate with "
+            "`python tools/dump_schema.py`."
         )
 
     def test_psx_color_serializes_as_hex_string(self) -> None:

@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "vanilla-ntsc-u",
   "display_name": "Crash Team Racing (NTSC-U, base ISO)",
   "vram_page": {
@@ -11,7 +11,8 @@
       "id": "crash",
       "display_name": "Crash Bandicoot",
       "mesh_source": "bigfile/models/racers/hi/crash.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -43,7 +44,8 @@
           "clut_menu": {
             "x": 624,
             "y": 220
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -100,13 +102,37 @@
             "y": 503
           }
         }
+      ],
+      "skin_slots": [
+        {
+          "name": "extra_112_253",
+          "clut": {
+            "x": 112,
+            "y": 253
+          }
+        },
+        {
+          "name": "extra_112_254",
+          "clut": {
+            "x": 112,
+            "y": 254
+          }
+        },
+        {
+          "name": "extra_304_253",
+          "clut": {
+            "x": 304,
+            "y": 253
+          }
+        }
       ]
     },
     {
       "id": "cortex",
       "display_name": "Dr. Neo Cortex",
       "mesh_source": "bigfile/models/racers/hi/cortex.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -138,7 +164,8 @@
           "clut_menu": {
             "x": 624,
             "y": 219
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -195,13 +222,51 @@
             "y": 508
           }
         }
+      ],
+      "skin_slots": [
+        {
+          "name": "extra_64_256",
+          "clut": {
+            "x": 64,
+            "y": 256
+          }
+        },
+        {
+          "name": "extra_144_248",
+          "clut": {
+            "x": 144,
+            "y": 248
+          }
+        },
+        {
+          "name": "extra_384_257",
+          "clut": {
+            "x": 384,
+            "y": 257
+          }
+        },
+        {
+          "name": "extra_384_258",
+          "clut": {
+            "x": 384,
+            "y": 258
+          }
+        },
+        {
+          "name": "extra_384_261",
+          "clut": {
+            "x": 384,
+            "y": 261
+          }
+        }
       ]
     },
     {
       "id": "tiny",
       "display_name": "Tiny Tiger",
       "mesh_source": "bigfile/models/racers/hi/tiny.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -233,7 +298,8 @@
           "clut_menu": {
             "x": 944,
             "y": 506
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -290,13 +356,142 @@
             "y": 510
           }
         }
+      ],
+      "skin_slots": [
+        {
+          "name": "extra_48_251",
+          "clut": {
+            "x": 48,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_64_252",
+          "clut": {
+            "x": 64,
+            "y": 252
+          }
+        },
+        {
+          "name": "extra_64_253",
+          "clut": {
+            "x": 64,
+            "y": 253
+          }
+        },
+        {
+          "name": "extra_64_258",
+          "clut": {
+            "x": 64,
+            "y": 258
+          }
+        },
+        {
+          "name": "extra_144_253",
+          "clut": {
+            "x": 144,
+            "y": 253
+          }
+        },
+        {
+          "name": "extra_144_254",
+          "clut": {
+            "x": 144,
+            "y": 254
+          }
+        },
+        {
+          "name": "extra_144_255",
+          "clut": {
+            "x": 144,
+            "y": 255
+          }
+        },
+        {
+          "name": "extra_272_246",
+          "clut": {
+            "x": 272,
+            "y": 246
+          }
+        },
+        {
+          "name": "extra_400_259",
+          "clut": {
+            "x": 400,
+            "y": 259
+          }
+        },
+        {
+          "name": "extra_400_260",
+          "clut": {
+            "x": 400,
+            "y": 260
+          }
+        },
+        {
+          "name": "extra_400_261",
+          "clut": {
+            "x": 400,
+            "y": 261
+          }
+        },
+        {
+          "name": "extra_400_262",
+          "clut": {
+            "x": 400,
+            "y": 262
+          }
+        },
+        {
+          "name": "extra_400_263",
+          "clut": {
+            "x": 400,
+            "y": 263
+          }
+        },
+        {
+          "name": "extra_416_256",
+          "clut": {
+            "x": 416,
+            "y": 256
+          }
+        },
+        {
+          "name": "extra_976_228",
+          "clut": {
+            "x": 976,
+            "y": 228
+          }
+        },
+        {
+          "name": "extra_992_243",
+          "clut": {
+            "x": 992,
+            "y": 243
+          }
+        },
+        {
+          "name": "extra_992_244",
+          "clut": {
+            "x": 992,
+            "y": 244
+          }
+        },
+        {
+          "name": "extra_1008_224",
+          "clut": {
+            "x": 1008,
+            "y": 224
+          }
+        }
       ]
     },
     {
       "id": "coco",
       "display_name": "Coco Bandicoot",
       "mesh_source": "bigfile/models/racers/hi/coco.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -328,7 +523,8 @@
           "clut_menu": {
             "x": 944,
             "y": 505
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -385,13 +581,65 @@
             "y": 507
           }
         }
+      ],
+      "skin_slots": [
+        {
+          "name": "extra_64_254",
+          "clut": {
+            "x": 64,
+            "y": 254
+          }
+        },
+        {
+          "name": "extra_160_250",
+          "clut": {
+            "x": 160,
+            "y": 250
+          }
+        },
+        {
+          "name": "extra_416_260",
+          "clut": {
+            "x": 416,
+            "y": 260
+          }
+        },
+        {
+          "name": "extra_416_261",
+          "clut": {
+            "x": 416,
+            "y": 261
+          }
+        },
+        {
+          "name": "extra_432_256",
+          "clut": {
+            "x": 432,
+            "y": 256
+          }
+        },
+        {
+          "name": "extra_992_245",
+          "clut": {
+            "x": 992,
+            "y": 245
+          }
+        },
+        {
+          "name": "extra_1008_225",
+          "clut": {
+            "x": 1008,
+            "y": 225
+          }
+        }
       ]
     },
     {
       "id": "ngin",
       "display_name": "N. Gin",
       "mesh_source": "bigfile/models/racers/hi/ngin.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -423,7 +671,8 @@
           "clut_menu": {
             "x": 944,
             "y": 503
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -480,13 +729,93 @@
             "y": 506
           }
         }
+      ],
+      "skin_slots": [
+        {
+          "name": "extra_176_250",
+          "clut": {
+            "x": 176,
+            "y": 250
+          }
+        },
+        {
+          "name": "extra_176_251",
+          "clut": {
+            "x": 176,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_320_256",
+          "clut": {
+            "x": 320,
+            "y": 256
+          }
+        },
+        {
+          "name": "extra_432_260",
+          "clut": {
+            "x": 432,
+            "y": 260
+          }
+        },
+        {
+          "name": "extra_432_261",
+          "clut": {
+            "x": 432,
+            "y": 261
+          }
+        },
+        {
+          "name": "extra_432_262",
+          "clut": {
+            "x": 432,
+            "y": 262
+          }
+        },
+        {
+          "name": "extra_432_263",
+          "clut": {
+            "x": 432,
+            "y": 263
+          }
+        },
+        {
+          "name": "extra_960_233",
+          "clut": {
+            "x": 960,
+            "y": 233
+          }
+        },
+        {
+          "name": "extra_992_246",
+          "clut": {
+            "x": 992,
+            "y": 246
+          }
+        },
+        {
+          "name": "extra_1008_226",
+          "clut": {
+            "x": 1008,
+            "y": 226
+          }
+        },
+        {
+          "name": "extra_1008_227",
+          "clut": {
+            "x": 1008,
+            "y": 227
+          }
+        }
       ]
     },
     {
       "id": "dingo",
       "display_name": "Dingodile",
       "mesh_source": "bigfile/models/racers/hi/dingo.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -518,7 +847,8 @@
           "clut_menu": {
             "x": 944,
             "y": 501
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -575,13 +905,79 @@
             "y": 507
           }
         }
+      ],
+      "skin_slots": [
+        {
+          "name": "extra_64_255",
+          "clut": {
+            "x": 64,
+            "y": 255
+          }
+        },
+        {
+          "name": "extra_64_259",
+          "clut": {
+            "x": 64,
+            "y": 259
+          }
+        },
+        {
+          "name": "extra_80_248",
+          "clut": {
+            "x": 80,
+            "y": 248
+          }
+        },
+        {
+          "name": "extra_320_261",
+          "clut": {
+            "x": 320,
+            "y": 261
+          }
+        },
+        {
+          "name": "extra_320_262",
+          "clut": {
+            "x": 320,
+            "y": 262
+          }
+        },
+        {
+          "name": "extra_320_263",
+          "clut": {
+            "x": 320,
+            "y": 263
+          }
+        },
+        {
+          "name": "extra_960_235",
+          "clut": {
+            "x": 960,
+            "y": 235
+          }
+        },
+        {
+          "name": "extra_976_235",
+          "clut": {
+            "x": 976,
+            "y": 235
+          }
+        },
+        {
+          "name": "extra_976_250",
+          "clut": {
+            "x": 976,
+            "y": 250
+          }
+        }
       ]
     },
     {
       "id": "polar",
       "display_name": "Polar",
       "mesh_source": "bigfile/models/racers/hi/polar.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -613,7 +1009,8 @@
           "clut_menu": {
             "x": 944,
             "y": 500
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -670,13 +1067,51 @@
             "y": 509
           }
         }
+      ],
+      "skin_slots": [
+        {
+          "name": "extra_336_259",
+          "clut": {
+            "x": 336,
+            "y": 259
+          }
+        },
+        {
+          "name": "extra_336_260",
+          "clut": {
+            "x": 336,
+            "y": 260
+          }
+        },
+        {
+          "name": "extra_336_261",
+          "clut": {
+            "x": 336,
+            "y": 261
+          }
+        },
+        {
+          "name": "extra_464_262",
+          "clut": {
+            "x": 464,
+            "y": 262
+          }
+        },
+        {
+          "name": "extra_976_236",
+          "clut": {
+            "x": 976,
+            "y": 236
+          }
+        }
       ]
     },
     {
       "id": "pura",
       "display_name": "Pura",
       "mesh_source": "bigfile/models/racers/hi/pura.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -708,7 +1143,8 @@
           "clut_menu": {
             "x": 944,
             "y": 499
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -765,13 +1201,65 @@
             "y": 508
           }
         }
+      ],
+      "skin_slots": [
+        {
+          "name": "extra_352_257",
+          "clut": {
+            "x": 352,
+            "y": 257
+          }
+        },
+        {
+          "name": "extra_352_258",
+          "clut": {
+            "x": 352,
+            "y": 258
+          }
+        },
+        {
+          "name": "extra_352_259",
+          "clut": {
+            "x": 352,
+            "y": 259
+          }
+        },
+        {
+          "name": "extra_352_260",
+          "clut": {
+            "x": 352,
+            "y": 260
+          }
+        },
+        {
+          "name": "extra_352_261",
+          "clut": {
+            "x": 352,
+            "y": 261
+          }
+        },
+        {
+          "name": "extra_352_262",
+          "clut": {
+            "x": 352,
+            "y": 262
+          }
+        },
+        {
+          "name": "extra_352_263",
+          "clut": {
+            "x": 352,
+            "y": 263
+          }
+        }
       ]
     },
     {
       "id": "pinstripe",
       "display_name": "Pinstripe Potoroo",
       "mesh_source": "bigfile/models/racers/hi/pinstripe.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -803,7 +1291,8 @@
           "clut_menu": {
             "x": 944,
             "y": 498
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -860,13 +1349,65 @@
             "y": 507
           }
         }
+      ],
+      "skin_slots": [
+        {
+          "name": "extra_80_249",
+          "clut": {
+            "x": 80,
+            "y": 249
+          }
+        },
+        {
+          "name": "extra_368_259",
+          "clut": {
+            "x": 368,
+            "y": 259
+          }
+        },
+        {
+          "name": "extra_464_263",
+          "clut": {
+            "x": 464,
+            "y": 263
+          }
+        },
+        {
+          "name": "extra_976_245",
+          "clut": {
+            "x": 976,
+            "y": 245
+          }
+        },
+        {
+          "name": "extra_976_246",
+          "clut": {
+            "x": 976,
+            "y": 246
+          }
+        },
+        {
+          "name": "extra_992_233",
+          "clut": {
+            "x": 992,
+            "y": 233
+          }
+        },
+        {
+          "name": "extra_1008_229",
+          "clut": {
+            "x": 1008,
+            "y": 229
+          }
+        }
       ]
     },
     {
       "id": "papu",
       "display_name": "Papu Papu",
       "mesh_source": "bigfile/models/racers/hi/papu.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -898,7 +1439,8 @@
           "clut_menu": {
             "x": 624,
             "y": 220
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -955,13 +1497,93 @@
             "y": 508
           }
         }
+      ],
+      "skin_slots": [
+        {
+          "name": "extra_48_252",
+          "clut": {
+            "x": 48,
+            "y": 252
+          }
+        },
+        {
+          "name": "extra_80_250",
+          "clut": {
+            "x": 80,
+            "y": 250
+          }
+        },
+        {
+          "name": "extra_224_249",
+          "clut": {
+            "x": 224,
+            "y": 249
+          }
+        },
+        {
+          "name": "extra_928_244",
+          "clut": {
+            "x": 928,
+            "y": 244
+          }
+        },
+        {
+          "name": "extra_928_245",
+          "clut": {
+            "x": 928,
+            "y": 245
+          }
+        },
+        {
+          "name": "extra_928_246",
+          "clut": {
+            "x": 928,
+            "y": 246
+          }
+        },
+        {
+          "name": "extra_928_247",
+          "clut": {
+            "x": 928,
+            "y": 247
+          }
+        },
+        {
+          "name": "extra_960_240",
+          "clut": {
+            "x": 960,
+            "y": 240
+          }
+        },
+        {
+          "name": "extra_960_241",
+          "clut": {
+            "x": 960,
+            "y": 241
+          }
+        },
+        {
+          "name": "extra_976_247",
+          "clut": {
+            "x": 976,
+            "y": 247
+          }
+        },
+        {
+          "name": "extra_992_235",
+          "clut": {
+            "x": 992,
+            "y": 235
+          }
+        }
       ]
     },
     {
       "id": "roo",
       "display_name": "Ripper Roo",
       "mesh_source": "bigfile/models/racers/hi/roo.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -993,7 +1615,8 @@
           "clut_menu": {
             "x": 624,
             "y": 511
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -1050,13 +1673,51 @@
             "y": 505
           }
         }
+      ],
+      "skin_slots": [
+        {
+          "name": "extra_80_251",
+          "clut": {
+            "x": 80,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_480_256",
+          "clut": {
+            "x": 480,
+            "y": 256
+          }
+        },
+        {
+          "name": "extra_928_251",
+          "clut": {
+            "x": 928,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_976_237",
+          "clut": {
+            "x": 976,
+            "y": 237
+          }
+        },
+        {
+          "name": "extra_992_247",
+          "clut": {
+            "x": 992,
+            "y": 247
+          }
+        }
       ]
     },
     {
       "id": "joe",
       "display_name": "Komodo Joe",
       "mesh_source": "bigfile/models/racers/hi/joe.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -1088,7 +1749,8 @@
           "clut_menu": {
             "x": 624,
             "y": 510
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -1145,13 +1807,72 @@
             "y": 510
           }
         }
+      ],
+      "skin_slots": [
+        {
+          "name": "extra_80_252",
+          "clut": {
+            "x": 80,
+            "y": 252
+          }
+        },
+        {
+          "name": "extra_272_245",
+          "clut": {
+            "x": 272,
+            "y": 245
+          }
+        },
+        {
+          "name": "extra_272_254",
+          "clut": {
+            "x": 272,
+            "y": 254
+          }
+        },
+        {
+          "name": "extra_272_255",
+          "clut": {
+            "x": 272,
+            "y": 255
+          }
+        },
+        {
+          "name": "extra_944_244",
+          "clut": {
+            "x": 944,
+            "y": 244
+          }
+        },
+        {
+          "name": "extra_944_246",
+          "clut": {
+            "x": 944,
+            "y": 246
+          }
+        },
+        {
+          "name": "extra_976_238",
+          "clut": {
+            "x": 976,
+            "y": 238
+          }
+        },
+        {
+          "name": "extra_992_248",
+          "clut": {
+            "x": 992,
+            "y": 248
+          }
+        }
       ]
     },
     {
       "id": "tropy",
       "display_name": "N. Tropy",
       "mesh_source": "bigfile/models/racers/hi/ntropy.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -1183,7 +1904,8 @@
           "clut_menu": {
             "x": 624,
             "y": 507
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -1240,13 +1962,135 @@
             "y": 509
           }
         }
+      ],
+      "skin_slots": [
+        {
+          "name": "extra_80_253",
+          "clut": {
+            "x": 80,
+            "y": 253
+          }
+        },
+        {
+          "name": "extra_80_254",
+          "clut": {
+            "x": 80,
+            "y": 254
+          }
+        },
+        {
+          "name": "extra_80_255",
+          "clut": {
+            "x": 80,
+            "y": 255
+          }
+        },
+        {
+          "name": "extra_96_251",
+          "clut": {
+            "x": 96,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_96_252",
+          "clut": {
+            "x": 96,
+            "y": 252
+          }
+        },
+        {
+          "name": "extra_256_242",
+          "clut": {
+            "x": 256,
+            "y": 242
+          }
+        },
+        {
+          "name": "extra_256_243",
+          "clut": {
+            "x": 256,
+            "y": 243
+          }
+        },
+        {
+          "name": "extra_288_246",
+          "clut": {
+            "x": 288,
+            "y": 246
+          }
+        },
+        {
+          "name": "extra_944_250",
+          "clut": {
+            "x": 944,
+            "y": 250
+          }
+        },
+        {
+          "name": "extra_944_251",
+          "clut": {
+            "x": 944,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_944_252",
+          "clut": {
+            "x": 944,
+            "y": 252
+          }
+        },
+        {
+          "name": "extra_944_253",
+          "clut": {
+            "x": 944,
+            "y": 253
+          }
+        },
+        {
+          "name": "extra_960_247",
+          "clut": {
+            "x": 960,
+            "y": 247
+          }
+        },
+        {
+          "name": "extra_960_248",
+          "clut": {
+            "x": 960,
+            "y": 248
+          }
+        },
+        {
+          "name": "extra_992_249",
+          "clut": {
+            "x": 992,
+            "y": 249
+          }
+        },
+        {
+          "name": "extra_992_250",
+          "clut": {
+            "x": 992,
+            "y": 250
+          }
+        },
+        {
+          "name": "extra_1008_232",
+          "clut": {
+            "x": 1008,
+            "y": 232
+          }
+        }
       ]
     },
     {
       "id": "penta",
       "display_name": "Penta Penguin",
       "mesh_source": "bigfile/models/racers/hi/pen.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -1278,7 +2122,8 @@
           "clut_menu": {
             "x": 624,
             "y": 506
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -1335,13 +2180,44 @@
             "y": 505
           }
         }
+      ],
+      "skin_slots": [
+        {
+          "name": "extra_256_248",
+          "clut": {
+            "x": 256,
+            "y": 248
+          }
+        },
+        {
+          "name": "extra_256_249",
+          "clut": {
+            "x": 256,
+            "y": 249
+          }
+        },
+        {
+          "name": "extra_976_239",
+          "clut": {
+            "x": 976,
+            "y": 239
+          }
+        },
+        {
+          "name": "extra_992_251",
+          "clut": {
+            "x": 992,
+            "y": 251
+          }
+        }
       ]
     },
     {
       "id": "fakecrash",
       "display_name": "Fake Crash",
       "mesh_source": "bigfile/models/racers/hi/fake.ctr",
-      "slots": [
+      "kart_type": "kart",
+      "kart_slots": [
         {
           "name": "front",
           "clut": {
@@ -1373,7 +2249,8 @@
           "clut_menu": {
             "x": 624,
             "y": 505
-          }
+          },
+          "non_portable": true
         },
         {
           "name": "brown",
@@ -1428,6 +2305,137 @@
           "clut_menu": {
             "x": 816,
             "y": 511
+          }
+        }
+      ],
+      "skin_slots": [
+        {
+          "name": "extra_48_253",
+          "clut": {
+            "x": 48,
+            "y": 253
+          }
+        },
+        {
+          "name": "extra_288_254",
+          "clut": {
+            "x": 288,
+            "y": 254
+          }
+        }
+      ]
+    },
+    {
+      "id": "oxide",
+      "display_name": "Nitros Oxide",
+      "mesh_source": "bigfile/models/racers/hi/oxide.ctr",
+      "kart_type": "hovercraft",
+      "kart_slots": [
+        {
+          "name": "hoverkart",
+          "clut": {
+            "x": 288,
+            "y": 248
+          }
+        }
+      ],
+      "skin_slots": [
+        {
+          "name": "eyes",
+          "clut": {
+            "x": 448,
+            "y": 262
+          }
+        },
+        {
+          "name": "control_panel",
+          "clut": {
+            "x": 480,
+            "y": 257
+          }
+        },
+        {
+          "name": "cockpit_dome",
+          "clut": {
+            "x": 256,
+            "y": 253
+          }
+        },
+        {
+          "name": "cockpit_frame",
+          "clut": {
+            "x": 128,
+            "y": 248
+          }
+        },
+        {
+          "name": "head",
+          "clut": {
+            "x": 96,
+            "y": 248
+          }
+        },
+        {
+          "name": "skin",
+          "clut": {
+            "x": 976,
+            "y": 240
+          }
+        },
+        {
+          "name": "engine_glow",
+          "clut": {
+            "x": 304,
+            "y": 249
+          }
+        },
+        {
+          "name": "suit_purple",
+          "clut": {
+            "x": 288,
+            "y": 245
+          }
+        },
+        {
+          "name": "trim_brown",
+          "clut": {
+            "x": 288,
+            "y": 247
+          }
+        },
+        {
+          "name": "cockpit_trim",
+          "clut": {
+            "x": 496,
+            "y": 257
+          }
+        },
+        {
+          "name": "accent_a",
+          "clut": {
+            "x": 960,
+            "y": 251
+          }
+        },
+        {
+          "name": "accent_b",
+          "clut": {
+            "x": 976,
+            "y": 241
+          }
+        },
+        {
+          "name": "accent_c",
+          "clut": {
+            "x": 976,
+            "y": 249
+          }
+        },
+        {
+          "name": "accent_d",
+          "clut": {
+            "x": 1008,
+            "y": 234
           }
         }
       ]
@@ -1493,6 +2501,10 @@
     {
       "name": "Fake Crash",
       "default_character_id": "fakecrash"
+    },
+    {
+      "name": "Nitros Oxide",
+      "default_character_id": "oxide"
     }
   ]
 }

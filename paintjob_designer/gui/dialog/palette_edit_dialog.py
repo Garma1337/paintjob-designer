@@ -1,6 +1,5 @@
 # coding: utf-8
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
@@ -19,21 +18,11 @@ from paintjob_designer.color.converter import ColorConverter
 from paintjob_designer.gui.widget.psx_color_button import PsxColorButton
 from paintjob_designer.models import Palette, PsxColor
 
-
 _MAX_COLORS = 16
 
 
 class PaletteEditDialog(QDialog):
-    """Name + ordered color list editor for one `Palette`.
-
-    Cap is 16 entries to mirror a slot's CLUT size — applying a palette
-    with more than 16 colors has no meaningful target. Minimum is 1 so
-    the palette is always applyable.
-
-    Users can add, remove, and reorder (shift left/right) individual
-    entries; each entry opens `QColorDialog` via `PsxColorButton` for
-    standard PSX-snapped editing.
-    """
+    """Name + ordered color list editor for one `Palette`."""
 
     def __init__(
         self,

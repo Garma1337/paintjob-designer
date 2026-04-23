@@ -10,16 +10,7 @@ from paintjob_designer.models import PsxColor, Rgb888
 
 @dataclass
 class QuantizedTexture:
-    """PSX-ready 4bpp texture: packed pixel indices + 16-entry CLUT.
-
-    `pixels` is the 4bpp packed pixel buffer — two pixels per byte, low
-    nibble = left pixel, matching the vanilla CTR texture layout the GPU
-    samples. Size is `(width * height) / 2` bytes; width must be even.
-
-    `palette` always has exactly 16 entries. Index 0 is the PSX
-    per-pixel transparency sentinel (value `0x0000`); the remaining 15
-    slots hold colors quantized from the source image.
-    """
+    """PSX-ready 4bpp texture: packed pixel indices + 16-entry CLUT."""
     width: int
     height: int
     pixels: bytes
@@ -27,15 +18,7 @@ class QuantizedTexture:
 
 
 class TextureQuantizer:
-    """Converts an RGBA image into PSX 4bpp pixels + a 16-entry CLUT.
-
-    Reserves palette slot 0 for transparency (value `0x0000`) following
-    the PSX convention the in-race renderer uses; pixels with alpha
-    below the threshold map to index 0, fully-opaque pixels quantize
-    into slots 1..15. Source images must already match the target
-    dimensions — scaling / cropping happens in the import dialog,
-    not here, so this class stays pure and trivially testable.
-    """
+    """Converts an RGBA image into PSX 4bpp pixels + a 16-entry CLUT."""
 
     _ALPHA_THRESHOLD = 128
     _PALETTE_SIZE = 16
@@ -47,13 +30,7 @@ class TextureQuantizer:
     def quantize(
         self, image: Image.Image, width: int, height: int,
     ) -> QuantizedTexture:
-        """Quantize `image` into a 4bpp PSX texture at `width` x `height`.
-
-        Raises `ValueError` when the image dimensions don't match, or
-        when `width` is odd (4bpp packs two pixels per byte, so odd
-        widths would straddle bytes across rows and misalign VRAM
-        uploads).
-        """
+        """Quantize `image` into a 4bpp PSX texture at `width` x `height`."""
         if width <= 0 or height <= 0:
             raise ValueError(f"Width/height must be positive, got {width}x{height}")
 
@@ -80,12 +57,7 @@ class TextureQuantizer:
     def _build_palette_and_indices(
         self, rgba: Image.Image,
     ) -> tuple[list[int], list[PsxColor]]:
-        """Quantize the opaque pixels into 15 colors, reserving slot 0 for transparent.
-
-        PIL's `quantize` handles the palette clustering; we shift its
-        indices up by one so index 0 stays free, then re-map any pixel
-        whose source alpha is below the threshold down to index 0.
-        """
+        """Quantize the opaque pixels into 15 colors, reserving slot 0 for transparent."""
         # Quantize as RGB (alpha ignored); we'll re-merge alpha after.
         rgb = rgba.convert("RGB")
         quantized = rgb.quantize(
@@ -118,13 +90,7 @@ class TextureQuantizer:
         return indices, palette
 
     def _extract_pil_palette(self, quantized: Image.Image) -> list[tuple[int, int, int]]:
-        """Read PIL's packed palette bytes into RGB triples.
-
-        `quantized.getpalette()` returns a flat list of `3 * 256` ints (even
-        if the image uses fewer colors); we slice to the number of distinct
-        entries the image actually references so we don't pad our 15-slot
-        space with junk colors.
-        """
+        """Read PIL's packed palette bytes into RGB triples."""
         raw = quantized.getpalette()
         if raw is None:
             return []
@@ -141,11 +107,7 @@ class TextureQuantizer:
         ]
 
     def _pack_4bpp(self, indices: list[int], width: int, height: int) -> bytes:
-        """Pack a list of 0..15 indices into 4bpp bytes, two pixels per byte.
-
-        Low nibble = left pixel, high nibble = right pixel — the order the
-        PSX GPU samples when reading a 4bpp texture page.
-        """
+        """Pack a list of 0..15 indices into 4bpp bytes, two pixels per byte."""
         if len(indices) != width * height:
             raise ValueError(
                 f"Expected {width * height} indices, got {len(indices)}",

@@ -3,6 +3,7 @@
 from paintjob_designer.models import (
     AssembledMesh,
     CtrMesh,
+    Rgb888,
     Vector3b,
     Vector3f,
 )
@@ -13,33 +14,20 @@ _RING_SIZE = 4
 
 
 class VertexAssembler:
-    """Walks a `CtrMesh`'s draw-command tristrip stream and emits flat triangles.
+    """Walks a `CtrMesh`'s draw-command tristrip stream and emits flat triangles."""
 
-    Port of `CtrMesh.cs:GetVertexBuffer()` in ctr-tools.
-
-    The CTR renderer draws from a 256-slot vertex stack. Each draw command either
-    pushes one vertex from the packed array into a stack slot (default) or reuses a
-    previously written slot (`stack_vertex` flag). A 4-slot ring buffer holds the last
-    four vertices/colors/tex-layouts; once we have at least 3 (strip_length >= 2), each
-    subsequent command closes another triangle in the strip. `new_tristrip` resets the
-    ring; `swap_vertex` swaps slots 0 and 1; `flip_normal` reverses the last two verts
-    of the emitted triangle.
-
-    The emitted positions/uvs are per-triangle in the same order ctr-tools produces
-    (post-`verts.Reverse` pass).
-    """
-
-    def assemble(self, mesh: CtrMesh, frame=None) -> AssembledMesh:
-        """Emit triangles for `mesh`'s draw stream.
-
-        Uses `mesh.frame` by default — suitable for static meshes and for the
-        initial pose of animated ones. Pass a specific `CtrFrame` (e.g. from
-        `mesh.anims[i].frames[j]`) to assemble a different keyframe during
-        playback without mutating the mesh.
-        """
+    def assemble(
+        self,
+        mesh: CtrMesh,
+        frame=None,
+        vertex_overrides: dict[int, Rgb888] | None = None,
+    ) -> AssembledMesh:
+        """Emit triangles for `mesh`'s draw stream."""
         target_frame = frame if frame is not None else mesh.frame
         if not target_frame.vertices:
             return AssembledMesh()
+
+        overrides = vertex_overrides or {}
 
         world_verts = self._decompress_vertices(
             target_frame.vertices, target_frame.offset, mesh.scale,
@@ -76,7 +64,7 @@ class VertexAssembler:
             temp_tex[3] = draw.tex_index
 
             temp_color[0], temp_color[1], temp_color[2] = temp_color[1], temp_color[2], temp_color[3]
-            temp_color[3] = self._color_for_draw(mesh, draw)
+            temp_color[3] = self._color_for_draw(mesh, draw, overrides)
 
             if draw.swap_vertex:
                 temp_pos[1] = temp_pos[0]
@@ -95,12 +83,7 @@ class VertexAssembler:
         return result
 
     def _uv_for_draw(self, mesh: CtrMesh, draw, corner: int) -> tuple[int, int]:
-        """UV of the given TextureLayout corner (0..3) for this draw; (0,0) if untextured.
-
-        ctr-tools uses only corners 0..2 when emitting triangles — corner 3 is never
-        consumed — so this is really a helper for slot 3 of the ring (which slides down
-        and only the lower slots are read out).
-        """
+        """UV of the given TextureLayout corner (0..3) for this draw; (0,0) if untextured."""
         if draw.tex_index == 0:
             return 0, 0
 
@@ -146,14 +129,19 @@ class VertexAssembler:
         result.texture_layout_indices.append(draw.tex_index)
         result.gouraud_colors.extend(colors)
 
-    def _color_for_draw(self, mesh: CtrMesh, draw) -> tuple[float, float, float]:
-        """Normalized RGB for `draw.color_index` into the mesh's Gouraud table.
-
-        Falls back to white (1,1,1) when the index is out of range — some .ctr
-        files set color_index on draws whose mesh has no color table.
-        """
+    def _color_for_draw(
+        self,
+        mesh: CtrMesh,
+        draw,
+        overrides: dict[int, Rgb888],
+    ) -> tuple[float, float, float]:
+        """Normalized RGB for `draw.color_index` into the mesh's Gouraud table."""
         if draw.color_index >= len(mesh.gouraud_colors):
             return 1.0, 1.0, 1.0
+
+        override = overrides.get(draw.color_index)
+        if override is not None:
+            return override.r / 255.0, override.g / 255.0, override.b / 255.0
 
         c = mesh.gouraud_colors[draw.color_index]
         return c.r / 255.0, c.g / 255.0, c.b / 255.0

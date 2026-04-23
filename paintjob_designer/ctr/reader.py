@@ -30,21 +30,7 @@ FRAME_VERTS_BASE_OFFSET = 0x1C
 
 
 class CtrModelReader:
-    """Parses a CTR character/object model file into a `CtrModel`.
-
-    The file is a PatchedContainer wrapping the inner model data:
-
-        u4 data_size
-        bytes[data_size] inner   # parsed as a CtrModel
-        u4 ptr_map_size
-        u4[ptr_map_size / 4] ptr_map
-
-    Pointer fields inside the inner data are offsets relative to the start of that
-    inner slice — the patch table is ignored at read time (it only matters when
-    relocating pointers while rewriting the file).
-
-    Port of `CtrModel.cs` + `CtrMesh.cs` in ctr-tools.
-    """
+    """Parses a CTR character/object model file into a `CtrModel`."""
 
     def __init__(self, animation_decoder: AnimationDecoder) -> None:
         self._animations = animation_decoder
@@ -212,13 +198,7 @@ class CtrModelReader:
         deltas: list[CtrDelta] | None = None,
         frame_size: int | None = None,
     ) -> CtrFrame:
-        """Read a single CtrFrame at the reader's current position.
-
-        When `deltas` is None the frame carries raw Vector3b vertex bytes.
-        When `deltas` is a list, the frame's vertex section is a compressed bitstream
-        and `frame_size` must give the on-disk size of the frame struct so we know
-        how many bytes the bitstream occupies.
-        """
+        """Read a single CtrFrame at the reader's current position."""
         offset = Vector3f(
             x=reader.s2() / GTE_SCALE_SMALL,
             y=reader.s2() / GTE_SCALE_SMALL,
@@ -255,13 +235,7 @@ class CtrModelReader:
         num_anims: int,
         num_verts: int,
     ) -> list[CtrAnim]:
-        """Read every animation for this mesh (name + all keyframes).
-
-        Mirrors `CtrAnim.Read` in ctr-tools: pull the pointer array at
-        `ptr_anims`, then for each entry walk the anim header (name,
-        `num_frames_pack`, `frame_size`, `ptr_deltas`) + delta table +
-        back-to-back keyframes.
-        """
+        """Read every animation for this mesh (name + all keyframes)."""
         reader.seek(ptr_anims)
         anim_ptrs = [reader.u4() for _ in range(num_anims)]
         return [self._read_one_animation(reader, ptr, num_verts) for ptr in anim_ptrs]

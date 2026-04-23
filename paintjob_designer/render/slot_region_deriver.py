@@ -29,14 +29,6 @@ _PAGE_HEIGHT = 256
 class SlotRegionDeriver:
     """Groups a `CtrMesh`'s `TextureLayout`s by CLUT coordinate and matches each
     group to a `SlotProfile`, producing the VRAM rectangles a paintjob slot owns.
-
-    The grouping is port of `CtrMesh.GroupByPalette` + `Combine` in ctr-tools —
-    faces that point at the same CLUT are merged into a bounding UV box. We
-    additionally key by `(page_x, page_y, bpp)` so a single CLUT referenced from
-    two VRAM pages produces two rectangles instead of a meaningless span.
-
-    Only triangle corners 0..2 of each layout are consulted, matching ctr-tools'
-    `uv[3] = uv[2]` normalization (CTR uses triangles — the 4th UV is junk).
     """
 
     def derive(

@@ -23,27 +23,7 @@ _BYTES_PER_PIXEL = 4  # RGBA
 
 
 class AtlasRenderer:
-    """Decodes a `VramPage` + `Paintjob` into an RGBA atlas ready for display.
-
-    Orchestrates three helpers:
-      - `PsxRgbaLut` for the 16bpp baseline scan (one gather over VRAM)
-      - `VramRegionDecoder` for per-slot 4bpp rewrites
-      - local CLUT resolution (paintjob vs. VRAM default)
-
-    Output is a 4096x512 RGBA buffer (row-major, `r, g, b, a` per pixel).
-    Every VRAM u16 occupies 4 horizontal atlas pixels so 4bpp texture
-    regions decode to their natural texel size. 16bpp-decoded regions
-    (the baseline pass) end up stretched 4x horizontally, which is fine
-    for the CLUT strips and context they typically occupy.
-
-    Two entry points:
-        - `render_atlas`: full decode. Call once per character load.
-        - `render_slot`: incremental decode of one slot's regions, for
-          fast update when the user edits a single CLUT color.
-
-    Both return RGBA `bytes`. The incremental path applies its writes
-    in-place on the caller-owned buffer, returning it for chaining.
-    """
+    """Decodes a `VramPage` + `Paintjob` into an RGBA atlas ready for display."""
 
     ATLAS_WIDTH = _ATLAS_WIDTH
     ATLAS_HEIGHT = _ATLAS_HEIGHT
@@ -91,12 +71,7 @@ class AtlasRenderer:
         paintjob: Paintjob,
         slot: SlotRegions,
     ) -> bytearray:
-        """Re-decode just this slot's regions into an already-rendered atlas.
-
-        The caller keeps the baseline 16bpp decode and only pays for the
-        16-to-few-hundred pixels the edited slot actually covers. Used on
-        every color-picker change.
-        """
+        """Re-decode just this slot's regions into an already-rendered atlas."""
         clut = self._resolve_clut(vram, slot.clut, paintjob, slot.slot_name)
         pixels_by_pos = self._paintjob_pixels_by_pos(paintjob, slot.slot_name)
         
@@ -113,14 +88,7 @@ class AtlasRenderer:
         pixels_by_pos: dict,
         rgba: bytearray,
     ) -> None:
-        """Route a single region through the pixel payload or the VRAM fallback.
-
-        A textured paintjob carries `SlotRegionPixels` keyed by VRAM
-        position; when one matches this region we decode straight from
-        those bytes (so imported pixel art shows up 1:1). Otherwise we
-        fall back to the mesh's vanilla 4bpp pixels in VRAM so CLUT-only
-        paintjobs keep working unchanged.
-        """
+        """Route a single region through the pixel payload or the VRAM fallback."""
         override = pixels_by_pos.get((region.vram_x, region.vram_y))
         if override is not None:
             ok = self._decoder.decode_pixels_into(
@@ -133,13 +101,7 @@ class AtlasRenderer:
         self._decoder.decode_into(vram, region, clut, rgba)
 
     def _paintjob_pixels_by_pos(self, paintjob: Paintjob, slot_name: str) -> dict:
-        """Index a slot's imported pixel payloads by their VRAM anchor.
-
-        Keyed on `(vram_x, vram_y)` so the per-region decoder can look up
-        "does this paintjob have custom pixels for this exact region?"
-        in O(1). Returns an empty dict for CLUT-only paintjobs or slots
-        the paintjob doesn't touch.
-        """
+        """Index a slot's imported pixel payloads by their VRAM anchor."""
         slot = paintjob.slots.get(slot_name)
         if slot is None or not slot.pixels:
             return {}
@@ -147,13 +109,7 @@ class AtlasRenderer:
         return {(p.vram_x, p.vram_y): p for p in slot.pixels}
 
     def _decode_16bpp_baseline(self, vram: VramPage, rgba: bytearray) -> None:
-        """Vectorized 16bpp decode: every VRAM u16 -> 4 adjacent atlas pixels.
-
-        Gathers packed RGBA values from the precomputed 65536-entry LUT,
-        reshapes to 2D, repeats 4x horizontally for the 4bpp atlas stretch,
-        and copies the bytes into the caller-owned buffer. ~50x faster
-        than a per-pixel loop.
-        """
+        """Vectorized 16bpp decode: every VRAM u16 -> 4 adjacent atlas pixels."""
         vram_u16 = np.frombuffer(vram.data, dtype=np.uint16)
         packed = self._lut.as_array()[vram_u16]                            # (524288,)
         packed_2d = packed.reshape(VramPage.HEIGHT, VramPage.WIDTH)        # (512, 1024)
@@ -167,12 +123,7 @@ class AtlasRenderer:
         paintjob: Paintjob,
         slot_name: str,
     ) -> list[int]:
-        """Return 16 PSX color u16s for a slot's CLUT.
-
-        If the paintjob has this slot populated, its colors win; otherwise
-        the default CLUT is read straight from the VRAM page at the given
-        `clut_coord`.
-        """
+        """Return 16 PSX color u16s for a slot's CLUT."""
         if slot_name in paintjob.slots:
             return [c.value for c in paintjob.slots[slot_name].colors]
 

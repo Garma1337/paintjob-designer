@@ -10,8 +10,7 @@ from paintjob_designer.profile.reader import ProfileReader
 class ProfileRegistry:
     """Enumerates and loads the built-in profiles shipped under
     `config/profiles/`. Third-party profiles can be loaded directly via
-    `ProfileReader` without going through the registry.
-    """
+    `ProfileReader` without going through the registry."""
 
     def __init__(self, profile_reader: ProfileReader) -> None:
         self._reader = profile_reader
@@ -30,14 +29,7 @@ class ProfileRegistry:
 
     @staticmethod
     def _resolve_bundled_dir() -> Path:
-        """Resolve `config/profiles/` whether we're running from source or
-        a PyInstaller one-file bundle.
-
-        In a PyInstaller build the data files live under
-        `sys._MEIPASS/config/profiles` (see the release workflow's
-        `--add-data` flag). Outside the bundle we walk up from this file
-        to the repo root — same layout the tests expect.
-        """
+        """Resolve `config/profiles/` whether we're running from source or a PyInstaller one-file bundle."""
         meipass = getattr(sys, "_MEIPASS", None)
         if meipass:
             return Path(meipass) / "config" / "profiles"

@@ -2,16 +2,16 @@
 
 # Paintjob Library Format
 
-This document describes the on-disk format the paintjob designer writes when you "Save Library As…". The idea is that authors of mods for CTR write their own tools that can consume a paintjob library to integrate it into their mod.
+This document describes the on-disk format the designer writes when you "Export Paintjob Library As…". The idea is that authors of mods for CTR write their own tools that consume a paintjob library to integrate it into their mod. For the parallel skin-library format, see [skin_library_format.md](./skin_library_format.md).
 
-**Machine-readable schema**: [`schema/library.json`](../schema/library.json). Generated from the pydantic models in `paintjob_designer/models/` and kept in lockstep with them via `tests/paintjob/test_schema.py`. Consumer tools in other languages can validate against this file using any JSON Schema library; the fields / types / examples it emits are authoritative. If the schema and this human-readable doc ever disagree, the schema wins.
+**Machine-readable schema**: [`schema/paintjobs_library_schema.json`](../schema/paintjobs_library_schema.json). Generated from the pydantic models in `paintjob_designer/models/` and kept in lockstep with them via `tests/paintjob/test_schema.py`. Consumer tools in other languages can validate against this file using any JSON Schema library; the fields / types / examples it emits are authoritative. If the schema and this human-readable doc ever disagree, the schema wins.
 
 ## Directory layout
 
 A saved library is a directory of JSON files, one per paintjob:
 
 ```
-MyLibrary/
+MyPaintjobLibrary/
 ├── 00_crash.json
 ├── 01_cortex.json
 ├── 02_racing_stripes.json
@@ -30,9 +30,10 @@ Each `.json` is a single `Paintjob`:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "name": "Racing stripes",
   "author": "Garma",
+  "kart_type": "kart",
   "base_character_id": "crash",
   "slots": {
     "front": {
@@ -49,15 +50,16 @@ Each `.json` is a single `Paintjob`:
 
 ### Top-level fields
 
-| Field               | Type           | Meaning                                                                                                                                                          |
-|---------------------|----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `schema_version`    | int            | Always `1` currently. Consumers should reject newer versions they don't understand.                                                                              |
-| `name`              | string         | Artist-supplied display name. May be empty.                                                                                                                      |
-| `author`            | string         | Artist-supplied author tag. May be empty.                                                                                                                        |
-| `base_character_id` | string \| null | Non-authoritative home-character hint. Used by the designer's preview fallback. Consumers may use it to infer default character bindings but aren't required to. |
-| `slots`             | object         | Map of slot name → slot payload. Only slots the artist has explicitly authored appear here; unedited slots are absent, not zero-filled.                          |
+| Field               | Type                       | Meaning                                                                                                                                                          |
+|---------------------|----------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `schema_version`    | int                        | Always `2` currently. Consumers should reject newer versions they don't understand.                                                                              |
+| `name`              | string                     | Artist-supplied display name. May be empty.                                                                                                                      |
+| `author`            | string                     | Artist-supplied author tag. May be empty.                                                                                                                        |
+| `kart_type`         | `"kart"` \| `"hovercraft"` | Which vehicle class the paintjob targets. A kart paintjob can preview on any kart character, never on a hovercraft, and vice versa.                              |
+| `base_character_id` | string \| null             | Non-authoritative home-character hint. Used by the designer's preview fallback. Consumers may use it to infer default character bindings but aren't required to. |
+| `slots`             | object                     | Map of slot name → slot payload. Only kart-side slots appear here. Slot names are taken from the active profile's `kart_slots` list.                             |
 
-Paintjobs are fully character-agnostic. The designer only allows texture imports on slots whose VRAM rect dimensions are invariant across every profile character, so imported pixel buffers upload cleanly to any character. Slots with per-character dim variation (e.g. `floor` in vanilla CTR) are CLUT-editable but not textureable — they have no `pixels` entries in any paintjob.
+Paintjobs are **kart-only and character-portable**. The designer enforces this by only seeding `kart_slots` from the profile when a paintjob is created and by hiding the skin-side scope from the Transform Colors panel in paintjob mode. The character bound to a skin (its `character_id`) and the character a paintjob lives "on" (its `base_character_id`) are entirely independent.
 
 ### Slot payload
 
@@ -90,7 +92,7 @@ When present, each `pixels[]` entry describes one VRAM rectangle:
 | Field              | Type   | Meaning                                                                                                                                                                                                                                                                                                    |
 |--------------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `vram_x`, `vram_y` | int    | VRAM position (in 16bpp u16 units) the slot sampled from on the character the artist was previewing at import time. Informational — consumer tools should use each target character's own mesh-derived rect at runtime, not this field. Included to make the payload self-describing and to aid debugging. |
-| `width`, `height`  | int    | **Pixel-space** dimensions — the actual number of indexed pixels per row, not VRAM u16 units. For 4bpp payloads `width` is always a multiple of 4 (a VRAM u16 holds 4 nibbles). Consumer tools that emit PSX `RECT` structs must divide `width` by 4 before emitting `RECT.w`.                             |
+| `width`, `height`  | int    | **Pixel-space** dimensions — the actual number of indexed pixels per row, not VRAM u16 units. For 4bpp payloads `width` is always a multiple of 4 (a VRAM u16 holds 4 nibbles). Consumer tools that emit PSX `RECT` structs must divide `width` by 4 before emitting `RECT.w`.                              |
 | `data`             | string | Base64-encoded 4bpp packed pixel bytes. Two pixels per byte, **low nibble = left pixel**, matching the PSX GPU's sample order. Expected byte count = `width * height / 2`.                                                                                                                                 |
 
 ## Color format
@@ -104,7 +106,7 @@ bit  9–5:  green (5 bits)
 bit  4–0:  red   (5 bits)
 ```
 
-- Value `0x0000` is the PSX per-pixel transparency sentinel.
+- Value `0x0000` is the PSX per-pixel transparency sentinel. The designer's renderer also draws every CLUT entry whose 15 colour bits are zero (regardless of stp) as transparent, matching how the real PS1 GPU displays the kart.
 - The designer's color picker and texture quantizer snap to this 5-5-5 grid; round-tripping through the JSON is exact.
 
 ## Pixel format
@@ -119,10 +121,12 @@ To decode: iterate `data` byte-by-byte, each byte produces two pixel indices (lo
 
 ## Canonical slot names
 
-The designer uses a fixed 8-slot order that mirrors the PSX `Texture` union used by CTR's vanilla paintjob system:
+The designer uses a fixed kart-slot order for standard-kart characters that mirrors the PSX `Texture` union used by CTR's vanilla paintjob system:
 
 ```
 front, back, floor, brown, motorside, motortop, bridge, exhaust
 ```
 
-Consumer tools should use this exact spelling when looking up entries in the `slots` map. Any slot name not in this list is "unrecognized" — the designer may still preserve round-trip if the JSON has it, but consumers targeting CTR should ignore or error on unknown names.
+For `hovercraft` paintjobs (Oxide), the kart-slot list collapses to a single hover-skirt CLUT — see the active profile's `kart_slots` entry for the exact name.
+
+Consumer tools should use these exact spellings when looking up entries in the `slots` map. Any slot name not in the active profile's kart_slots list is "unrecognized"; the designer may still preserve round-trip if the JSON has it, but consumers targeting CTR should ignore or error on unknown names.

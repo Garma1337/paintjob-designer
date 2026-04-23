@@ -5,6 +5,7 @@ import json
 from paintjob_designer.models import (
     CharacterProfile,
     ClutCoord,
+    KartType,
     PaintjobSlotProfile,
     Profile,
     SlotProfile,
@@ -64,11 +65,23 @@ class ProfileReader:
         )
 
     def _parse_character(self, raw: dict) -> CharacterProfile:
+        kart_type_raw = str(raw.get("kart_type", KartType.KART.value))
+
+        try:
+            kart_type = KartType(kart_type_raw)
+        except ValueError as exc:
+            raise ValueError(
+                f"Unknown kart_type {kart_type_raw!r} for character "
+                f"{raw.get('id', '?')!r}"
+            ) from exc
+
         return CharacterProfile(
             id=str(raw.get("id", "")),
             display_name=str(raw.get("display_name", "")),
             mesh_source=str(raw.get("mesh_source", "")),
-            slots=[self._parse_slot(s) for s in raw.get("slots", [])],
+            kart_type=kart_type,
+            kart_slots=[self._parse_slot(s) for s in raw.get("kart_slots", [])],
+            skin_slots=[self._parse_slot(s) for s in raw.get("skin_slots", [])],
         )
 
     def _parse_slot(self, raw: dict) -> SlotProfile:
@@ -89,4 +102,5 @@ class ProfileReader:
                 y=int(clut_raw.get("y", 0)),
             ),
             clut_menu=clut_menu,
+            non_portable=bool(raw.get("non_portable", False)),
         )

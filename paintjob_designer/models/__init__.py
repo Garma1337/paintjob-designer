@@ -17,7 +17,7 @@ from paintjob_designer.models.ctr_mesh import (
     Vector3f,
 )
 from paintjob_designer.models.paintjob import (
-    CANONICAL_SLOT_NAMES,
+    KART_SLOT_NAMES,
     Paintjob,
     PaintjobLibrary,
     SlotColors,
@@ -27,11 +27,13 @@ from paintjob_designer.models.palette import Palette, PaletteLibrary
 from paintjob_designer.models.profile import (
     CharacterProfile,
     ClutCoord,
+    KartType,
     PaintjobSlotProfile,
     Profile,
     SlotProfile,
     VramPageDimensions,
 )
+from paintjob_designer.models.skin import Skin, SkinLibrary
 from paintjob_designer.models.slot_regions import (
     CharacterSlotRegions,
     SlotRegion,
@@ -46,15 +48,18 @@ __all__ = [
     "CharacterProfile",
     "SlotProfile",
     "ClutCoord",
+    "KartType",
     "PaintjobSlotProfile",
     "VramPageDimensions",
     "Paintjob",
     "PaintjobLibrary",
     "Palette",
     "PaletteLibrary",
+    "Skin",
+    "SkinLibrary",
     "SlotColors",
     "SlotRegionPixels",
-    "CANONICAL_SLOT_NAMES",
+    "KART_SLOT_NAMES",
     "CtrModel",
     "CtrMesh",
     "CtrAnim",

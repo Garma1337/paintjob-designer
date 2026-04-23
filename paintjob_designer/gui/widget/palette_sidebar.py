@@ -20,12 +20,7 @@ from paintjob_designer.models import Palette
 
 
 class _PaletteRowDelegate(QStyledItemDelegate):
-    """Two-line row: palette name on top, color chip strip below.
-
-    Using a delegate keeps drag-reorders cheap and stops attached
-    widgets from drifting out of sync with the underlying model — same
-    rationale as the paintjob sidebar's delegate.
-    """
+    """Two-line row: palette name on top, color chip strip below."""
 
     PALETTE_ROLE = Qt.ItemDataRole.UserRole + 1
 
@@ -131,18 +126,7 @@ class _PaletteRowDelegate(QStyledItemDelegate):
 
 
 class PaletteSidebar(QWidget):
-    """List of saved color palettes with New / Save-from-slot / Edit / Delete.
-
-    Purely a view — the main window owns the palette library and pushes state
-    back via `set_palettes` on each change.
-
-    Emits:
-        - `palette_selected(index)` when the current row changes.
-        - `new_palette_requested()` / `save_from_slot_requested()` /
-          `delete_palette_requested(index)` / `edit_palette_requested(index)` /
-          `rename_palette_requested(index)` for the corresponding toolbar /
-          context-menu actions.
-    """
+    """List of saved color palettes with New / Save-from-slot / Edit / Delete."""
 
     palette_selected = Signal(int)
     new_palette_requested = Signal()

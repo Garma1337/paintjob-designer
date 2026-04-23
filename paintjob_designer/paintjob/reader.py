@@ -8,18 +8,7 @@ from paintjob_designer.models import Paintjob, SlotColors
 
 
 class PaintjobReader:
-    """Parses a paintjob JSON file into a `Paintjob`.
-
-    A thin wrapper around `Paintjob.model_validate_json` that adds two
-    project-specific pre-checks:
-      - Rejects `schema_version > Paintjob.SCHEMA_VERSION`.
-      - Rejects slot entries whose `colors` array isn't exactly 16 long
-        (pydantic would accept any length unless we pin it).
-
-    Everything else — hex color parsing, base64 pixel decoding, field
-    validation — is handled by the pydantic models themselves, so this
-    class contains no format logic that could drift from the models.
-    """
+    """Parses a paintjob JSON file into a `Paintjob`."""
 
     def read(self, data: str | bytes) -> Paintjob:
         if isinstance(data, bytes):

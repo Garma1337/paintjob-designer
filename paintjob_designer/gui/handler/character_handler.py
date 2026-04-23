@@ -17,11 +17,7 @@ from paintjob_designer.vram.cache import VramCache
 
 @dataclass
 class BroughtUpCharacter:
-    """Everything the UI needs to display one character at a given paintjob state.
-
-    `mesh` is kept on the bundle so the 3D viewer can run the vertex assembler
-    itself; the 2D preview only uses `atlas_rgba` + `slot_regions`.
-    """
+    """Everything the UI needs to display one character at a given paintjob state."""
     character_id: str
     mesh: CtrMesh
     slot_regions: CharacterSlotRegions
@@ -29,13 +25,7 @@ class BroughtUpCharacter:
 
 
 class CharacterHandler:
-    """Orchestrates character bring-up: `.ctr` parse + VRAM load + slot derivation + atlas render.
-
-    Headless — returns a `BroughtUpCharacter` bundle that the widget layer can
-    consume. No Qt imports here. VRAM caching lives in the shared `VramCache`
-    so color-edit re-renders hit the same decoded 1 MB blob instead of re-reading
-    `shared.vrm` each stroke.
-    """
+    """Orchestrates character bring-up: `.ctr` parse + VRAM load + slot derivation + atlas render."""
 
     def __init__(
         self,
@@ -55,11 +45,7 @@ class CharacterHandler:
         character: CharacterProfile,
         paintjob: Paintjob,
     ) -> BroughtUpCharacter:
-        """Load `character`'s mesh + VRAM and render `paintjob` onto the atlas.
-
-        `paintjob` supplies slot overrides for the initial atlas render —
-        unedited slots fall back to the VRAM defaults in `_resolve_clut`.
-        """
+        """Load `character`'s mesh + VRAM and render `paintjob` onto the atlas."""
         vram = self._vram_cache.get(iso_root)
 
         ctr_path = Path(iso_root) / character.mesh_source
@@ -77,8 +63,5 @@ class CharacterHandler:
         )
 
     def invalidate_vram_cache(self) -> None:
-        """Drop the cached VRAM page so the next load re-reads `shared.vrm`.
-
-        Call when the user points at a different ISO root.
-        """
+        """Drop the cached VRAM page so the next load re-reads `shared.vrm`."""
         self._vram_cache.invalidate()

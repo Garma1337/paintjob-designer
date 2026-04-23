@@ -9,126 +9,201 @@ Things that aren't obvious from the UI. The basics — click a swatch, pick a co
 - [First Launch and ISO Layout](#first-launch-and-iso-layout)
 - [Profiles](#profiles)
   - [Switching Profiles Resets the Session](#switching-profiles-resets-the-session)
+- [The Three Sidebar Tabs](#the-three-sidebar-tabs)
+  - [Per-Tab State](#per-tab-state)
 - [Paintjob Library](#paintjob-library)
   - [Library Position Matters](#library-position-matters)
   - [Sidebar Context Menu](#sidebar-context-menu)
+  - [Kart vs Hovercraft Paintjobs](#kart-vs-hovercraft-paintjobs)
+- [Skin Library](#skin-library)
+  - [Sidebar Context Menu](#sidebar-context-menu-1)
+  - [Vertex Slots Tab](#vertex-slots-tab)
+  - [Vertex Transform Dialog](#vertex-transform-dialog)
+- [Preview Tab](#preview-tab)
 - [Preview Character](#preview-character)
-  - [Home Character vs Preview Character](#home-character-vs-preview-character)
-  - [Textured Paintjobs Stay Character-Agnostic](#textured-paintjobs-stay-character-agnostic)
 - [Slot Editor](#slot-editor)
   - [The First Color Is Transparent](#the-first-color-is-transparent)
   - [Highlight Button](#highlight-button)
   - [Reset vs Undo](#reset-vs-undo)
 - [3D Preview](#3d-preview)
   - [Orbit Camera Controls](#orbit-camera-controls)
-  - [Eyedropper (Right-Click)](#eyedropper-right-click)
+  - [Eyedropper](#eyedropper)
   - [Why Some Faces Can't Be Edited](#why-some-faces-cant-be-edited)
   - [When the 3D View Doesn't Come Up](#when-the-3d-view-doesnt-come-up)
 - [Animation Playback](#animation-playback)
 - [Color Picker](#color-picker)
+- [Color Palettes](#color-palettes)
 - [Transform Colors](#transform-colors)
   - [Modes](#modes)
   - [Scope](#scope)
   - [Live Preview and Apply](#live-preview-and-apply)
 - [Gradient Fill](#gradient-fill)
+- [Texture Import](#texture-import)
 - [Undo / Redo](#undo--redo)
 - [Library I/O](#library-io)
-  - [Open Library / Save Library](#open-library--save-library)
-  - [Exporting a Single Paintjob](#exporting-a-single-paintjob)
-  - [Paintjobs Are Character-Agnostic](#paintjobs-are-character-agnostic)
-  - [Colors in the JSON File](#colors-in-the-json-file)
-- [Drag-and-Drop](#drag-and-drop)
+  - [Paintjob Library](#paintjob-library-io)
+  - [Skin Library](#skin-library-io)
+  - [Drag-and-Drop](#drag-and-drop)
 
 ## First Launch and ISO Layout
 
-On first launch the window opens with an empty sidebar and the status bar asks you to load an ISO. Use **File → Load ISO...** and point it at the root of your extracted CTR directory — specifically the folder that contains `bigfile/`. If a character's mesh isn't present, previewing that character shows a load-failed message; every other feature still works.
+On first launch the window opens with empty sidebars and the status bar asks you to load an ISO. Use **File → Load ISO...** and point it at the root of your extracted CTR directory — specifically the folder that contains `bigfile/`. If a character's mesh isn't present, previewing that character shows a load-failed message; every other feature still works.
 
 The ISO path is remembered across sessions, so you only have to do this once per machine.
 
 ## Profiles
 
-A **profile** tells the editor which game you're painting for — which characters exist, what their paintjob slots are called, and where the original palettes live in video memory. Two profiles ship in the box:
+A **profile** tells the editor which game you're authoring for — which characters exist, what their kart-side and skin-side slots are called, and where each slot's CLUT lives in video memory. Two profiles ship in the box:
 
 - **vanilla-ntsc-u** — the original NTSC-U release of CTR.
 - **saphi** — the Saphi mod.
 
-Switch between them from the toolbar or **File → Switch Profile...**. To paint for a different mod, drop its profile JSON into the editor's `config/profiles/` folder and it'll appear in the picker on next launch.
+Switch between them from **File → Switch Profile...**. To author for a different mod, drop its profile JSON into the editor's `config/profiles/` folder and it'll appear in the picker on next launch.
 
 ### Switching Profiles Resets the Session
 
-Confirming a profile switch clears the current library and the undo history. Character names, slot names, and library sizes can all differ between profiles, so carrying over the in-progress work wouldn't be safe. Save the library first if it matters.
+Confirming a profile switch clears the current paintjob library, skin library, and undo history. Character ids, slot names, and slot lists can all differ between profiles, so carrying over the in-progress work wouldn't be safe. Save the libraries first if it matters.
 
 Your choice is remembered, so the next launch starts on the same profile.
 
+## The Three Sidebar Tabs
+
+The left sidebar has three tabs that share the 3D viewer + slot/vertex editors on the right:
+
+- **Paintjobs** — kart-side recolors. Edits CLUTs that the in-game paintjob system swaps (front, back, motor, exhaust, etc.). Color Palettes are nested at the bottom of this tab — see [Color Palettes](#color-palettes).
+- **Skins** — character-bound recolors. Edits the character's own skin-side CLUTs (face, accessories) plus per-vertex gouraud colors (driver body).
+- **Preview** — read-only composition view. Pick a character + paintjob + skin and see them all combined.
+
+### Per-Tab State
+
+Each editing tab keeps its own state: which asset is selected and which character is being previewed against it. Switching away and back restores both.
+
+- Switch to a tab for the first time → the first asset auto-selects, and the first compatible preview character is auto-picked + rendered.
+- Within a tab, picking a different paintjob/skin keeps the previously-picked preview character if it's still compatible; otherwise falls back to the first compatible one.
+- Switching paintjobs to one of a different `kart_type` (kart ↔ hovercraft) repopulates the combo with the new compatible characters.
+
 ## Paintjob Library
 
-The **left sidebar** lists every paintjob in the current session. **New** creates a paintjob pre-filled with the current preview character's original palette — every slot starts fully authored, so no gaps sneak into what you save. **Delete** asks for confirmation before removing the selected paintjob, and clears the undo history at the same time. Rows can be dragged to reorder.
+The Paintjobs tab lists every paintjob in the current session. **New** asks you to pick a base character first — that character's `kart_type` decides whether the paintjob is kart-only or hovercraft-only, and that character's vanilla CLUTs seed every kart slot. **Delete** asks for confirmation before removing the selected paintjob, and clears the undo history at the same time. Rows can be dragged to reorder.
 
-Each paintjob carries four pieces of information:
+Each paintjob carries:
 
-- **Name** — shown in the sidebar and used as the default filename when saving.
-- **Author** — a credit line, shown in a muted second line under the name in the sidebar when you've set one.
-- **Base character** — the character this paintjob conceptually belongs to. See [Home Character vs Preview Character](#home-character-vs-preview-character).
-- **Slot colors and textures** — the 16 colors per slot, and optionally imported pixel data for slots that carry custom textures.
+- **Name** — shown in the sidebar; used as the default filename when exporting.
+- **Author** — a credit line, shown in a muted second line under the name in the sidebar when set.
+- **Kart type** — `kart` or `hovercraft`. Set at creation time from the base character's vehicle type.
+- **Base character** — the character this paintjob conceptually belongs to. The preview falls back to this character's vanilla palette for unedited slots; downstream tools may use it as a "home character" hint.
+- **Slot colors and textures** — the 16 colors per kart slot, and optionally imported pixel data for slots that carry custom textures.
 
 ### Library Position Matters
 
-The sidebar's top-to-bottom order becomes the library's index order. When you save, each paintjob is written with a numeric prefix (`00_...`, `01_...`) that preserves the order when you open the library again. Downstream tools that consume the library use that index — typically to map library positions to in-game paintjob slots — so reordering the sidebar has real downstream effects.
+The sidebar's top-to-bottom order becomes the library's index order. When you save, each paintjob is written with a numeric prefix (`00_...`, `01_...`) that preserves the order. Downstream tools that consume the library use that index — typically to map library positions to in-game paintjob slots — so reordering the sidebar has real downstream effects.
 
 ### Sidebar Context Menu
 
 Right-click a paintjob row for:
 
-- **Rename...** — change the display name.
-- **Set author...** — change the author credit.
+- **Rename...** — change the display name. Doesn't reset the preview.
+- **Set author...** — change the author credit. Doesn't reset the preview.
 - **Change base character...** — change which character this paintjob belongs to.
 - **Export as JSON...** — save just that paintjob to a file of your choice.
 - **Replace from JSON...** — overwrite the selected paintjob with one loaded from a file. Clears the undo history.
 - **Delete** — remove the paintjob after a confirmation. Clears the undo history.
 
+### Kart vs Hovercraft Paintjobs
+
+CTR's roster has standard-kart racers (15 characters in vanilla) and one hovercraft racer (Oxide). Their kart-side CLUTs are structured differently, so paintjobs are scoped to one or the other:
+
+- A **kart** paintjob has 8 slots (`front`, `back`, `floor`, `brown`, `motorside`, `motortop`, `bridge`, `exhaust`) and previews on any standard-kart character.
+- A **hovercraft** paintjob has 1 slot (the hover skirt CLUT) and only previews on Oxide.
+
+The preview-character dropdown filters automatically by the active paintjob's kart type, so a hovercraft paintjob never lets you pick Crash and a kart paintjob never lets you pick Oxide.
+
+## Skin Library
+
+The Skins tab lists every skin in the current session. **New** asks you to pick the character to skin — the resulting skin is locked to that character forever (no equivalent of paintjob's character-portability). The character's vanilla skin-side CLUTs seed the skin so it opens looking exactly like the in-game character before any edits.
+
+Each skin carries:
+
+- **Name** — shown in the sidebar; default filename on export.
+- **Author** — credit line, shown muted under the name.
+- **Bound character** — required, set at creation; can't be changed (unlike paintjob's editable base character).
+- **Slot colors and textures** — the 16 colors per skin slot, optional imported pixel data per slot.
+- **Vertex overrides** — RGB replacements for entries in the character's gouraud color table. Skin-only feature — paintjobs don't have these.
+
+### Sidebar Context Menu
+
+Right-click a skin row for:
+
+- **Rename...** / **Set author...** — same as paintjobs. Don't reset the preview.
+- **Export as JSON...** — save just this skin.
+- **Replace from JSON...** — overwrite from a file. Clears undo.
+- **Delete** — confirmation prompt. Clears undo.
+
+There's no "Change bound character" — moving a skin between characters would corrupt it (skin slot names key into one specific character's VRAM rects).
+
+### Vertex Slots Tab
+
+When a skin is selected, the right pane shows a second tab labeled **Vertex slots** alongside the regular CLUT slot editor. It's a grid of `v0`, `v1`, … swatches — one per entry in the active character's gouraud color table. Standard racers have 19–64 entries.
+
+Click any swatch to open an RGB color picker. The override is saved on the skin under that gouraud index; the 3D viewer re-uploads the per-vertex color buffer immediately.
+
+The Vertex slots tab is disabled in paintjob mode (paintjobs can't carry vertex overrides) and disabled in preview mode (everything is read-only there).
+
+### Vertex Transform Dialog
+
+The Vertex slots tab has a **Transform...** button that opens a dialog with the same operation pipeline as the CLUT Transform Colors panel (Replace match, Replace hue, Shift hue/sat/brightness, RGB delta) but applied to every gouraud vertex color in the character's table.
+
+Implementation note: vertex transform round-trips through the PSX 5-bit grid for the HSV math, so an extreme transform may snap colors slightly. For most paintjob-style operations (hue rotation, brightness shift) the snap is invisible.
+
+## Preview Tab
+
+The Preview tab is read-only. It has three combos:
+
+- **Character** — any character from the active profile.
+- **Paintjob** — any paintjob whose `kart_type` matches the chosen character. "(none)" leaves kart slots at their vanilla values.
+- **Skin** — any skin bound to the chosen character. "(none)" leaves the skin slots and vertex colors at their vanilla values.
+
+The 3D viewer shows the composition: paintjob CLUTs + skin CLUTs + skin vertex overrides, all on the chosen character's mesh. Editing is disabled (the swatch grid and vertex grid are visible but inactive); switch to the Paintjobs or Skins tab to make changes.
+
+The top "Preview on:" strip is hidden in this tab — the sidebar's character combo replaces it.
+
 ## Preview Character
 
-The **Preview on:** dropdown above the 3D viewer picks which character's body and palette the editor shows the active paintjob on. Paintjobs don't belong to characters — the dropdown is purely about viewing, so a "Saphi" paintjob can be auditioned on Crash, Cortex, or Penta without changing any saved data.
+The **Preview on:** dropdown above the 3D viewer (visible in the Paintjobs and Skins tabs) picks which character's mesh and palette the editor renders the active asset against.
 
-Switching preview character reloads the model and redraws the paintjob on it. Slots you haven't explicitly authored inherit the preview character's original palette, so the 3D view always shows what the game would draw if *that* character wore the paintjob.
+- In paintjob mode: lists every character whose `kart_type` matches the active paintjob's `kart_type`.
+- In skin mode: only the skin's bound character.
 
-### Home Character vs Preview Character
+Slots you haven't explicitly authored inherit the preview character's original palette, so the 3D view always shows what the game would draw if the active asset were applied to *that* character.
 
-Two distinct ideas:
-
-- **Preview character** — chosen via the dropdown. Drives the 3D model and the fallback palette for unauthored slots in the editor.
-- **Home character** (also called the **base character**) — the character this paintjob conceptually belongs to. Saved with the paintjob and used by downstream tools when they need to decide "whose paintjob is this, really?"
-
-The editor shows what the paintjob looks like *right now on the preview character*. The file carries the home-character hint and leaves interpretation to the tools that read it.
-
-### Textured Paintjobs Stay Character-Agnostic
-
-Right-click a slot → **Import texture...** → pick a PNG → the slot's colors and pixels are baked from the image. Textured paintjobs still apply to every character: the import flow only accepts slots whose size is the same on every character, so the same pixel data uploads cleanly everywhere.
-
-The sidebar marks such paintjobs with `" (textured)"` next to the name — purely informational, so you can tell at a glance which ones carry custom images. Switching the preview character still works normally while a textured paintjob is selected.
-
-**The `floor` slot can't be textured.** Its size varies from character to character, so an imported image couldn't be reused across the roster. The import dialog refuses it with a clear message. You can still edit `floor`'s colors — the palette swap carries over fine.
+The dropdown remembers the last character you used per tab (paintjob vs skin) and restores it when you come back.
 
 ## Slot Editor
 
 Each row shows a slot's 16 colors across the top, with **Highlight** and **Reset** buttons underneath. Clicking a color opens the color picker; changes apply immediately and stream into the 3D preview.
 
-Right-click a color for the per-color menu (**Transform colors...** scoped to this slot, pre-filled with the clicked color). Right-click the slot row (outside any color) for the whole-slot menu — **Transform colors...** and **Gradient fill...**.
+The slot list is filtered by the active editor mode:
+
+- Paintjob mode → only the character's `kart_slots`.
+- Skin mode → only the character's `skin_slots`.
+- Preview mode → both, but disabled.
+
+Right-click a color for the per-color menu (**Transform colors...** scoped to this slot, pre-filled with the clicked color). Right-click the slot row (outside any color) for the whole-slot menu — **Transform colors...**, **Gradient fill...**, **Apply Color Palette**, and **Import texture...** if the slot is texture-portable.
 
 ### The First Color Is Transparent
 
-The first color of every row has an **orange border** and a tooltip explaining that this slot is the game's transparency marker. Pixels that land on it render fully transparent regardless of what color you pick, so editing it almost never does what you'd expect. The marker is a warning, not a lock — you can still edit it if you mean to.
+The first color of every row has an **orange border** and a tooltip explaining that this slot is the game's transparency marker. Pixels that land on it render fully transparent regardless of what color you pick, so editing it almost never does what you'd expect. The marker is a warning, not a lock — you can still edit it if you mean to. Any CLUT entry whose 15 colour bits are zero (`#0000` or `#8000`) renders transparent in the live preview, matching the in-game behavior.
 
 ### Highlight Button
 
-Each slot row has a checkable **Highlight** button. Clicking it dims every part of the 3D kart that *doesn't* use that slot, so you can see at a glance which surfaces the slot paints. Clicking the same button again clears the highlight; clicking another row's button moves it. Switching paintjobs or preview characters clears the highlight automatically. Highlighting doesn't affect anything that gets saved — it's purely a viewing aid.
+Each slot row has a checkable **Highlight** button. Clicking it dims every part of the 3D kart that *doesn't* use that slot, so you can see at a glance which surfaces the slot paints. Clicking the same button again clears the highlight; clicking another row's button moves it. Switching paintjobs or preview characters clears the highlight automatically.
 
 ### Reset vs Undo
 
-- **Reset button** — replaces every color in that slot with the original palette of the paintjob's **base character** — *not* the current preview character. This way editing Crash's paintjob while previewing on Cortex still resets to Crash's original palette, which is what you mean by "revert." Ctrl+Z un-resets cleanly.
-- **Ctrl+Z** — reverses the most recent edit (color pick, reset, gradient fill, or transform), regardless of which paintjob is currently selected. If the reverted edit targets a different paintjob than the one on screen, the sidebar automatically moves to that paintjob so the visible state tracks the change.
+- **Reset button** — replaces every color in that slot with the original palette of the asset's **base/bound character** — *not* the current preview character. This way editing Crash's paintjob while previewing on Cortex still resets to Crash's original palette, which is what you mean by "revert." Ctrl+Z un-resets cleanly.
+- **Ctrl+Z** — reverses the most recent edit (color pick, reset, gradient fill, palette apply, or transform), regardless of which paintjob/skin is currently selected. If the reverted edit targets a different asset than the one on screen, the sidebar automatically moves to that asset (and switches tab if needed) so the visible state tracks the change.
 
-The undo history is session-wide and never auto-clears when you switch paintjobs. It does clear when you load a library, import or replace a paintjob, or delete one — in those cases the previous edits can no longer be replayed meaningfully.
+The undo history is session-wide and never auto-clears when you switch assets. It does clear when you import or replace a paintjob/skin, delete one, switch profiles, or load a different ISO — in those cases the previous edits can no longer be replayed meaningfully.
 
 ## 3D Preview
 
@@ -138,40 +213,53 @@ The undo history is session-wide and never auto-clears when you switch paintjobs
 - **Wheel** — zoom in and out.
 - **R** — reset the view (same as **View → Reset Camera**). Reset returns to the framing the editor chose when the character loaded, not a blank world origin.
 
-### Eyedropper (Right-Click)
+### Eyedropper
 
-**Right-click any surface on the 3D kart** to sample the slot and color under the cursor. The color picker opens pre-loaded with that color so one right-click + one pick changes the paintjob. If the click lands on a part of the model that isn't paintjob-editable (wheels, shared driver geometry), the status bar says so and no picker opens.
+**Alt+Click any surface on the 3D kart** to sample the slot and color under the cursor. The color picker opens pre-loaded with that color so one click + one pick changes the asset. If the click lands on a part of the model that isn't editable in the active mode (wheels, shared driver geometry in paintjob mode, kart slots in skin mode), the status bar says so and no picker opens.
 
-Orbit and zoom still work with left-drag and the wheel regardless — there's no eyedropper mode to toggle on and off.
+Orbit and zoom still work with left-drag and the wheel regardless — eyedropper is bound to Alt+Click specifically.
 
 ### Why Some Faces Can't Be Edited
 
-Character models mix two kinds of surfaces:
+Character models mix several kinds of surfaces, and the editor mode decides which are interactive:
 
-- **Paintjob surfaces** — sampled from the palette slots you edit. Most of the kart body is built this way.
-- **Fixed surfaces** — hard-coded colors baked into the model itself (Crash's red pants, Pura's orange fur, wheel rims). The paintjob doesn't touch them; the eyedropper reports "not a paintjob face" when you click these.
+- **Kart-side CLUT surfaces** — sampled from the kart slots a paintjob edits. Most of the kart body is built this way. Editable in paintjob mode.
+- **Skin-side CLUT surfaces** — sampled from skin slots (face, accessories). Editable in skin mode.
+- **Gouraud-shaded surfaces** — driver body. Editable via the Vertex slots tab in skin mode.
+- **Fixed surfaces** — hard-coded colors baked into the model that no paintjob/skin touches (wheel rims). Reported as "not editable" by the eyedropper.
 
-The editor renders both kinds the way the real game does, so the preview matches what the PS1 would draw. A lot of CTR textures ship as greyscale templates that tint at runtime; you'll see them in their final tinted colors in the preview.
+The editor renders all of them the way the real game does, so the preview matches what the PS1 would draw. CTR ships many textures as greyscale templates that tint at runtime; you'll see them in their final tinted colors in the preview.
 
 ### When the 3D View Doesn't Come Up
 
-Some systems can't bring up hardware 3D (old drivers, remote desktop without graphics acceleration, and so on). In that case the 3D pane is replaced with a message telling you so. The slot editor, sidebar, and library saving all stay fully functional — only the live preview is disabled.
+Some systems can't bring up hardware 3D (old drivers, remote desktop without graphics acceleration, and so on). In that case the 3D pane is replaced with a message telling you so. The slot editor, sidebars, and library saving all stay fully functional — only the live preview is disabled.
 
 ## Animation Playback
 
 The Animation panel below the sidebar shows up when the preview character has animation clips baked in. Pick a clip, press Play, and the 3D viewer steps through its frames at the FPS you've set.
 
-**FPS is a preview control, not saved data.** The game doesn't carry an intended framerate; 30 fps is a preview default because it reads well for idle loops. Nothing about the saved paintjob cares about this value.
-
-Very long clips with hundreds of frames may play back noticeably slower than short idle loops.
+**FPS is a preview control, not saved data.** The game doesn't carry an intended framerate; 30 fps is a preview default because it reads well for idle loops. Nothing about the saved asset cares about this value.
 
 ## Color Picker
 
 Every color you pick is **snapped to the PSX color grid** before being written back: the PS1 supports only a limited palette (32 levels per channel), so the editor rounds your choice to the nearest representable color. What you see in the swatch after picking is exactly what the game will display. The snap is lossy — `#FF7F3A` going in might come back as `#FF7F38`.
 
+The picker also exposes the **alpha** slider for the PSX semi-transparency bit. Alpha < 128 collapses the color to the transparent sentinel.
+
+## Color Palettes
+
+Color Palettes live nested inside the Paintjobs tab as a second list below the paintjob list. They're a workflow aid for paintjobs only — a saved palette is 16 PSX colors you can apply across multiple paintjob slots without re-picking.
+
+- **New** — opens an empty palette in the editor for hand-picking.
+- **From Slot** — captures the focused slot's 16 colors into a new palette.
+- **Edit** / **Rename** / **Delete** — standard list operations.
+- **Apply** — right-click any slot row in paintjob mode → **Apply Color Palette** → pick a saved palette. The palette's colors become that slot's colors as a single undo entry.
+
+Palettes aren't tied to a specific paintjob and persist across sessions in the same config blob the libraries do.
+
 ## Transform Colors
 
-The **Transform Colors...** action (top toolbar, or right-click menus on colors and slot rows) opens a **dockable panel** for bulk edits. The panel stays open while you orbit the 3D view, switch paintjobs, or focus different slots — each change updates what the panel is about to touch. Applying a batch lands as a single undo entry, so one Ctrl+Z reverts the whole composition at once.
+The **Transform Colors...** action (Transform... button on the paintjob/skin sidebar, or right-click menus on slot rows) opens a **dockable panel** for bulk edits. The panel stays open while you orbit the 3D view, switch assets, or focus different slots — each change updates what the panel is about to touch. Applying a batch lands as a single undo entry, so one Ctrl+Z reverts the whole composition at once.
 
 Every operation lives in its own section with an enable checkbox. Tick multiple sections and they compose in a **fixed order**:
 
@@ -192,24 +280,25 @@ Selective operations (the two Replace modes) run first, so their output is what 
 - **Shift brightness / saturation** — sliders in percent. Brightens/darkens and adds/removes saturation.
 - **RGB delta** — three sliders for red, green, and blue. Adds or subtracts per channel.
 
-The transparency slot (first color of each row) is never touched by any mode — it's a structural marker, not a real color.
+The transparency sentinel (any all-zero CLUT entry) is never touched by any mode — it's a structural marker, not a real color.
 
 ### Scope
 
-- **Just this slot** — transforms the 16 colors of the focused slot.
-- **Entire kart** — transforms every slot of the active paintjob (128 colors total).
+- **Current slot** — transforms the 16 colors of the focused slot.
+- **All kart slots** — every kart-side slot of the active paintjob. Only enabled in paintjob mode.
+- **All skin slots** — every skin-side slot of the active skin. Only enabled in skin mode.
+
+The off-mode scope is always disabled — paintjobs can't write to skin slots and vice versa.
 
 How you opened the panel picks the starting scope:
 
 - Right-click a **color** → panel opens scoped to this slot, with Replace matching color pre-filled to the clicked color.
 - Right-click a **slot row** → panel opens scoped to this slot.
-- Toolbar **Transform Colors...** → panel opens scoped to the entire kart.
-
-The scope dropdown at the top of the panel stays interactive — switch it any time.
+- Sidebar **Transform...** button → panel opens scoped to "All kart slots" or "All skin slots" depending on the active tab.
 
 ### Live Preview and Apply
 
-Slider, checkbox, and picker changes stream a **live preview** straight into the paintjob and 3D view. There's no separate "Preview" button; what you see while dialing is the current stack. A summary line at the bottom reports how many colors would actually change.
+Slider, checkbox, and picker changes stream a **live preview** straight into the asset and 3D view. There's no separate "Preview" button; what you see while dialing is the current stack. A summary line at the bottom reports how many colors would actually change.
 
 **Apply** commits the current composition as one undo entry and resets every section's sliders to zero (enable checkboxes stay on, so the next round doesn't require re-ticking the same operations). Closing the panel reverts every pending preview change — nothing uncommitted survives the close.
 
@@ -217,43 +306,48 @@ Even a whole-kart hue shift across 100+ colors lands in a single frame, so the p
 
 ## Gradient Fill
 
-Right-click a slot row → **Gradient fill...** fills a contiguous range of the slot's colors with a linear interpolation between two endpoint colors.
+Right-click a slot row → **Gradient fill...** fills a contiguous range of the slot's colors with a linear interpolation between two endpoint colors. Available in both paintjob and skin mode.
 
 - **Color space** — *RGB* interpolates per channel (predictable but can wash out at midpoints; red → blue passes through grey). *HSV* walks the shorter arc around the color wheel, so red → blue goes through magenta instead.
 - **From / To index** — which colors to fill. Defaults skip the transparency slot.
 - **Endpoints** — both are preserved exactly; intermediate colors are rounded to the PS1 color grid.
 - One Ctrl+Z reverts the whole fill.
 
+## Texture Import
+
+Right-click a slot row → **Import texture...** → pick a PNG → the slot's colors and pixels are baked from the image (15 colors + transparent, packed 4bpp). Available for both paintjobs and skins on slots whose VRAM rect dimensions are dim-invariant across characters.
+
+- The dialog refuses slots flagged as `non_portable` in the profile (kart `floor` is the canonical case — different dimensions per character, so an imported image couldn't reuse cleanly across the roster).
+- Multi-region slots (slots that occupy multiple disjoint VRAM rectangles) aren't supported yet — the dialog rejects with a clear message.
+- A second context-menu entry, **Remove imported texture**, appears when the slot already has imported pixels and drops them while keeping the CLUT colors as-is.
+
 ## Undo / Redo
 
 - **Ctrl+Z / Ctrl+Shift+Z** (or Ctrl+Y) — single session-wide history.
-- Undo works across sidebar selections: edit paintjob A, switch to paintjob B, edit B, Ctrl+Z twice — B's edit reverts first, then A's. If the reverted edit targets a paintjob that isn't currently selected, the sidebar auto-switches to it.
-- **Loading a library, importing or replacing a paintjob, deleting a paintjob, or switching profiles** all clear the undo history. Previous edits can't be replayed meaningfully once the underlying data has moved out from under them.
+- Undo works across asset selections AND across modes: edit paintjob A, switch to skin Y, edit Y, Ctrl+Z twice — Y's edit reverts first, then A's. If the reverted edit targets an asset that isn't currently selected, the sidebar (and tab, if needed) auto-switches.
+- **Importing or replacing an asset, deleting an asset, switching profiles, or loading a different ISO** all clear the undo history.
 
 ## Library I/O
 
-The editor's only output is the **library directory** — a folder of paintjob JSON files. Downstream mod-specific tools read the directory and produce whatever their mod needs (source files, binaries, and so on). See [library_format.md](library_format.md) for the on-disk format.
+The editor's outputs are **two library directories** — one for paintjobs, one for skins. Downstream mod-specific tools read each and produce whatever their mod needs. See [paintjob_library_format.md](paintjob_library_format.md) and [skin_library_format.md](skin_library_format.md) for the on-disk formats.
 
-### Open Library / Save Library
+### Paintjob Library
 
-- **File → Open Library...** (Ctrl+O) loads every JSON file in a chosen directory, in filename order. Files the editor can't parse stop the load with a message naming the offending file.
-- **File → Save Library As...** (Ctrl+Shift+S) writes every paintjob in the library to a chosen directory, using a numeric filename prefix so the order round-trips on the next open. Same thing the **Save Library** toolbar button does.
-- **File → Import Paintjob...** appends a single paintjob file to the end of the current library.
+- **File → Export Paintjob Library As...** (Ctrl+Shift+S) writes every paintjob in the library to a chosen directory, using a numeric filename prefix so the order round-trips on the next load.
+- **File → Import Paintjobs...** (Ctrl+O) appends one or more paintjob files to the end of the current library.
+- Right-click a paintjob → **Export as JSON...** writes just that paintjob to a chosen path. Default filename comes from the paintjob's name.
+- Right-click → **Replace from JSON...** overwrites the selected entry from a file.
 
-### Exporting a Single Paintjob
+The Paintjobs sidebar also has dedicated **Export...** and **Delete** buttons.
 
-Right-click a paintjob → **Export as JSON...** writes just that paintjob to a chosen path. The default filename is built from the paintjob's name, falling back to the base character, and then to a numbered fallback. Useful for sharing a single paintjob outside a library.
+### Skin Library
 
-### Paintjobs Are Character-Agnostic
+- **File → Export Skin Library As...** writes every skin to a chosen directory.
+- **File → Import Skins...** appends skin files to the current skin library.
+- Right-click a skin → **Export as JSON...** / **Replace from JSON...** — same shape as paintjobs.
 
-A plain paintjob (no imported textures) has no mandatory character — any character can wear it. The base character is only a hint for the preview and for downstream tools.
+The Skins sidebar has the same set of buttons as Paintjobs.
 
-A textured paintjob **is still character-agnostic**: the import flow only accepts slots whose size is identical across every character, so the same image uploads cleanly on all of them. The one exception is the `floor` slot, which varies per character and therefore can't carry imported images.
+### Drag-and-Drop
 
-### Colors in the JSON File
-
-If you ever open a paintjob JSON by hand, you'll see each color written as a 4-digit hex value like `"#7fff"`. That's the raw 16-bit PS1 color — not a standard `#RRGGBB` web color. The 16-bit form is what the game actually stores, and it's the only way to distinguish opaque black from transparent black (both are RGB 0, 0, 0, but the game treats them as completely different pixels). Saving as plain RGB hex would silently collapse opaque blacks to transparent on reload, so the editor keeps the full 16-bit value.
-
-## Drag-and-Drop
-
-Drag a paintjob JSON file onto the main window to append it to the library (same as **File → Import Paintjob...**). Other file types are silently ignored.
+Drag a paintjob JSON file onto the main window to append it to the paintjob library (same as **File → Import Paintjobs...**). Drag-drop currently routes everything to the paintjob library — for skins, use the menu or sidebar import.

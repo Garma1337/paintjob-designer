@@ -7,6 +7,7 @@ from paintjob_designer.models import (
     CtrFrame,
     CtrMesh,
     GouraudColor,
+    Rgb888,
     TextureLayout,
     Vector3b,
     Vector3f,
@@ -422,6 +423,65 @@ class TestGouraudColors:
 
         assert plain.positions != swapped.positions
         assert plain.gouraud_colors != swapped.gouraud_colors
+
+
+class TestVertexOverrides:
+
+    def _three_vertex_strip(self, palette):
+        return _mesh(
+            [
+                _cmd(new_tristrip=True, stack_index=0, color_index=0),
+                _cmd(stack_index=1, color_index=1),
+                _cmd(stack_index=2, color_index=2),
+            ],
+            [(0, 0, 0), (255, 0, 0), (0, 255, 0)],
+            gouraud_colors=palette,
+        )
+
+    def test_override_replaces_baked_color_at_index(self, vertex_assembler):
+        palette = [
+            GouraudColor(r=255, g=0, b=0),
+            GouraudColor(r=0, g=255, b=0),
+            GouraudColor(r=0, g=0, b=255),
+        ]
+        mesh = self._three_vertex_strip(palette)
+
+        result = vertex_assembler.assemble(
+            mesh, vertex_overrides={1: Rgb888(r=128, g=128, b=128)},
+        )
+
+        # Index 1 (the green vert) is now mid-grey; the other two come
+        # straight from the baked palette.
+        assert result.gouraud_colors[0] == pytest.approx((1.0, 0.0, 0.0))
+        assert result.gouraud_colors[1] == pytest.approx(
+            (128 / 255.0, 128 / 255.0, 128 / 255.0),
+        )
+        assert result.gouraud_colors[2] == pytest.approx((0.0, 0.0, 1.0))
+
+    def test_override_for_out_of_range_index_is_ignored(self, vertex_assembler):
+        # Indices the mesh doesn't have shouldn't crash or affect output.
+        palette = [GouraudColor(r=255, g=0, b=0)] * 3
+        mesh = self._three_vertex_strip(palette)
+
+        with_phantom_override = vertex_assembler.assemble(
+            mesh, vertex_overrides={99: Rgb888(r=0, g=255, b=0)},
+        )
+        plain = vertex_assembler.assemble(mesh)
+
+        assert with_phantom_override.gouraud_colors == plain.gouraud_colors
+
+    def test_no_overrides_argument_matches_default(self, vertex_assembler):
+        palette = [
+            GouraudColor(r=255, g=0, b=0),
+            GouraudColor(r=0, g=255, b=0),
+            GouraudColor(r=0, g=0, b=255),
+        ]
+        mesh = self._three_vertex_strip(palette)
+
+        explicit_empty = vertex_assembler.assemble(mesh, vertex_overrides={})
+        default = vertex_assembler.assemble(mesh)
+
+        assert explicit_empty.gouraud_colors == default.gouraud_colors
 
 
 class TestPositionTransform:

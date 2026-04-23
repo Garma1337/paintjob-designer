@@ -9,19 +9,7 @@ _TRANSPARENCY_BORDER_COLOR = QColor(0xE0, 0x84, 0x1E)
 
 
 class ColorSwatch(QFrame):
-    """Small fixed-size clickable tile displaying one CLUT color.
-
-    Emits `clicked()` on a left-button press. The owning `SlotEditor` wires that
-    up knowing which (slot_name, color_index) this swatch belongs to, so the
-    swatch itself stays dumb.
-
-    Transparent colors (PSX value 0x0000 convention) are drawn as a black tile
-    with a single white diagonal so the user can tell them from a genuinely
-    black pixel. Callers may also mark a swatch as an "index-zero" transparency
-    slot via `mark_as_transparency_index` — it gets a thicker warm border and a
-    tooltip so users notice the PSX convention before they edit away the
-    transparency.
-    """
+    """Small fixed-size clickable tile displaying one CLUT color."""
 
     clicked = Signal()
     right_clicked = Signal()
@@ -39,12 +27,7 @@ class ColorSwatch(QFrame):
         self._is_transparency_index = False
 
     def mark_as_transparency_index(self) -> None:
-        """Tag this swatch as the PSX index-0 transparency slot.
-
-        Visually distinguishes it (warm 2-pixel border) and adds a tooltip so
-        the user understands that replacing this color will make the whole
-        slot opaque in-game.
-        """
+        """Tag this swatch as the PSX index-0 transparency slot."""
         self._is_transparency_index = True
         self.setToolTip(
             "Index 0 is the PSX transparency sentinel. Setting a non-black "

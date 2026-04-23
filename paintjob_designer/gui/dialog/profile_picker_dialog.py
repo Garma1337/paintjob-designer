@@ -12,13 +12,7 @@ from PySide6.QtWidgets import (
 
 
 class ProfilePickerDialog(QDialog):
-    """Lets the user pick which target profile to author against.
-
-    The profile determines the character list + CLUT coordinates + slot names,
-    which in turn decides what the sidebar shows and which slot/character
-    entries end up in binary / code exports. Switching profiles in the middle
-    of a session clears in-memory edits since the character IDs may differ.
-    """
+    """Lets the user pick which target profile to author against."""
 
     def __init__(
         self,

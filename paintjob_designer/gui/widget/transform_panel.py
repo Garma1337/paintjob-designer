@@ -30,16 +30,9 @@ from paintjob_designer.models import Paintjob, PsxColor, SlotRegions
 
 @dataclass
 class TransformCandidate:
-    """One color in the paintjob the panel is allowed to rewrite.
+    """One color the panel is allowed to rewrite, plus the asset that owns it."""
 
-    `current_color` is the effective color (paintjob override if present,
-    else the VRAM default) — composition math runs against it, and the
-    `old_color` on the emitted `BulkColorEdit` is this value so undo
-    restores the effective color rather than the raw paintjob entry
-    (which may not have existed).
-    """
-
-    paintjob: Paintjob
+    asset: object  # Paintjob or Skin — the panel just passes it through
     slot: SlotRegions
     color_index: int
     current_color: PsxColor
@@ -47,7 +40,8 @@ class TransformCandidate:
 
 class TransformScope(Enum):
     THIS_SLOT = "this_slot"
-    ENTIRE_KART = "entire_kart"
+    KART_SLOTS = "kart_slots"
+    SKIN_SLOTS = "skin_slots"
 
 
 # Pipeline order for composition. Selective ops (replace-matches,
@@ -76,20 +70,7 @@ _MODE_LABELS: dict[TransformMode, str] = {
 
 
 class TransformColorsPanel(QDialog):
-    """Modeless panel for stacking multiple bulk-color transforms.
-
-    Replaces the old modal Transform Colors dialog. Each of the 5 ops
-    lives in its own `QGroupBox` section with an enable checkbox and
-    controls; the panel composes every enabled op as a pipeline on each
-    candidate color. Slider changes push a live preview into the
-    paintjob + 3D view (via `preview_changed`); Apply applies the
-    composition as one `BulkTransformCommand` and resets all sliders so
-    the next stack starts clean.
-
-    Owns no state about the current paintjob / scope — the main window
-    feeds it fresh candidates via `set_candidates` whenever the user
-    changes paintjob, preview character, or scope-relevant slot focus.
-    """
+    """Modeless panel for stacking multiple bulk-color transforms."""
 
     # Pushed on every slider tick (live preview). Main window uses the
     # same snapshot / restore machinery as the old dialog to show the
@@ -120,19 +101,21 @@ class TransformColorsPanel(QDialog):
         self._converter = color_converter
 
         self._slot_candidates: list[TransformCandidate] = []
-        self._kart_candidates: list[TransformCandidate] = []
+        self._kart_slot_candidates: list[TransformCandidate] = []
+        self._skin_slot_candidates: list[TransformCandidate] = []
         self._slot_label: str = ""
 
         layout = QVBoxLayout(self)
 
-        # Scope picker sits above the operation sections. Same two
-        # options as the old dialog; the main window tells us which
-        # slot (if any) the THIS_SLOT scope would target via
-        # `set_candidates`.
+        # Three scopes: the one currently-focused slot, every CLUT the
+        # paintjob layer can edit (kart_slots), or every CLUT the skin
+        # layer can edit (skin_slots). The host pushes one candidate
+        # list per scope via `set_candidates`.
         scope_row = QFormLayout()
         self._scope_combo = QComboBox()
-        self._scope_combo.addItem("Just this slot", TransformScope.THIS_SLOT)
-        self._scope_combo.addItem("Entire kart", TransformScope.ENTIRE_KART)
+        self._scope_combo.addItem("Current slot", TransformScope.THIS_SLOT)
+        self._scope_combo.addItem("All kart slots", TransformScope.KART_SLOTS)
+        self._scope_combo.addItem("All skin slots", TransformScope.SKIN_SLOTS)
         self._scope_combo.setCurrentIndex(1)
         self._scope_combo.currentIndexChanged.connect(self._on_preview_changed)
         scope_row.addRow("Scope:", self._scope_combo)
@@ -170,18 +153,18 @@ class TransformColorsPanel(QDialog):
     def set_candidates(
         self,
         slot_candidates: list[TransformCandidate],
-        kart_candidates: list[TransformCandidate],
+        kart_slot_candidates: list[TransformCandidate],
+        skin_slot_candidates: list[TransformCandidate],
         slot_label: str = "",
     ) -> None:
-        """Swap in a fresh set of candidates — call on paintjob / scope / slot changes.
+        """Push fresh candidate lists for each scope.
 
-        The panel recomputes its summary line but keeps slider positions
-        intact, so an artist who was in the middle of dialing in a
-        transform doesn't lose their settings when the preview character
-        changes underneath.
+        Call on paintjob / preview-character / focused-slot changes. Empty
+        lists are fine — the matching scope option just gets disabled.
         """
         self._slot_candidates = slot_candidates
-        self._kart_candidates = kart_candidates
+        self._kart_slot_candidates = kart_slot_candidates
+        self._skin_slot_candidates = skin_slot_candidates
         self._slot_label = slot_label
 
         self._refresh_scope_options()
@@ -190,24 +173,12 @@ class TransformColorsPanel(QDialog):
         self._on_preview_changed()
 
     def select_slot_scope(self) -> None:
-        """Force the scope combo to 'Just this slot'.
-
-        Only has an effect when slot candidates are actually present
-        (set via the most recent `set_candidates` call). Called by the
-        main window when the user opens the panel from a slot-row
-        right-click menu — their click is the implicit scope signal.
-        """
+        """Force the scope combo to 'Current slot'."""
         if self._slot_candidates:
             self._scope_combo.setCurrentIndex(0)
 
     def commit_finished(self) -> None:
-        """Main window calls this after a successful commit.
-
-        Resets every section's controls to neutral so the next stack of
-        edits starts from zero. Leaves the enable checkboxes alone — if
-        the artist wanted Hue on before, they probably want it on for
-        the next round too (just reset to 0°).
-        """
+        """Main window calls this after a successful commit."""
         for section in self._sections.values():
             section.reset_values()
 
@@ -236,33 +207,44 @@ class TransformColorsPanel(QDialog):
         self.commit_requested.emit(edits)
 
     def _refresh_scope_options(self) -> None:
-        has_slot = bool(self._slot_candidates)
-        self._scope_combo.model().item(0).setEnabled(has_slot)
+        """Enable / disable scope options based on which lists have items.
 
-        label = (
-            f"Just this slot ({self._slot_label})"
-            if self._slot_label else "Just this slot"
+        Falls back to the next non-empty scope if the current pick became
+        empty (e.g. character with no skin slots while SKIN_SLOTS was
+        selected).
+        """
+        availability = {
+            0: bool(self._slot_candidates),
+            1: bool(self._kart_slot_candidates),
+            2: bool(self._skin_slot_candidates),
+        }
+        for row, enabled in availability.items():
+            self._scope_combo.model().item(row).setEnabled(enabled)
+
+        slot_label = (
+            f"Current slot ({self._slot_label})"
+            if self._slot_label else "Current slot"
         )
+        self._scope_combo.setItemText(0, slot_label)
 
-        self._scope_combo.setItemText(0, label)
-
-        if not has_slot and self._scope_combo.currentIndex() == 0:
-            self._scope_combo.setCurrentIndex(1)
+        if not availability[self._scope_combo.currentIndex()]:
+            for row, enabled in availability.items():
+                if enabled:
+                    self._scope_combo.setCurrentIndex(row)
+                    break
 
     def _current_candidates(self) -> list[TransformCandidate]:
         scope = self._scope_combo.currentData()
         if scope == TransformScope.THIS_SLOT:
             return self._slot_candidates
 
-        return self._kart_candidates
+        if scope == TransformScope.SKIN_SLOTS:
+            return self._skin_slot_candidates
+
+        return self._kart_slot_candidates
 
     def _compute_edits(self) -> list[BulkColorEdit]:
-        """Apply every enabled section's transform as a pipeline on each candidate.
-
-        Returns only candidates whose color actually changed after the
-        full pipeline — no-op edits would pollute the undo stack and
-        confuse the preview-diff math downstream.
-        """
+        """Apply every enabled section's transform as a pipeline on each candidate."""
         enabled_params = [
             section.current_params()
             for section in self._ordered_sections()
@@ -280,7 +262,7 @@ class TransformColorsPanel(QDialog):
 
             if new_color.value != cand.current_color.value:
                 edits.append(BulkColorEdit(
-                    paintjob=cand.paintjob,
+                    asset=cand.asset,
                     slot=cand.slot,
                     color_index=cand.color_index,
                     old_color=cand.current_color,
@@ -310,12 +292,7 @@ class TransformColorsPanel(QDialog):
 
 
 class _OperationSection(QGroupBox):
-    """One collapsible op section in the panel.
-
-    Encapsulates the enable checkbox + mode-specific controls. Emits
-    `params_changed` on any control change (including the enable
-    checkbox toggling) so the panel can recompute its preview.
-    """
+    """One collapsible op section in the panel."""
 
     params_changed = Signal()
 

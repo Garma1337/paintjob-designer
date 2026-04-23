@@ -12,9 +12,9 @@ This document explains what CTR actually stores, what "paintjob swapping" really
 - [What "Paintjob Swapping" Actually Does](#what-paintjob-swapping-actually-does)
 - [Vanilla's Fixed Mapping](#vanillas-fixed-mapping)
 - [What a Paintjob Mod Adds](#what-a-paintjob-mod-adds)
+- [Paintjobs vs Skins](#paintjobs-vs-skins)
 - [Why the Designer Outputs JSON](#why-the-designer-outputs-json)
 - [Division of Labor: Designer vs Mod](#division-of-labor-designer-vs-mod)
-- [Common Questions](#common-questions)
 
 ## What CTR Actually Stores
 
@@ -64,6 +64,20 @@ In principle, each mod makes its own decisions about:
 - Whether paintjob selection survives a race, persists to save data, syncs in multiplayer
 - Which regional EXE to patch (the `OnlyUSA` suffix on the example mod isn't decorative — the hooks are offset-specific)
 
+## Paintjobs vs Skins
+
+Everything above describes the *kart-side* CLUTs — the eight 16-color palettes that paint the front, back, motor, exhaust, and so on. The designer calls those **paintjobs**: kart-only, character-portable (the same kart paintjob can be applied to Crash, Cortex, Penta, etc., because every standard-kart character samples the same shared kart texture through eight CLUTs at the same VRAM coordinates).
+
+But every character also has CLUTs that aren't part of the kart — face textures, character-specific accessory textures, detail TIMs unique to that one racer. And the driver body itself isn't textured at all; it's colored per-vertex (Gouraud shading), with the colors stored in a small RGB table baked into each character's mesh.
+
+The designer calls a recolor of those character-side surfaces a **skin**:
+
+- A skin edits the character's **skin-side CLUTs** (the ones not in the kart-paintjob set).
+- A skin can also override entries in the character's **gouraud color table**, which recolors the driver body.
+- A skin is **bound to one specific character** — its slot names key into that character's particular VRAM rects, and its vertex overrides reference indices in that character's specific gouraud table. Cross-character reuse isn't meaningful.
+
+In CTR's engine terms, a skin is the same operation as a paintjob (write some bytes into VRAM at character-load time + tweak the mesh's vertex-color buffer at draw time) but targeting a different set of VRAM coordinates and the gouraud table instead of just the eight kart CLUTs. Vanilla CTR doesn't distinguish them — there's just one fixed character-load that uploads everything. A mod that wants live skin-swapping has to add the same kind of per-player-index plumbing as a paintjob mod, but for the skin-side data.
+
 ## Why the Designer Outputs JSON
 
 Given the above, the designer's job is narrowly defined:
@@ -74,16 +88,19 @@ The designer's output is therefore a **library directory** — a folder of per-p
 
 ## Division of Labor: Designer vs Mod
 
-| Concern                                           | Paintjob Designer | Mod's own tooling |
-|---------------------------------------------------|:-----------------:|:-----------------:|
-| Painting 16-color palettes                        |         ✓         |                   |
-| Importing PNGs into 4bpp texture slots            |         ✓         |                   |
-| Storing the authored result (JSON library)        |         ✓         |                   |
-| Validating the library against a published schema |         ✓         |                   |
-| Rebuilding `PAINTALL.BIN` with extra entries      |                   |         ✓         |
-| Bumping paintjob count and recompiling the loader |                   |         ✓         |
-| Hooking the character-select menu for cycling UX  |                   |         ✓         |
-| Patching the regional EXE                         |                   |         ✓         |
-| Rebuilding the ISO                                |                   |         ✓         |
+| Concern                                                  | Paintjob Designer | Mod's own tooling |
+|----------------------------------------------------------|:-----------------:|:-----------------:|
+| Painting kart-side 16-color palettes (paintjobs)         |         ✓         |                   |
+| Painting character-side 16-color palettes (skins)        |         ✓         |                   |
+| Editing per-vertex gouraud colors (skins)                |         ✓         |                   |
+| Importing PNGs into 4bpp texture slots                   |         ✓         |                   |
+| Storing the authored result (paintjob + skin libraries)  |         ✓         |                   |
+| Validating each library against a published schema       |         ✓         |                   |
+| Rebuilding `PAINTALL.BIN` with extra entries             |                   |         ✓         |
+| Packing skin-side CLUTs into a per-character bundle      |                   |         ✓         |
+| Bumping paintjob/skin counts and recompiling the loader  |                   |         ✓         |
+| Hooking character-select for paintjob/skin cycling UX    |                   |         ✓         |
+| Patching the regional EXE                                |                   |         ✓         |
+| Rebuilding the ISO                                       |                   |         ✓         |
 
 The designer sits upstream of "any specific mod." It produces the *content*. Each mod owns the *delivery*.

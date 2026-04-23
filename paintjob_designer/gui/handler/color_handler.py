@@ -14,13 +14,7 @@ from paintjob_designer.vram.cache import VramCache
 
 
 class ColorHandler:
-    """Applies color edits to a single `Paintjob` + re-renders the slot.
-
-    First edit of a slot pulls the slot's 16 default colors from the
-    current VRAM CLUT so only the user's one change differs from the
-    in-game default. Subsequent edits just flip one of the already-stored
-    colors.
-    """
+    """Applies color edits to a single `Paintjob` + re-renders the slot."""
 
     def __init__(
         self,
@@ -58,14 +52,7 @@ class ColorHandler:
         slot: SlotRegions,
         edits: list[tuple[int, PsxColor]],
     ) -> None:
-        """Apply multiple color changes to one slot in a single pass.
-
-        `apply_edit` re-renders the slot's atlas region after every single
-        color write, which is wasteful when a bulk transform touches 10+
-        colors in the same slot. This collapses the operation into one
-        render by mutating the 16-color CLUT entry in place and calling
-        `render_slot` exactly once.
-        """
+        """Apply multiple color changes to one slot in a single pass."""
         if not edits:
             return
 
@@ -88,11 +75,7 @@ class ColorHandler:
         iso_root: str | Path,
         slot: SlotRegions,
     ) -> list[PsxColor]:
-        """Return the 16-entry CLUT currently in VRAM for `slot`.
-
-        Used by the slot editor to paint its initial swatches when the
-        paintjob hasn't yet been touched for a given slot.
-        """
+        """Return the 16-entry CLUT currently in VRAM for `slot`."""
         return self.default_slot_colors_at(iso_root, slot.clut.x, slot.clut.y)
 
     def default_slot_colors_at(
@@ -123,19 +106,7 @@ class ColorHandler:
         base_clut_x: int,
         base_clut_y: int,
     ) -> list[PsxColor]:
-        """Revert a slot to the paintjob's base-character VRAM CLUT.
-
-        `base_clut_x` / `base_clut_y` are the profile-level CLUT coords of
-        the paintjob's home character (resolved by the caller via
-        `paintjob.base_character_id` on the profile). Using those —
-        rather than the preview character's CLUT coords on the
-        `SlotRegions` — means Reset always yields the paintjob's
-        "base" colors, independent of whatever character the user
-        happens to be previewing on right now.
-
-        Returns the 16 default colors so the caller can refresh its
-        swatches.
-        """
+        """Revert a slot to the paintjob's base-character VRAM CLUT."""
         vram = self._vram_cache.get(iso_root)
         defaults = [
             PsxColor(value=vram.u16_at(base_clut_x + i, base_clut_y))
@@ -154,15 +125,7 @@ class ColorHandler:
         slot: SlotRegions,
         colors: SlotColors | None,
     ) -> list[PsxColor]:
-        """Undo-style inverse of `apply_edit` / `reset_slot`.
-
-        When `colors` is `None` the slot entry is removed from the
-        paintjob (restoring the "never been touched" state); otherwise the
-        paintjob's slot is overwritten with the provided snapshot. Either
-        way the affected atlas region is re-decoded and the resolved colors
-        (paintjob override if set, else VRAM defaults) are returned so the
-        caller can refresh its swatches.
-        """
+        """Undo-style inverse of `apply_edit` / `reset_slot`."""
         vram = self._vram_cache.get(iso_root)
 
         if colors is None:

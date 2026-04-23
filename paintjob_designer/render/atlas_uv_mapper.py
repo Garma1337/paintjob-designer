@@ -12,21 +12,7 @@ _PAGE_STRIDE_ATLAS_Y = 256
 
 
 class AtlasUvMapper:
-    """Turns per-vertex byte-space UVs into normalized 0..1 atlas UVs.
-
-    `VertexAssembler` hands out UVs in the original byte space of each
-    `TextureLayout` (0..255 within a 256×256 texture page). The atlas the 3D
-    viewer samples from is a single 4096×512 RGBA image assembled by
-    `AtlasRenderer`, where every 4bpp texel occupies one atlas pixel and VRAM
-    pages lay out side-by-side horizontally. This class bridges the two so the
-    GL texture sample lands on the right pixel.
-
-    Untextured triangles (`tex_index == 0`) get the sentinel UV
-    `UNTEXTURED_SENTINEL = (-1.0, -1.0)`. The fragment shader recognizes the
-    negative U and draws a flat fill instead of sampling the texture — without
-    that, those triangles would sample the top-left of the atlas (often
-    transparent) and get discarded by the alpha test.
-    """
+    """Turns per-vertex byte-space UVs into normalized 0..1 atlas UVs."""
 
     ATLAS_WIDTH = AtlasRenderer.ATLAS_WIDTH
     ATLAS_HEIGHT = AtlasRenderer.ATLAS_HEIGHT

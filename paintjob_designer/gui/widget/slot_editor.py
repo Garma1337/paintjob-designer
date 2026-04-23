@@ -21,18 +21,7 @@ from paintjob_designer.models import PsxColor, SlotColors
 
 
 class SlotEditor(QScrollArea):
-    """Grid of slots × 16 color swatches for the current character.
-
-    Emits:
-        - `color_edit_requested(slot_name, color_index)` when a swatch is clicked.
-        - `slot_reset_requested(slot_name)` when a row's Reset button is clicked.
-        - `slot_focus_changed(slot_name | None)` when the active row changes.
-          The main window uses it to highlight the matching 3D triangles and
-          atlas regions.
-
-    The main window wires all three signals to its handlers; the widget itself
-    stays dumb about VRAM, paintjobs, or undo.
-    """
+    """Grid of slots × 16 color swatches for the current character."""
 
     color_edit_requested = Signal(str, int)
     slot_reset_requested = Signal(str)
@@ -67,10 +56,6 @@ class SlotEditor(QScrollArea):
     ) -> None:
         """(Re)build the grid with one row per slot. Colors start transparent until
         `update_color` is called for each entry.
-
-        `dimensions[slot_name]` is an optional human-readable size hint ("17x33",
-        "2 regions") shown next to the slot label so artists authoring custom
-        textures can see the expected pixel dimensions without guessing.
         """
         self._clear()
 
@@ -89,7 +74,7 @@ class SlotEditor(QScrollArea):
         if swatch is None:
             return
 
-        if color.value == 0:
+        if color.is_transparent:
             swatch.set_transparent()
             return
 
@@ -101,12 +86,7 @@ class SlotEditor(QScrollArea):
             self.update_color(slot_name, i, color)
 
     def focused_slot(self) -> str | None:
-        """Current Highlight-toggle slot, or None if nothing's focused.
-
-        Consumed by the Transform Colors panel to anchor its "this slot"
-        scope to whatever the artist is currently spotlighting in the
-        editor — no separate slot picker needed in the panel.
-        """
+        """Current Highlight-toggle slot, or None if nothing's focused."""
         return self._focused_slot
 
     def _clear(self) -> None:

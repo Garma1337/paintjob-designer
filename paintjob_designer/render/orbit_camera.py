@@ -6,20 +6,7 @@ import numpy as np
 
 
 class OrbitCamera:
-    """Yaw/pitch orbit camera with distance-based zoom and bbox-fit.
-
-    Pure-Python, Qt-free, GL-free — produces view and projection matrices as
-    numpy arrays the renderer uploads as `u_mvp`. Split out of `KartViewer`
-    so the math (clamping, fit, lookAt) is unit-testable without a GL
-    context or a live QOpenGLWidget.
-
-    Conventions:
-      - yaw rotates around world Y (up); 0 rad looks toward +Z.
-      - pitch rotates around the screen's horizontal axis, clamped to
-        `MIN_PITCH..MAX_PITCH` so the user can't flip past the poles.
-      - `distance` is measured from `target` to the virtual eye position;
-        also clamped to `MIN_DISTANCE..MAX_DISTANCE`.
-    """
+    """Yaw/pitch orbit camera with distance-based zoom and bbox-fit."""
 
     # Ranges sized for small kart meshes (~1-2 units across). Callers can
     # tweak per-instance via `configure_limits` if they render something much
@@ -54,17 +41,13 @@ class OrbitCamera:
         self._last_fit_distance: float = default_distance
 
     def rotate(self, d_yaw: float, d_pitch: float) -> None:
-        """Apply an incremental yaw/pitch rotation in radians.
-
-        Pitch is clamped to the configured pole limits; yaw wraps freely.
-        """
+        """Apply an incremental yaw/pitch rotation in radians."""
         self._yaw += d_yaw
         self._pitch = max(self.MIN_PITCH, min(self.MAX_PITCH, self._pitch + d_pitch))
 
     def zoom(self, factor: float) -> bool:
         """Scale the orbit distance by `factor`. Returns True if distance
-        actually changed (i.e. didn't hit a clamp).
-        """
+        actually changed (i.e. didn't hit a clamp)."""
         new_distance = self._distance * factor
         new_distance = max(self.MIN_DISTANCE, min(self.MAX_DISTANCE, new_distance))
         if new_distance == self._distance:
@@ -74,11 +57,7 @@ class OrbitCamera:
         return True
 
     def reset(self) -> None:
-        """Restore yaw/pitch to defaults and target/distance to the last fit.
-
-        If no fit has ever been performed, falls back to `default_distance`
-        and a zero target — essentially what a just-constructed camera sees.
-        """
+        """Restore yaw/pitch to defaults and target/distance to the last fit."""
         self._yaw = self._default_yaw
         self._pitch = self._default_pitch
 
@@ -90,13 +69,7 @@ class OrbitCamera:
             self._target = np.zeros(3, dtype=np.float32)
 
     def fit_to_bounds(self, positions: np.ndarray) -> None:
-        """Center the camera on `positions` (shape (N, 3)) and pull back to
-        frame the whole bounding box at the current FOV.
-
-        Empty input is a no-op — callers hand over freshly-assembled vertex
-        buffers that can legitimately be zero-length before the first mesh
-        lands.
-        """
+        """Center the camera on `positions` (shape (N, 3)) and pull back to frame the whole bounding box at the current FOV."""
         if positions.size == 0:
             return
 
@@ -148,13 +121,7 @@ class OrbitCamera:
         return m
 
     def projection_matrix(self, aspect: float) -> np.ndarray:
-        """Classic right-handed perspective matrix.
-
-        Kept in OrbitCamera rather than a separate class because projection
-        shares the same FOV/NEAR/FAR policy as the rest of the orbit math.
-        Renderer supplies the viewport aspect ratio at paint time since
-        OrbitCamera doesn't know about viewport size.
-        """
+        """Classic right-handed perspective matrix."""
         f = 1.0 / math.tan(math.radians(self.FOV_DEG) / 2.0)
         m = np.zeros((4, 4), dtype=np.float32)
         m[0, 0] = f / aspect

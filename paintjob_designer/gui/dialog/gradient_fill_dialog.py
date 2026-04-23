@@ -15,25 +15,13 @@ from PySide6.QtWidgets import (
 )
 
 from paintjob_designer.color.converter import ColorConverter
-from paintjob_designer.color.gradient import (
-    GradientGenerator,
-    GradientSpace,
-)
+from paintjob_designer.color.gradient import GradientGenerator, GradientSpace
 from paintjob_designer.gui.widget.psx_color_button import PsxColorButton
 from paintjob_designer.models import PsxColor, SlotColors
 
 
 class GradientFillDialog(QDialog):
-    """Fill a contiguous range of a slot's 16 CLUT entries with a gradient.
-
-    Inputs are the slot's current colors, the slot name (for labeling), and
-    a color converter. On Accept the dialog exposes
-    `resulting_replacements()` — a list of `(color_index, new_color)` pairs
-    the caller can pack into a `BulkTransformCommand`. Only indices the
-    range actually covers are returned, and only entries whose value
-    differs from the current color (so a no-op gradient doesn't pollute
-    the undo stack).
-    """
+    """Fill a contiguous range of a slot's 16 CLUT entries with a gradient."""
 
     def __init__(
         self,
@@ -113,23 +101,12 @@ class GradientFillDialog(QDialog):
         self._refresh_preview()
 
     def resulting_replacements(self) -> list[tuple[int, PsxColor]]:
-        """List of `(color_index, new_color)` the caller should apply.
-
-        Empty when the dialog was cancelled or when the computed gradient
-        matches the current slot colors exactly (so Apply is a no-op).
-        """
+        """List of `(color_index, new_color)` the caller should apply."""
         return list(self._result)
 
     @staticmethod
     def first_non_sentinel(colors: list[PsxColor]) -> PsxColor:
-        """Pick a sensible default endpoint from an existing slot's palette.
-
-        Index 0 is usually the PSX transparency sentinel (value 0), so
-        starting the gradient picker there would default to "transparent"
-        — almost never what the artist wants. Skip ahead to the first
-        non-sentinel color; if the whole slot is sentinel-only, fall back
-        to stp=1 black (`0x8000`) so the picker has something to show.
-        """
+        """Pick a sensible default endpoint from an existing slot's palette."""
         for c in colors:
             if c.value != 0:
                 return c
@@ -197,13 +174,7 @@ class GradientFillDialog(QDialog):
 
 
 class _GradientPreview(QFrame):
-    """Draws the 16-swatch strip with the in-range indices tinted / framed.
-
-    Indices inside the gradient range get their prospective color; indices
-    outside show the current paintjob color (so the user can see the
-    seam between what's changing and what stays). An orange frame marks
-    the range itself.
-    """
+    """Draws the 16-swatch strip with the in-range indices tinted / framed."""
 
     def __init__(self, color_converter: ColorConverter) -> None:
         super().__init__()

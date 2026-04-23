@@ -4,12 +4,7 @@ from struct import unpack_from
 
 
 class BinaryReader:
-    """Cursor-based reader over a `bytes` object.
-
-    Little-endian by default, with explicit big-endian overloads for formats
-    that mix endianness (CTR draw commands are big-endian dwords in an otherwise
-    little-endian file).
-    """
+    """Cursor-based reader over a `bytes` object."""
 
     def __init__(self, data: bytes) -> None:
         self._data = data

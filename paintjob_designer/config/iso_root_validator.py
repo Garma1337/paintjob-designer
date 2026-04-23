@@ -12,12 +12,7 @@ class IsoRootValidation:
 
 
 class IsoRootValidator:
-    """Determines whether a directory looks like an extracted CTR (NTSC-U) ISO.
-
-    Probes for a small set of files the designer needs — at least one character
-    `.ctr` plus `shared.vrm` (source of kart texture pixels). Keeping it headless
-    lets the first-run dialog run the same check as any scripted bring-up.
-    """
+    """Determines whether a directory looks like an extracted CTR (NTSC-U) ISO."""
 
     _REQUIRED_FILES = (
         "bigfile/models/racers/hi/crash.ctr",

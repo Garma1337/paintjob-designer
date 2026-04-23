@@ -5,15 +5,7 @@ from paintjob_designer.models import BitDepth, PsxColor, SlotRegion, VramPage
 
 
 class VramRegionDecoder:
-    """Writes one `SlotRegion` worth of 4bpp texels into an RGBA atlas buffer.
-
-    Split out of `AtlasRenderer` so the per-region CLUT-indexing loop can be
-    tested with synthesized VRAM + CLUT inputs and no full atlas pipeline.
-
-    The atlas this writes into is wider than VRAM by `stretch_x` (currently 4
-    for 4bpp texel visibility) — each VRAM u16 contains 4 CLUT indices that
-    expand to 4 consecutive atlas pixels.
-    """
+    """Writes one `SlotRegion` worth of 4bpp texels into an RGBA atlas buffer."""
 
     BYTES_PER_PIXEL = 4  # RGBA
 
@@ -36,13 +28,7 @@ class VramRegionDecoder:
         clut: list[int],
         rgba: bytearray,
     ) -> None:
-        """Walk `region`'s VRAM cells and emit `stretch_x` atlas pixels per cell.
-
-        Only 4bpp regions are supported; 8bpp/16bpp regions are skipped and
-        the atlas keeps whatever the baseline pass wrote there. That's
-        deliberate — every kart-paintjob slot we care about is 4bpp, and
-        mixing bit depths in one decoder would balloon it without payoff.
-        """
+        """Walk `region`'s VRAM cells and emit `stretch_x` atlas pixels per cell."""
         if region.bpp != BitDepth.Bit4:
             return
 
@@ -79,18 +65,7 @@ class VramRegionDecoder:
         clut: list[int],
         rgba: bytearray,
     ) -> bool:
-        """Write a paintjob-authored 4bpp pixel payload into the atlas.
-
-        Mirrors `decode_into` but sources nibbles from `pixel_bytes`
-        (two pixels per byte, low nibble = left) instead of the VRAM
-        page. Used for textured paintjobs whose imported pixels should
-        overwrite the vanilla-sampled texels at the slot's VRAM rect.
-
-        Returns `True` if the region was fully written, `False` if the
-        region was skipped (non-4bpp, or buffer size mismatch). The
-        caller uses that to fall back to the vanilla VRAM decode so a
-        corrupted import doesn't punch a hole in the preview.
-        """
+        """Write a paintjob-authored 4bpp pixel payload into the atlas."""
         if region.bpp != BitDepth.Bit4:
             return False
 
@@ -132,11 +107,10 @@ class VramRegionDecoder:
         return True
 
     def _psx_to_rgba(self, value: int) -> bytes:
-        # Mirrors the LUT path for value==0 (transparent sentinel) while
-        # reusing ColorConverter's bit math for the general case — the
-        # per-region path is colder than the baseline decode so we don't
-        # bother with the vectorized LUT here.
-        if value == 0:
+        # Mirrors the LUT: any black texel (RGB 0,0,0) renders transparent
+        # in-game regardless of the stp bit, so both 0x0000 and 0x8000
+        # become alpha=0 here. ColorConverter handles the non-black cases.
+        if (value & 0x7FFF) == 0:
             return b"\x00\x00\x00\x00"
 
         rgb = self._colors.psx_to_rgb(PsxColor(value=value))

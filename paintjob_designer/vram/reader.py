@@ -17,15 +17,7 @@ _BITMAP_HEADER_SIZE = 12
 
 
 class VramReader:
-    """Parses CTR `.vrm` TIM-stream files and blits each TIM block into a `VramPage`.
-
-    A CTR .vrm is either a single raw TIM or a stream wrapper — first u4 is `0x20`
-    for streams, then entries of `(u4 data_size, TIM)` until `data_size == 0`. Each
-    TIM carries an optional CLUT block + an image block; both blocks encode their
-    own VRAM destination rectangle and pixel payload.
-
-    Port of `CTRFramework/Code/vrm/CtrVrm.cs` + `Tim.cs` in ctr-tools.
-    """
+    """Parses CTR `.vrm` TIM-stream files and blits each TIM block into a `VramPage`."""
 
     def read(self, data: bytes) -> VramPage:
         page = VramPage()
@@ -33,10 +25,7 @@ class VramReader:
         return page
 
     def blit_into(self, data: bytes, page: VramPage) -> None:
-        """Draw every TIM block in `data` into `page` at its encoded coordinates.
-
-        Existing pixels at overlapping coordinates are overwritten.
-        """
+        """Draw every TIM block in `data` into `page` at its encoded coordinates."""
         reader = BinaryReader(data)
         magic = reader.u4()
 
@@ -77,11 +66,7 @@ class VramReader:
         self._blit_block(reader, page)
 
     def _blit_block(self, reader: BinaryReader, page: VramPage) -> None:
-        """Copy one bitmap block's pixels into the VRAM page at `(origin_x, origin_y)`.
-
-        `width` and `height` are in 16bpp pixels; the block payload is
-        `width * height * 2` bytes immediately after the 12-byte header.
-        """
+        """Copy one bitmap block's pixels into the VRAM page at `(origin_x, origin_y)`."""
         block_len = reader.u4()
         origin_x = reader.u2()
         origin_y = reader.u2()

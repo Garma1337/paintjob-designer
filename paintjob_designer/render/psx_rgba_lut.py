@@ -4,17 +4,7 @@ import numpy as np
 
 
 class PsxRgbaLut:
-    """Precomputed PSX u16 → packed RGBA uint32 lookup table.
-
-    One entry per possible 16-bit PSX color value (65536 total). The indexed
-    fetch `lut[u16]` is the vectorized path the atlas renderer uses — orders
-    of magnitude faster than calling `ColorConverter.psx_to_rgb` per pixel.
-
-    Split out of `AtlasRenderer` so the bit-twiddling has its own home: the
-    formula here duplicates what `ColorConverter` computes per-color, and
-    `tests/render/test_psx_rgba_lut.py` pins the two together so a change to
-    either can't silently drift.
-    """
+    """Precomputed PSX u16 → packed RGBA uint32 lookup table."""
 
     LENGTH = 65536
 
@@ -37,10 +27,12 @@ class PsxRgbaLut:
         r8 = (r5 << 3) | (r5 >> 2)
         g8 = (g5 << 3) | (g5 >> 2)
         b8 = (b5 << 3) | (b5 >> 2)
-        # value == 0 is PSX's "fully transparent" sentinel; everything else
-        # gets full alpha. The stp bit (bit 15) is ignored — blend context
-        # isn't meaningful in a static preview.
-        a8 = np.where(values == 0, 0, 0xFF).astype(np.uint32)
+
+        # CTR renders any black texel (RGB 0,0,0) as transparent in-game,
+        # regardless of the stp bit, so both 0x0000 and 0x8000 must produce
+        # alpha=0 in the preview. Masking off bit 15 handles both.
+        a8 = np.where((values & 0x7FFF) == 0, 0, 0xFF).astype(np.uint32)
+
         # Host is little-endian on every platform we care about, so packing as
         # `r | g<<8 | b<<16 | a<<24` lays the bytes out R, G, B, A — matches
         # QImage.Format_RGBA8888 and the GL texture upload format.

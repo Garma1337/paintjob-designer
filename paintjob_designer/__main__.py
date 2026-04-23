@@ -2,8 +2,6 @@
 
 """Console-script entry point for `python -m paintjob_designer` and for the
 `paintjob-designer` script installed via `pipx`/`pip`.
-
-Mirrors the top-level `main.py` so the tool can be launched by either path.
 """
 
 import sys

@@ -33,10 +33,13 @@ def _tl(
 
 
 def _character(slots: list[tuple[str, int, int]]) -> CharacterProfile:
+    # Tests don't care about the kart-vs-skin split; the slot region
+    # deriver iterates `character.slots` (concatenation), so dropping
+    # everything into kart_slots is fine.
     return CharacterProfile(
         id="test",
         display_name="Test",
-        slots=[
+        kart_slots=[
             SlotProfile(name=name, clut=ClutCoord(x=x, y=y))
             for name, x, y in slots
         ],

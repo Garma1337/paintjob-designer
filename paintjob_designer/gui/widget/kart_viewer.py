@@ -27,20 +27,7 @@ _FRAGMENT_SHADER = (_SHADERS_DIR / "kart.frag").read_text(encoding="utf-8")
 
 
 class KartViewer(QOpenGLWidget):
-    """Textured 3D preview of the current kart mesh.
-
-    Orbit camera: left-drag rotates yaw/pitch, wheel zooms in/out. The mesh and
-    atlas are staged via `set_mesh` / `set_atlas` and uploaded on the next paint
-    so the caller never needs to make the GL context current.
-
-    Emits `gl_init_failed(reason)` if the first `initializeGL` call can't bring
-    up the shader program / VBOs (missing OpenGL 3.3, broken driver, etc.).
-    The main window swaps this widget out for a placeholder label in that case
-    so the rest of the app stays usable.
-
-    v1 scope: flat-shaded textured triangles, no lighting, no materials. That
-    matches the PSX GPU's fill style for karts and keeps the shader trivial.
-    """
+    """Textured 3D preview of the current kart mesh."""
 
     gl_init_failed = Signal(str)
     # Emitted on Alt+Click with:
@@ -120,6 +107,28 @@ class KartViewer(QOpenGLWidget):
         # the per-vertex highlight attribute.
         self._has_focus = False
 
+    def clear(self) -> None:
+        """Drop the current mesh + atlas so the viewer renders empty.
+
+        Used when the user de-selects everything (no character previewed).
+        Equivalent to calling `set_mesh` with a zero-triangle assembly,
+        but spelled out so callers don't need to construct a dummy mesh.
+        """
+        self._pending_mesh = (
+            np.zeros((0, 3), dtype=np.float32),
+            np.zeros((0, 2), dtype=np.float32),
+            np.zeros((0, 3), dtype=np.float32),
+            np.zeros((0, 3), dtype=np.float32),
+        )
+        self._base_uvs = None
+        self._base_colors = None
+        self._pick_positions = None
+        self._pick_uvs = None
+        self._pick_texture_layout_indices = None
+        self._pending_highlight = np.zeros((0,), dtype=np.float32)
+        self._has_focus = False
+        self.update()
+
     def set_mesh(
         self,
         assembled: AssembledMesh,
@@ -170,12 +179,7 @@ class KartViewer(QOpenGLWidget):
         self.update()
 
     def set_highlighted_triangles(self, triangle_indices: list[int] | None) -> None:
-        """Focus the render on a subset of triangles by dimming the rest.
-
-        Passing `None` or an empty list clears focus and all triangles render
-        normally. Indices refer to the triangle ordering in the last
-        `set_mesh` call (same order as `AssembledMesh.texture_layout_indices`).
-        """
+        """Focus the render on a subset of triangles by dimming the rest."""
         if self._base_uvs is None:
             return
 
@@ -236,17 +240,7 @@ class KartViewer(QOpenGLWidget):
         atlas_height: int,
         x: int, y: int, w: int, h: int,
     ) -> None:
-        """Upload only a rectangle of the atlas (glTexSubImage2D path).
-
-        `rgba` is still the full atlas buffer; we slice the requested rect in
-        `paintGL`. This is the fast path for color edits, which only dirty
-        one slot's VRAM regions — re-uploading all 4096×512 RGBA on every
-        swatch click is wasteful when only a few hundred pixels changed.
-
-        If the texture hasn't been created yet (no prior `set_atlas` call),
-        this is dropped — sub-uploads to a non-existent texture have nothing
-        to patch.
-        """
+        """Upload only a rectangle of the atlas (glTexSubImage2D path)."""
         if self._pending_atlas is not None:
             # A full re-upload is already queued; it'll write the region too.
             return
@@ -263,9 +257,6 @@ class KartViewer(QOpenGLWidget):
     ) -> None:
         """Upload a new positions buffer (and a fresh set of flat normals) for
         the current mesh without touching UVs or refitting the camera.
-
-        Intended for animation playback: the triangle topology and per-vertex
-        UVs don't change between frames, only the world-space positions do.
         """
         if self._base_uvs is None:
             return
@@ -410,14 +401,7 @@ class KartViewer(QOpenGLWidget):
             self.update()
 
     def _handle_eyedropper_pick(self, event) -> None:
-        """Ray-pick the triangle under the cursor and emit `eyedropper_picked`.
-
-        Interpolates the hit point's byte-space UV from the three vertex UVs
-        via the hit's barycentric weights. The main window combines that
-        `(triangle_index, u, v)` with the current mesh's texture layouts and
-        slot regions to resolve the exact (slot, color_index) the pixel
-        samples from.
-        """
+        """Ray-pick the triangle under the cursor and emit `eyedropper_picked`."""
         if (
             self._pick_positions is None
             or self._pick_uvs is None
@@ -588,3 +572,18 @@ class KartViewer(QOpenGLWidget):
         )
         GL.glBindTexture(GL.GL_TEXTURE_2D, 0)
 
+
+class NullKartViewer:
+    """Drop-in stand-in for `KartViewer` after a GL init failure.
+
+    Absorbs every method the host calls (set_mesh, set_atlas, set_atlas_region,
+    set_highlighted_triangles, reset_camera, set_frame_positions, ...) as
+    silent no-ops so the rest of the editor doesn't have to gate on
+    "is 3D available?" at every call site.
+    """
+
+    def __getattr__(self, _name):
+        def _noop(*_args, **_kwargs):
+            return None
+
+        return _noop

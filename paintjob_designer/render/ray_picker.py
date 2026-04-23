@@ -9,13 +9,7 @@ from paintjob_designer.render.orbit_camera import OrbitCamera
 
 @dataclass
 class RayHit:
-    """A single ray/triangle intersection result.
-
-    `barycentric` gives the hit point as `(w0, w1, w2)` weights over the
-    triangle's three vertices (summing to ~1). Callers use these to
-    interpolate any per-vertex attribute — positions, UVs, colors — at the
-    exact hit point without re-casting the ray.
-    """
+    """A single ray/triangle intersection result."""
 
     triangle_index: int
     barycentric: tuple[float, float, float]
@@ -23,14 +17,7 @@ class RayHit:
 
 
 class RayTrianglePicker:
-    """Casts viewport rays against a flat triangle list and returns the closest hit.
-
-    Stateless — the class exists so the picker can be registered in the DI
-    container and injected into `KartViewer` (and unit-tested through its
-    public `pick` method) without a module-level function dance. The
-    Möller–Trumbore threshold lives on the class so tests can lower it if a
-    pathological test case needs more tolerance.
-    """
+    """Casts viewport rays against a flat triangle list and returns the closest hit."""
 
     # Threshold for the Möller–Trumbore determinant; values smaller than this
     # correspond to rays parallel to the triangle plane, which we skip to
@@ -46,21 +33,7 @@ class RayTrianglePicker:
         viewport_width: int,
         viewport_height: int,
     ) -> RayHit | None:
-        """Cast a ray from a viewport pixel and return the closest hit, if any.
-
-        `positions` is the flat triangle-list layout used by `AssembledMesh`
-        — `(N*3, 3)`, `(N*9,)`, or `(N, 3, 3)` of float32/64 world-space
-        vertex coordinates. We build the ray by un-projecting the viewport
-        pixel through the camera's `view @ projection` transform and then
-        run Möller–Trumbore against every triangle; at kart-sized counts (a
-        few hundred triangles) a brute-force scan completes in well under a
-        millisecond per click, which matters less than the simplicity of
-        having no acceleration structure to maintain.
-
-        Returns `None` when the mesh is empty, the viewport is degenerate,
-        or no triangle is hit (user clicked empty background around the
-        kart).
-        """
+        """Cast a ray from a viewport pixel and return the closest hit, if any."""
         if viewport_width <= 0 or viewport_height <= 0:
             return None
 
@@ -121,10 +94,7 @@ class RayTrianglePicker:
         viewport_width: int,
         viewport_height: int,
     ) -> tuple[np.ndarray, np.ndarray]:
-        """Un-project a viewport pixel to a world-space ray (origin, unit dir).
-
-        Viewport Y is measured top-down (Qt convention); NDC Y flips that.
-        """
+        """Un-project a viewport pixel to a world-space ray (origin, unit dir)."""
         ndc_x = (2.0 * viewport_x / viewport_width) - 1.0
         ndc_y = 1.0 - (2.0 * viewport_y / viewport_height)
 
@@ -159,13 +129,7 @@ class RayTrianglePicker:
         v1: np.ndarray,
         v2: np.ndarray,
     ) -> tuple[float, float, float, float] | None:
-        """Möller–Trumbore ray/triangle. Returns `(t, w0, w1, w2)` or None.
-
-        Accepts front AND back faces — the viewer renders with
-        `GL_CULL_FACE` off because CTR meshes frequently have double-sided
-        draws, so the picker has to agree: a click on a back-facing
-        triangle is still a legitimate pick.
-        """
+        """Möller–Trumbore ray/triangle. Returns `(t, w0, w1, w2)` or None."""
         edge1 = v1 - v0
         edge2 = v2 - v0
         h = np.cross(direction, edge2)

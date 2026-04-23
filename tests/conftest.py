@@ -15,6 +15,8 @@ from paintjob_designer.gui.handler.project_handler import ProjectHandler
 from paintjob_designer.models import SlotColors, PsxColor
 from paintjob_designer.paintjob.reader import PaintjobReader
 from paintjob_designer.paintjob.writer import PaintjobWriter
+from paintjob_designer.skin.reader import SkinReader
+from paintjob_designer.skin.writer import SkinWriter
 from paintjob_designer.profile.reader import ProfileReader
 from paintjob_designer.profile.registry import ProfileRegistry
 from paintjob_designer.render.atlas_renderer import AtlasRenderer
@@ -107,6 +109,30 @@ def paintjob_reader():
 @pytest.fixture
 def paintjob_writer():
     return PaintjobWriter()
+
+
+@pytest.fixture
+def skin_reader():
+    return SkinReader()
+
+
+@pytest.fixture
+def skin_writer():
+    return SkinWriter()
+
+
+@pytest.fixture(scope="session")
+def qapp():
+    """Session-scoped QApplication for tests that touch QWidgets.
+
+    Qt requires exactly one QApplication per process, and constructing
+    widgets without one segfaults. Tests that need a sidebar / dialog
+    pull this fixture; pure-logic tests can ignore it.
+    """
+    import sys
+    from PySide6.QtWidgets import QApplication
+    app = QApplication.instance() or QApplication(sys.argv)
+    return app
 
 
 def slot_of(value: int = 0x1234) -> SlotColors:

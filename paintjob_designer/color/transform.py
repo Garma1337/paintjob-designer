@@ -21,19 +21,7 @@ class TransformMode(Enum):
 
 @dataclass
 class TransformParams:
-    """Parameters for one invocation of `ColorTransformer.transform`.
-
-    Only the fields relevant to `mode` are read; others are ignored. Ranges:
-      - `hue_shift_degrees`: [-180, 180] (wraps around 360°).
-      - `brightness_shift` / `saturation_shift`: [-1, 1] (additive on HSV V/S).
-      - `rgb_delta_*`: [-255, 255] (clamped after addition).
-      - `match_color`, `replace_with`: for REPLACE_MATCHES. Matching is by
-        full u16 equality so stp-bit state is respected.
-      - `source_color`, `target_color`, `hue_tolerance_degrees`: for
-        REPLACE_HUE. Colors whose hue is within ±tolerance of
-        `source_color`'s hue get rotated by (target_hue - source_hue);
-        saturation and value are preserved.
-    """
+    """Parameters for one invocation of `ColorTransformer.transform`."""
 
     mode: TransformMode
     match_color: PsxColor | None = None
@@ -50,20 +38,7 @@ class TransformParams:
 
 
 class ColorTransformer:
-    """Applies a `TransformParams` to a single `PsxColor`.
-
-    Quantizes back to the PSX 5-bit grid on the way out, preserving the stp
-    (transparency) bit from the input color. Entries whose full u16 value
-    is 0 are the PSX transparency sentinel — they're passed through
-    untouched so that HSV shifts don't silently promote a row's transparent
-    index to a solid-colored pixel (the CLUT would stop rendering as
-    transparent in-game).
-
-    Delegates 5-5-5 ↔ 8-8-8 conversion + u16 packing to the injected
-    `ColorConverter`: that class owns the authoritative PSX-grid math, and
-    duplicating it here made the two implementations drift whenever one of
-    them was fixed.
-    """
+    """Applies a `TransformParams` to a single `PsxColor`."""
 
     _TRANSPARENT_SENTINEL = 0
 
@@ -118,12 +93,7 @@ class ColorTransformer:
         return color
 
     def _replace_hue(self, color: PsxColor, params: TransformParams) -> PsxColor:
-        """Rotate hues inside a tolerance band of `source_color`'s hue.
-
-        Preserves saturation and value, so a paintjob's gradient structure
-        survives the swap — "replace green with red" keeps the relative
-        shading between the greens intact when they land in the reds.
-        """
+        """Rotate hues inside a tolerance band of `source_color`'s hue."""
         if params.source_color is None or params.target_color is None:
             return color
 
