@@ -30,6 +30,8 @@ from paintjob_designer.paintjob.reader import PaintjobReader
 from paintjob_designer.paintjob.writer import PaintjobWriter
 from paintjob_designer.profile.reader import ProfileReader
 from paintjob_designer.profile.registry import ProfileRegistry
+from paintjob_designer.profile.menu_clut_locator import MenuClutLocator
+from paintjob_designer.profile.skin_slot_deriver import SkinSlotDeriver
 from paintjob_designer.render.atlas_renderer import AtlasRenderer
 from paintjob_designer.render.atlas_uv_mapper import AtlasUvMapper
 from paintjob_designer.render.ray_picker import RayTrianglePicker
@@ -63,6 +65,8 @@ container.register("gradient_generator", lambda c: GradientGenerator(c.resolve("
 container.register("ray_triangle_picker", lambda c: RayTrianglePicker())
 container.register("profile_reader", lambda c: ProfileReader())
 container.register("profile_registry", lambda c: ProfileRegistry(c.resolve("profile_reader")))
+container.register("skin_slot_deriver", lambda c: SkinSlotDeriver())
+container.register("menu_clut_locator", lambda c: MenuClutLocator())
 container.register("animation_decoder", lambda c: AnimationDecoder())
 container.register("ctr_model_reader", lambda c: CtrModelReader(c.resolve("animation_decoder")))
 container.register("vertex_assembler", lambda c: VertexAssembler())

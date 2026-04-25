@@ -25,7 +25,7 @@ class TestVanillaNtscUProfile:
         return profile_registry.load("vanilla-ntsc-u")
 
     def test_profile_metadata(self, profile):
-        assert profile.schema_version == 2
+        assert profile.schema_version == 3
         assert profile.id == "vanilla-ntsc-u"
         assert profile.vram_page.width == 1024
         assert profile.vram_page.height == 512
@@ -68,7 +68,7 @@ class TestVanillaNtscUProfile:
         assert {s.name for s in oxide.kart_slots} == HOVERCRAFT_SLOT_NAMES
 
         hoverkart = oxide.kart_slots[0]
-        assert (hoverkart.clut.x, hoverkart.clut.y) == (288, 248)
+        assert (hoverkart.clut_race.x, hoverkart.clut_race.y) == (288, 248)
 
     def test_oxide_skin_slots_cover_remaining_character_cluts(self, profile):
         # Oxide's whole character is texture-mapped (driver is not Gouraud-
@@ -82,7 +82,7 @@ class TestVanillaNtscUProfile:
         crash = next(c for c in profile.characters if c.id == "crash")
         front = next(s for s in crash.kart_slots if s.name == "front")
 
-        assert (front.clut.x, front.clut.y) == (112, 255)
+        assert (front.clut_race.x, front.clut_race.y) == (112, 255)
 
     def test_papu_floor_resolves_to_shared_crash_coord(self, profile):
         # Saphi's PAINTP_R has `papu.floor = &floor_crash_pos`, meaning papu reuses
@@ -90,7 +90,7 @@ class TestVanillaNtscUProfile:
         papu = next(c for c in profile.characters if c.id == "papu")
         floor = next(s for s in papu.kart_slots if s.name == "floor")
 
-        assert (floor.clut.x, floor.clut.y) == (304, 252)
+        assert (floor.clut_race.x, floor.clut_race.y) == (304, 252)
 
     def test_tropy_uses_ntropy_mesh(self, profile):
         # `tropy` (N. Tropy) is the tool's id; on disk the model is `ntropy.ctr`.
@@ -101,8 +101,8 @@ class TestVanillaNtscUProfile:
     def test_all_clut_coords_are_within_vram(self, profile):
         for c in profile.characters:
             for slot in c.slots:
-                assert 0 <= slot.clut.x < profile.vram_page.width, (c.id, slot.name)
-                assert 0 <= slot.clut.y < profile.vram_page.height, (c.id, slot.name)
+                assert 0 <= slot.clut_race.x < profile.vram_page.width, (c.id, slot.name)
+                assert 0 <= slot.clut_race.y < profile.vram_page.height, (c.id, slot.name)
 
     def test_skin_slot_names_use_extra_prefix_on_kart_characters(self, profile):
         # On standard kart racers, skin slots are the per-character-unique

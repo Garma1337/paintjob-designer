@@ -10,7 +10,7 @@ from paintjob_designer.models import KartType
 
 def _profile_json(**overrides) -> str:
     doc = {
-        "schema_version": 2,
+        "schema_version": 3,
         "id": "saphi",
         "display_name": "Saphi TrackROM",
         "vram_page": {"width": 1024, "height": 512},
@@ -21,8 +21,8 @@ def _profile_json(**overrides) -> str:
                 "mesh_source": "bigfile/models/racers/hi/crash.ctr",
                 "kart_type": "kart",
                 "kart_slots": [
-                    {"name": "front", "clut": {"x": 112, "y": 255}},
-                    {"name": "back", "clut": {"x": 112, "y": 250}},
+                    {"name": "front", "clut_race": {"x": 112, "y": 255}},
+                    {"name": "back", "clut_race": {"x": 112, "y": 250}},
                 ],
                 "skin_slots": [],
             }
@@ -38,7 +38,7 @@ class TestProfileReader:
     def test_reads_full_profile(self, profile_reader):
         profile = profile_reader.read(_profile_json())
 
-        assert profile.schema_version == 2
+        assert profile.schema_version == 3
         assert profile.id == "saphi"
         assert profile.display_name == "Saphi TrackROM"
         assert profile.vram_page.width == 1024
@@ -61,8 +61,8 @@ class TestProfileReader:
 
         front = profile.characters[0].kart_slots[0]
         assert front.name == "front"
-        assert front.clut.x == 112
-        assert front.clut.y == 255
+        assert front.clut_race.x == 112
+        assert front.clut_race.y == 255
         assert front.non_portable is False
 
     def test_parses_non_portable_flag(self, profile_reader):
@@ -72,7 +72,7 @@ class TestProfileReader:
             "mesh_source": "x.ctr",
             "kart_type": "kart",
             "kart_slots": [
-                {"name": "floor", "clut": {"x": 304, "y": 252}, "non_portable": True},
+                {"name": "floor", "clut_race": {"x": 304, "y": 252}, "non_portable": True},
             ],
             "skin_slots": [],
         }])
@@ -88,8 +88,8 @@ class TestProfileReader:
             "display_name": "Nitros Oxide",
             "mesh_source": "oxide.ctr",
             "kart_type": "hovercraft",
-            "kart_slots": [{"name": "hoverkart", "clut": {"x": 288, "y": 248}}],
-            "skin_slots": [{"name": "head", "clut": {"x": 96, "y": 248}}],
+            "kart_slots": [{"name": "hoverkart", "clut_race": {"x": 288, "y": 248}}],
+            "skin_slots": [{"name": "head", "clut_race": {"x": 96, "y": 248}}],
         }])
 
         profile = profile_reader.read(doc)
@@ -141,7 +141,7 @@ class TestProfileReader:
             profile_reader.read(_profile_json(schema_version=999))
 
     def test_defaults_vram_page_when_missing(self, profile_reader):
-        doc = json.dumps({"schema_version": 2, "id": "minimal"})
+        doc = json.dumps({"schema_version": 3, "id": "minimal"})
 
         profile = profile_reader.read(doc)
 
@@ -149,7 +149,7 @@ class TestProfileReader:
         assert profile.vram_page.height == 512
 
     def test_empty_character_list_when_missing(self, profile_reader):
-        doc = json.dumps({"schema_version": 2, "id": "minimal"})
+        doc = json.dumps({"schema_version": 3, "id": "minimal"})
 
         profile = profile_reader.read(doc)
 

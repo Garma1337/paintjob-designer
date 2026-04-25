@@ -97,7 +97,7 @@ class ProfileReader:
         )
 
     def _parse_slot(self, raw: dict) -> SlotProfile:
-        clut_raw = raw.get(ProfileKey.CLUT) or {}
+        clut_race_raw = raw.get(ProfileKey.CLUT_RACE) or {}
         clut_menu_raw = raw.get(ProfileKey.CLUT_MENU)
 
         clut_menu = None
@@ -109,9 +109,9 @@ class ProfileReader:
 
         return SlotProfile(
             name=str(raw.get(CommonKey.NAME, "")),
-            clut=ClutCoord(
-                x=int(clut_raw.get(ProfileKey.CLUT_X, 0)),
-                y=int(clut_raw.get(ProfileKey.CLUT_Y, 0)),
+            clut_race=ClutCoord(
+                x=int(clut_race_raw.get(ProfileKey.CLUT_X, 0)),
+                y=int(clut_race_raw.get(ProfileKey.CLUT_Y, 0)),
             ),
             clut_menu=clut_menu,
             non_portable=bool(raw.get(ProfileKey.NON_PORTABLE, False)),

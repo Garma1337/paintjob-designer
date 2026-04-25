@@ -22,7 +22,7 @@ class SlotProfile:
     """One paintable CLUT on one character."""
 
     name: str = ""
-    clut: ClutCoord = field(default_factory=ClutCoord)
+    clut_race: ClutCoord = field(default_factory=ClutCoord)
     clut_menu: ClutCoord | None = None
     non_portable: bool = False
 
@@ -58,7 +58,7 @@ class PaintjobSlotProfile:
 
 @dataclass
 class Profile:
-    SCHEMA_VERSION = 2
+    SCHEMA_VERSION = 3
 
     schema_version: int = SCHEMA_VERSION
     id: str = ""

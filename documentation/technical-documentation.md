@@ -5,9 +5,11 @@
 ```
 config/
     profiles/                       Target profile JSONs (vanilla-ntsc-u.json,
-                                    saphi.json) — schema v2 splits each
+                                    saphi.json) — schema v3 splits each
                                     character's slots into kart_slots /
-                                    skin_slots and tags slots non_portable
+                                    skin_slots, tags slots non_portable, and
+                                    carries `clut_race` + optional `clut_menu`
+                                    VRAM coords per slot
 
 paintjob_designer/
     core/                           DI container, binary / bitstream readers,
@@ -18,7 +20,9 @@ paintjob_designer/
                                                      KartType, KART_SLOT_NAMES
                                       skin.py        Skin, SkinLibrary
                                       profile.py     Profile, CharacterProfile,
-                                                     SlotProfile, ClutCoord
+                                                     SlotProfile (clut_race +
+                                                     optional clut_menu),
+                                                     ClutCoord
                                       color.py       PsxColor, Rgb888
                                       palette.py     Palette, PaletteLibrary
                                       ctr_mesh.py    CtrMesh, GouraudColor,
@@ -29,10 +33,15 @@ paintjob_designer/
     color/
         converter                   PSX15 <-> RGB888 conversion, hex formatting
         transform                   Bulk-transform pipeline (replace matches,
-                                    replace hue, shift hue/sat/brightness, RGB delta)
+                                    replace hue, shift hue/sat/brightness,
+                                    RGB delta, invert)
         gradient                    Two-endpoint linear gradients in RGB or HSV space
 
-    profile/                        ProfileReader + ProfileRegistry
+    profile/                        ProfileReader + ProfileRegistry +
+                                    SkinSlotDeriver (mesh CLUTs minus kart
+                                    slots → extra_<x>_<y> entries) +
+                                    MenuClutLocator (find a CLUT's twin in
+                                    another VRAM page by signature match)
     paintjob/                       PaintjobReader / PaintjobWriter (.json I/O)
     skin/                           SkinReader / SkinWriter (.json I/O)
     vram/                           VramReader (.vrm + TIM decode), VramCache
@@ -54,6 +63,12 @@ paintjob_designer/
     texture/
         quantizer                   PIL RGBA -> PSX 4bpp + 16-color CLUT
         importer                    PNG file + resize policy -> QuantizedTexture
+        four_bpp_codec              Pack / unpack 4bpp pixel buffers (two
+                                    indices per byte, low-nibble first)
+        rotator                     TextureRotator — 90/180/270 CW rotation
+                                    of a 4bpp pixel buffer; 90/270 require
+                                    a square source for the new dimensions
+                                    to round-trip the slot's VRAM rect
 
     gui/
         main_window.py              Top-level window. Owns the editor surface
@@ -91,14 +106,21 @@ paintjob_designer/
         widget/
             kart_viewer.py          KartViewer (GL) + NullKartViewer (fallback
                                     when GL init fails)
-            slot_editor.py          SlotEditor — grid of SlotRow widgets
+            slot_editor.py          SlotEditor — top button strip
+                                    (Transform... + Reset all) over a grid of
+                                    SlotRow widgets
             slot_row.py             SlotRow — 16 swatches + Highlight + Reset
             color_swatch.py         ColorSwatch — single 5-5-5 PSX color cell
             psx_color_button.py     PsxColorButton — labeled swatch + picker
             color_picker.py         PsxColorPicker (alpha-aware)
-            vertex_slot_editor.py   VertexSlotEditor — per-gouraud-index
-                                    swatch grid, skin-only
+            vertex_slot_editor.py   VertexSlotEditor — per-vertex rows
+                                    (swatch + Highlight + Reset + override
+                                    marker) + top Transform / Reset all
+                                    strip; skin-only
             transform_panel.py      TransformColorsPanel + TransformCandidate
+                                    + the shared `_OperationSection` that
+                                    backs both this panel and the vertex
+                                    transform dialog
             preview_sidebar.py      PreviewSidebar — character/paintjob/skin
                                     composition combos
             library_sidebar.py      LibrarySidebar base + LibraryRowDelegate.
@@ -118,7 +140,14 @@ paintjob_designer/
             palette_edit_dialog.py      Edit palette colors
             palette_apply_dialog.py     Map palette → slot indices on apply
             gradient_fill_dialog.py     Two-endpoint gradient builder
-            vertex_transform_dialog.py  Bulk vertex-color transform (skins)
+            vertex_transform_dialog.py  Modeless vertex-color transform
+                                        panel — same Apply / Close lifecycle
+                                        and operation pipeline as the CLUT
+                                        TransformColorsPanel. Auto-restricts
+                                        the writable index set to gouraud
+                                        entries used only by untextured
+                                        triangles so paintjob surfaces don't
+                                        get tinted.
 
         handler/
             character_handler.py    Character bring-up: .ctr parse + VRAM load
@@ -196,6 +225,17 @@ tools/
                                     decoded region samples for any racer's
                                     .ctr — used when adding new profile
                                     entries.
+    populate_skin_slots.py          CLI: walk an ISO's racer .ctrs and
+                                    backfill `skin_slots` in a profile JSON
+                                    via SkinSlotDeriver. Run after adding a
+                                    new character or porting to a fresh
+                                    profile.
+    populate_skin_menu_cluts.py     CLI: locate each skin slot's menu CLUT
+                                    by signature-matching the race CLUT
+                                    against `bigfile/levels/menu_models/
+                                    data.vrm`. Skips low-entropy and
+                                    ambiguous matches with a per-slot
+                                    warning.
 ```
 
 # Architecture Overview
@@ -261,7 +301,7 @@ The spec file lives at the repo root; it handles icon, data-file bundling, and t
 pytest
 ```
 
-431 tests, all headless — no GL context or ISO needed. Controller tests pull in a session-scoped `qapp` fixture from `tests/conftest.py` so the Qt-widget side compiles, but no event loop runs.
+468 tests, all headless — no GL context or ISO needed. Controller tests pull in a session-scoped `qapp` fixture from `tests/conftest.py` so the Qt-widget side compiles, but no event loop runs.
 
 # Regenerating Schemas
 

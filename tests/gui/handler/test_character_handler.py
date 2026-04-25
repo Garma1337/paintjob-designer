@@ -45,14 +45,14 @@ def _minimal_character_profile() -> CharacterProfile:
         display_name="Crash",
         mesh_source="bigfile/models/racers/hi/crash.ctr",
         kart_slots=[
-            SlotProfile(name="front", clut=ClutCoord(x=0, y=0)),
+            SlotProfile(name="front", clut_race=ClutCoord(x=0, y=0)),
         ],
     )
 
 
 def _mesh_bytes_with_slot_region() -> bytes:
     """Synthetic .ctr where one TL's palette matches the 'front' slot at (0, 0)."""
-    # palette_x=0, palette_y=0 -> CLUT coord (0, 0) matches SlotProfile.clut.
+    # palette_x=0, palette_y=0 -> CLUT coord (0, 0) matches SlotProfile.clut_race.
     # Keep UVs small so the slot region fits in our synthetic VRAM.
     return build_ctr_bytes(meshes=[{
         "commands": _triangle_commands(),

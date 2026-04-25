@@ -40,7 +40,7 @@ def _character(slots: list[tuple[str, int, int]]) -> CharacterProfile:
         id="test",
         display_name="Test",
         kart_slots=[
-            SlotProfile(name=name, clut=ClutCoord(x=x, y=y))
+            SlotProfile(name=name, clut_race=ClutCoord(x=x, y=y))
             for name, x, y in slots
         ],
     )

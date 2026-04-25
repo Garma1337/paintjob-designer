@@ -31,7 +31,7 @@ class ProfileKey:
     KART_TYPE = "kart_type"
     KART_SLOTS = "kart_slots"
     SKIN_SLOTS = "skin_slots"
-    CLUT = "clut"
+    CLUT_RACE = "clut_race"
     CLUT_MENU = "clut_menu"
     CLUT_X = "x"
     CLUT_Y = "y"

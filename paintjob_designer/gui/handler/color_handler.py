@@ -87,7 +87,7 @@ class ColorHandler:
         """Raw-coord variant used when we only have a `ClutCoord`, not a
         `SlotRegions`. The binary exporter's "backfill un-edited characters
         with VRAM defaults" path hits this because it reads straight from
-        the profile's `SlotProfile.clut` without going through region
+        the profile's `SlotProfile.clut_race` without going through region
         derivation.
         """
         vram = self._vram_cache.get(iso_root)

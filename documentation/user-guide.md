@@ -18,10 +18,11 @@ Things that aren't obvious from the UI. The basics — click a swatch, pick a co
 - [Skin Library](#skin-library)
   - [Sidebar Context Menu](#sidebar-context-menu-1)
   - [Vertex Slots Tab](#vertex-slots-tab)
-  - [Vertex Transform Dialog](#vertex-transform-dialog)
+  - [Vertex Transform Panel](#vertex-transform-panel)
 - [Preview Tab](#preview-tab)
 - [Preview Character](#preview-character)
 - [Slot Editor](#slot-editor)
+  - [Top Button Strip](#top-button-strip)
   - [The First Color Is Transparent](#the-first-color-is-transparent)
   - [Highlight Button](#highlight-button)
   - [Reset vs Undo](#reset-vs-undo)
@@ -39,6 +40,7 @@ Things that aren't obvious from the UI. The basics — click a swatch, pick a co
   - [Live Preview and Apply](#live-preview-and-apply)
 - [Gradient Fill](#gradient-fill)
 - [Texture Import](#texture-import)
+  - [Rotate Texture](#rotate-texture)
 - [Undo / Redo](#undo--redo)
 - [Library I/O](#library-io)
   - [Paintjob Library](#paintjob-library-io)
@@ -143,15 +145,25 @@ There's no "Change bound character" — moving a skin between characters would c
 
 ### Vertex Slots Tab
 
-When a skin is selected, the right pane shows a second tab labeled **Vertex slots** alongside the regular CLUT slot editor. It's a grid of `v0`, `v1`, … swatches — one per entry in the active character's gouraud color table. Standard racers have 19–64 entries.
+When a skin is selected, the right pane shows a second tab labeled **Vertex slots** alongside the regular CLUT slot editor. It's a per-vertex row list — one row per entry in the active character's gouraud color table (`v0`, `v1`, …). Standard racers have 19–64 entries.
 
-Click any swatch to open an RGB color picker. The override is saved on the skin under that gouraud index; the 3D viewer re-uploads the per-vertex color buffer immediately.
+Each row carries a swatch + **Highlight** toggle + **Reset** button, mirroring the CLUT slot editor:
 
-The Vertex slots tab is disabled in paintjob mode (paintjobs can't carry vertex overrides) and disabled in preview mode (everything is read-only there).
+- **Click the swatch** — opens an RGB picker. The override is saved on the skin and re-rendered live.
+- **Highlight** — dims every kart triangle that doesn't sample this vertex color, so you can see exactly where it lands on the model. Same toggle semantics as the CLUT highlight (only one active at a time).
+- **Reset** — drops the override and reverts to the baked color. Disabled when the row isn't currently overridden.
+- **Override marker** — overridden rows draw an orange border so you can scan for what you've changed.
+- **Right-click the swatch** — context menu with a Reset entry.
 
-### Vertex Transform Dialog
+Above the list, a button strip exposes **Transform...** (opens the modeless vertex transform panel — see below) and **Reset all** (drops every vertex override on the active skin in one undo step).
 
-The Vertex slots tab has a **Transform...** button that opens a dialog with the same operation pipeline as the CLUT Transform Colors panel (Replace match, Replace hue, Shift hue/sat/brightness, RGB delta) but applied to every gouraud vertex color in the character's table.
+The Vertex slots tab is disabled in paintjob mode (paintjobs can't carry vertex overrides) and read-only in preview mode.
+
+### Vertex Transform Panel
+
+The **Transform...** button on the Vertex slots tab opens a modeless panel with the same Apply / Close lifecycle and the same operation pipeline as the CLUT Transform Colors panel — see [Transform Colors](#transform-colors) for the full mode list. Applied to every gouraud vertex color in the character's table.
+
+**Important restriction.** CTR's renderer does texture modulation on textured triangles (`texture × vertex_color × 2`), so changing a vertex color used by a textured face also tints the paintjob's pixels. The panel auto-skips any gouraud index referenced by a textured triangle and reports the count in the intro line ("X of Y colors will be considered..."). Indices used only by untextured (Gouraud-only) triangles are the safe set the panel actually rewrites.
 
 Implementation note: vertex transform round-trips through the PSX 5-bit grid for the HSV math, so an extreme transform may snap colors slightly. For most paintjob-style operations (hue rotation, brightness shift) the snap is invisible.
 
@@ -189,6 +201,15 @@ The slot list is filtered by the active editor mode:
 - Preview mode → both, but disabled.
 
 Right-click a color for the per-color menu (**Transform colors...** scoped to this slot, pre-filled with the clicked color). Right-click the slot row (outside any color) for the whole-slot menu — **Transform colors...**, **Gradient fill...**, **Apply Color Palette**, and **Import texture...** if the slot is texture-portable.
+
+### Top Button Strip
+
+The slot editor has a button strip above the rows with two whole-asset actions, parallel to the Vertex slots tab:
+
+- **Transform...** — opens the Transform Colors panel scoped to All kart slots / All skin slots, depending on the active mode.
+- **Reset all** — reverts every visible slot to the active asset's base/bound character defaults. Bundled into a single undo macro so one Ctrl+Z reverses the whole sweep.
+
+Both buttons are disabled in preview mode and when no asset is selected.
 
 ### The First Color Is Transparent
 
@@ -240,6 +261,8 @@ The Animation panel below the sidebar shows up when the preview character has an
 
 **FPS is a preview control, not saved data.** The game doesn't carry an intended framerate; 30 fps is a preview default because it reads well for idle loops. Nothing about the saved asset cares about this value.
 
+A **Loop** checkbox controls end-of-clip behavior. Unchecked (the default), playback stops on the last frame and resets the button to Play; clicking Play again rewinds to the start. Checked, playback wraps back to frame 0 indefinitely.
+
 ## Color Picker
 
 Every color you pick is **snapped to the PSX color grid** before being written back: the PS1 supports only a limited palette (32 levels per channel), so the editor rounds your choice to the nearest representable color. What you see in the swatch after picking is exactly what the game will display. The snap is lossy — `#FF7F3A` going in might come back as `#FF7F38`.
@@ -259,7 +282,9 @@ Palettes aren't tied to a specific paintjob and persist across sessions in the s
 
 ## Transform Colors
 
-The **Transform Colors...** action (Transform... button on the paintjob/skin sidebar, or right-click menus on slot rows) opens a **dockable panel** for bulk edits. The panel stays open while you orbit the 3D view, switch assets, or focus different slots — each change updates what the panel is about to touch. Applying a batch lands as a single undo entry, so one Ctrl+Z reverts the whole composition at once.
+The **Transform Colors...** action (the slot editor's top **Transform...** button, or right-click menus on slot rows) opens a **modeless panel** for bulk edits. The panel stays open while you orbit the 3D view, switch assets, or focus different slots — each change updates what the panel is about to touch. Applying a batch lands as a single undo entry, so one Ctrl+Z reverts the whole composition at once.
+
+The vertex editor's **Transform...** button opens the parallel [Vertex Transform Panel](#vertex-transform-panel), which uses the exact same operation pipeline.
 
 Every operation lives in its own section with an enable checkbox. Tick multiple sections and they compose in a **fixed order**:
 
@@ -269,6 +294,7 @@ Every operation lives in its own section with an enable checkbox. Tick multiple 
 4. Shift saturation
 5. Shift brightness
 6. RGB delta
+7. Invert colors
 
 Selective operations (the two Replace modes) run first, so their output is what the later ones see — e.g. swap green to red, then a downstream "shift hue" rotates the whole palette with the swap already baked in. The order isn't configurable; predictable composition beats reordering.
 
@@ -279,6 +305,7 @@ Selective operations (the two Replace modes) run first, so their output is what 
 - **Shift hue** — slider in degrees (−180° to +180°). Rotates every color around the color wheel.
 - **Shift brightness / saturation** — sliders in percent. Brightens/darkens and adds/removes saturation.
 - **RGB delta** — three sliders for red, green, and blue. Adds or subtracts per channel.
+- **Invert colors** — flips every channel (`255 − r`, `255 − g`, `255 − b`). Parameter-less; toggle the section to apply. Auto-unchecks itself after Apply so the next batch doesn't double-invert the freshly-baked baseline.
 
 The transparency sentinel (any all-zero CLUT entry) is never touched by any mode — it's a structural marker, not a real color.
 
@@ -294,7 +321,7 @@ How you opened the panel picks the starting scope:
 
 - Right-click a **color** → panel opens scoped to this slot, with Replace matching color pre-filled to the clicked color.
 - Right-click a **slot row** → panel opens scoped to this slot.
-- Sidebar **Transform...** button → panel opens scoped to "All kart slots" or "All skin slots" depending on the active tab.
+- Slot editor's **Transform...** button → panel opens scoped to "All kart slots" or "All skin slots" depending on the active tab.
 
 ### Live Preview and Apply
 
@@ -321,6 +348,15 @@ Right-click a slot row → **Import texture...** → pick a PNG → the slot's c
 - Multi-region slots (slots that occupy multiple disjoint VRAM rectangles) aren't supported yet — the dialog rejects with a clear message.
 - A second context-menu entry, **Remove imported texture**, appears when the slot already has imported pixels and drops them while keeping the CLUT colors as-is.
 
+### Rotate Texture
+
+Once a slot has imported pixels, the slot context menu also gains a **Rotate texture** submenu with three options: 90° clockwise, 180°, 270° clockwise. Rotation is lossless (a pure permutation of the 4bpp palette indices).
+
+- **180°** is always available.
+- **90° / 270°** are only available when the texture is square (width == height). They swap dimensions, and the slot's VRAM rect is fixed, so non-square 90/270 rotations would no longer fit. The submenu disables them with an explanatory tooltip.
+
+Rotation clears the undo history (commands captured pre-rotate slot refs).
+
 ## Undo / Redo
 
 - **Ctrl+Z / Ctrl+Shift+Z** (or Ctrl+Y) — single session-wide history.
@@ -329,7 +365,7 @@ Right-click a slot row → **Import texture...** → pick a PNG → the slot's c
 
 ## Library I/O
 
-The editor's outputs are **two library directories** — one for paintjobs, one for skins. Downstream mod-specific tools read each and produce whatever their mod needs. See [paintjob_library_format.md](paintjob_library_format.md) and [skin_library_format.md](skin_library_format.md) for the on-disk formats.
+The editor's outputs are **two library directories** — one for paintjobs, one for skins. Downstream mod-specific tools read each and produce whatever their mod needs. See [paintjob_library_format.md](schema/paintjob_library_format.md) and [skin_library_format.md](schema/skin_library_format.md) for the on-disk formats.
 
 ### Paintjob Library
 

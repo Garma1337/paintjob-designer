@@ -1,12 +1,12 @@
-[<- Back](./README.md)
+[<- Back](../README.md)
 
 # Skin Library Format
 
 This document describes the on-disk format the designer writes when you "Export Skin Library As…". A *skin* is a character-bound recolor: it edits the CLUTs and gouraud vertex colors that paintjobs don't touch (the driver body, the face, character-specific accessories) and is locked to a single character.
 
-For the parallel paintjob-library format (kart-only, character-portable), see [paintjob_library_format.md](./paintjob_library_format.md).
+For the parallel paintjob-library format (kart-only, character-portable), see [paintjob_library_format.md](paintjob_library_format.md).
 
-**Machine-readable schema**: [`schema/skins_library_schema.json`](../schema/skins_library_schema.json). Generated from the pydantic models in `paintjob_designer/models/` and kept in lockstep with them via `tests/skin/test_schema.py`. Consumer tools in other languages can validate against this file using any JSON Schema library; the fields / types / examples it emits are authoritative. If the schema and this human-readable doc ever disagree, the schema wins.
+**Machine-readable schema**: [`schema/skins_library_schema.json`](../../schema/skins_library_schema.json). Generated from the pydantic models in `paintjob_designer/models/` and kept in lockstep with them via `tests/skin/test_schema.py`. Consumer tools in other languages can validate against this file using any JSON Schema library; the fields / types / examples it emits are authoritative. If the schema and this human-readable doc ever disagree, the schema wins.
 
 ## Directory layout
 
@@ -68,7 +68,7 @@ If a saved skin's `character_id` doesn't exist in the active profile, the design
 
 ### Slot payload
 
-Identical shape to the paintjob format — see [paintjob_library_format.md#slot-payload](./paintjob_library_format.md#slot-payload). The only difference is that skin slots key into the character's *skin*-side CLUTs (face, accessories, character-specific detail textures) rather than the kart-side ones.
+Identical shape to the paintjob format — see [paintjob_library_format.md#slot-payload](paintjob_library_format.mdlot-payload). The only difference is that skin slots key into the character's *skin*-side CLUTs (face, accessories, character-specific detail textures) rather than the kart-side ones.
 
 ### Vertex overrides
 
@@ -87,12 +87,12 @@ Standard CTR character bodies are colored per-vertex (Gouraud) rather than via V
 
 ## Color format
 
-Skin slot colors use the same PSX 16-bit `#xxxx` format as paintjob slots — see [paintjob_library_format.md#color-format](./paintjob_library_format.md#color-format).
+Skin slot colors use the same PSX 16-bit `#xxxx` format as paintjob slots — see [paintjob_library_format.md#color-format](paintjob_library_format.mdolor-format).
 
 Vertex override colors use plain 8-bit RGB (`r`, `g`, `b` ∈ 0–255) because gouraud colors aren't routed through a CLUT.
 
 ## Canonical slot names
 
-Skin slot names are profile-specific and character-specific. The vanilla profile derives them from each character's mesh — many appear as `clut_<x>_<y>` placeholders pending identification (e.g. `clut_18_240` is a face CLUT on most racers). The standard-racer kart and skin slot lists are stored in `config/profiles/vanilla-ntsc-u.json` under each character's `kart_slots` and `skin_slots`.
+Skin slot names are profile-specific and character-specific. The bundled profiles auto-derive them from each character's mesh and emit them as `extra_<vram_x>_<vram_y>` placeholders (e.g. `extra_112_253` is a CLUT at VRAM (112, 253)). The standard-racer kart and skin slot lists are stored in `config/profiles/vanilla-ntsc-u.json` under each character's `kart_slots` and `skin_slots`. The `extra_<x>_<y>` naming is what `tools/populate_skin_slots.py` emits; profiles can also carry semantic skin-slot names (e.g. Oxide's `head`, `eyes`) that override the auto-derived ones.
 
 Consumer tools should treat the slot-name set as authoritative per-profile and per-character; don't hard-code names that aren't in the canonical kart-slot list.

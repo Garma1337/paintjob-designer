@@ -1,10 +1,10 @@
-[<- Back](./README.md)
+[<- Back](../README.md)
 
 # Paintjob Library Format
 
-This document describes the on-disk format the designer writes when you "Export Paintjob Library As…". The idea is that authors of mods for CTR write their own tools that consume a paintjob library to integrate it into their mod. For the parallel skin-library format, see [skin_library_format.md](./skin_library_format.md).
+This document describes the on-disk format the designer writes when you "Export Paintjob Library As…". The idea is that authors of mods for CTR write their own tools that consume a paintjob library to integrate it into their mod. For the parallel skin-library format, see [skin_library_format.md](skin_library_format.md).
 
-**Machine-readable schema**: [`schema/paintjobs_library_schema.json`](../schema/paintjobs_library_schema.json). Generated from the pydantic models in `paintjob_designer/models/` and kept in lockstep with them via `tests/paintjob/test_schema.py`. Consumer tools in other languages can validate against this file using any JSON Schema library; the fields / types / examples it emits are authoritative. If the schema and this human-readable doc ever disagree, the schema wins.
+**Machine-readable schema**: [`schema/paintjobs_library_schema.json`](../../schema/paintjobs_library_schema.json). Generated from the pydantic models in `paintjob_designer/models/` and kept in lockstep with them via `tests/paintjob/test_schema.py`. Consumer tools in other languages can validate against this file using any JSON Schema library; the fields / types / examples it emits are authoritative. If the schema and this human-readable doc ever disagree, the schema wins.
 
 ## Directory layout
 

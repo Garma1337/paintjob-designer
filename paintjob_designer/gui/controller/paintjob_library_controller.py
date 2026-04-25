@@ -293,7 +293,7 @@ class PaintjobLibraryController(LibraryController[Paintjob, PaintjobLibrary]):
 
         for slot_profile in character.kart_slots:
             defaults = self._color_handler.default_slot_colors_at(
-                self._iso_root, slot_profile.clut.x, slot_profile.clut.y,
+                self._iso_root, slot_profile.clut_race.x, slot_profile.clut_race.y,
             )
             slots[slot_profile.name] = SlotColors(colors=list(defaults))
 

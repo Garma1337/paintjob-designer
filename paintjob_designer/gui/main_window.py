@@ -2365,7 +2365,7 @@ class MainWindow(QMainWindow):
 
         for slot_profile in base_char.slots:
             if slot_profile.name == slot_name:
-                return slot_profile.clut.x, slot_profile.clut.y
+                return slot_profile.clut_race.x, slot_profile.clut_race.y
 
         return 0, 0
 

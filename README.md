@@ -21,8 +21,8 @@ Each editing tab keeps its own state (selected asset, last-viewed character) so 
 - **Per-slot CLUT editing** — click any of the 16 color swatches to open a PSX-quantized color picker; edits snap to the PS1 5-5-5 color grid as you pick.
 - **Vertex-color editing** (skins only) — the right pane has a Vertex Slots tab listing every entry in the character's gouraud-color table. Clicking a swatch opens an RGB picker; the override is saved on the skin and re-rendered live.
 - **Texture import** — replace a slot's pixels with a PNG. Quantized to 15 colors + transparent, packed 4bpp, baked into the asset's JSON. Available for both paintjobs and skins on slots whose VRAM rect is dim-invariant across characters.
-- **Transform Colors panel** — modeless panel with six stackable modes (replace matching color, replace hue, shift hue, shift saturation, shift brightness, RGB delta). Three scopes: Current slot / All kart slots / All skin slots — only the scope matching the active asset's kind is enabled. Slider changes stream into the 3D view live; Apply commits the full stack as a single undo entry.
-- **Vertex transform dialog** — the same operation pipeline applied to a skin's gouraud vertex colors as a one-shot batch.
+- **Transform Colors panel** — modeless panel with seven stackable modes (replace matching color, replace hue, shift hue, shift saturation, shift brightness, RGB delta, invert colors). Three scopes: Current slot / All kart slots / All skin slots — only the scope matching the active asset's kind is enabled. Slider changes stream into the 3D view live; Apply commits the full stack as a single undo entry.
+- **Vertex transform panel** — the same modeless panel applied to a skin's gouraud vertex colors. Auto-restricts itself to vertex indices used only by untextured triangles so `texture × vertex_color` modulation can't tint paintjob surfaces.
 - **Color Palettes** — save the 16 colors of a focused slot as a reusable palette and apply it to other slots later. Lives in the Paintjobs tab.
 
 ## 3D preview
@@ -35,7 +35,7 @@ Each editing tab keeps its own state (selected asset, last-viewed character) so 
 
 Ships with `vanilla-ntsc-u` (base CTR) and `saphi`. The profile drives which characters populate the preview dropdowns, which CLUTs belong to the kart vs the skin side, and which slots are flagged as non-portable (e.g. `floor`). Switch Profile from the File menu.
 
-See [documentation/paintjob_library_format.md](documentation/paintjob_library_format.md) and [documentation/skin_library_format.md](documentation/skin_library_format.md) for the on-disk JSON schemas consumer tools read, and [documentation/user-guide.md](documentation/user-guide.md) for everything else.
+See [documentation/paintjob_library_format.md](documentation/schema/paintjob_library_format.md) and [documentation/skin_library_format.md](documentation/schema/skin_library_format.md) for the on-disk JSON schemas consumer tools read, and [documentation/user-guide.md](documentation/user-guide.md) for everything else.
 
 # Requirements
 

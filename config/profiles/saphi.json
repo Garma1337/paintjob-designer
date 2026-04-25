@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "id": "saphi-ntsc-u",
   "display_name": "Saphi Track ROM (NTSC-U based)",
   "vram_page": {
@@ -15,7 +15,7 @@
       "kart_slots": [
         {
           "name": "front",
-          "clut": {
+          "clut_race": {
             "x": 112,
             "y": 255
           },
@@ -26,7 +26,7 @@
         },
         {
           "name": "back",
-          "clut": {
+          "clut_race": {
             "x": 112,
             "y": 250
           },
@@ -37,7 +37,7 @@
         },
         {
           "name": "floor",
-          "clut": {
+          "clut_race": {
             "x": 304,
             "y": 252
           },
@@ -49,7 +49,7 @@
         },
         {
           "name": "brown",
-          "clut": {
+          "clut_race": {
             "x": 976,
             "y": 253
           },
@@ -60,7 +60,7 @@
         },
         {
           "name": "motorside",
-          "clut": {
+          "clut_race": {
             "x": 112,
             "y": 249
           },
@@ -71,7 +71,7 @@
         },
         {
           "name": "motortop",
-          "clut": {
+          "clut_race": {
             "x": 96,
             "y": 255
           },
@@ -82,7 +82,7 @@
         },
         {
           "name": "bridge",
-          "clut": {
+          "clut_race": {
             "x": 496,
             "y": 256
           },
@@ -93,7 +93,7 @@
         },
         {
           "name": "exhaust",
-          "clut": {
+          "clut_race": {
             "x": 496,
             "y": 257
           },
@@ -103,7 +103,217 @@
           }
         }
       ],
-      "skin_slots": []
+      "skin_slots": [
+        {
+          "name": "extra_112_248",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_128_248",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "extra_128_249",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_128_250",
+          "clut_race": {
+            "x": 128,
+            "y": 250
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 252
+          }
+        },
+        {
+          "name": "extra_304_250",
+          "clut_race": {
+            "x": 304,
+            "y": 250
+          },
+          "clut_menu": {
+            "x": 624,
+            "y": 503
+          }
+        },
+        {
+          "name": "extra_112_251",
+          "clut_race": {
+            "x": 112,
+            "y": 251
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 249
+          }
+        },
+        {
+          "name": "extra_304_251",
+          "clut_race": {
+            "x": 304,
+            "y": 251
+          },
+          "clut_menu": {
+            "x": 624,
+            "y": 504
+          }
+        },
+        {
+          "name": "extra_112_252",
+          "clut_race": {
+            "x": 112,
+            "y": 252
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 250
+          }
+        },
+        {
+          "name": "extra_112_253",
+          "clut_race": {
+            "x": 112,
+            "y": 253
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 508
+          }
+        },
+        {
+          "name": "extra_304_253",
+          "clut_race": {
+            "x": 304,
+            "y": 253
+          },
+          "clut_menu": {
+            "x": 624,
+            "y": 221
+          }
+        },
+        {
+          "name": "extra_112_254",
+          "clut_race": {
+            "x": 112,
+            "y": 254
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 509
+          }
+        },
+        {
+          "name": "extra_976_254",
+          "clut_race": {
+            "x": 976,
+            "y": 254
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 222
+          }
+        },
+        {
+          "name": "extra_976_255",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "extra_480_258",
+          "clut_race": {
+            "x": 480,
+            "y": 258
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 505
+          }
+        },
+        {
+          "name": "extra_480_259",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "extra_480_260",
+          "clut_race": {
+            "x": 480,
+            "y": 260
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 504
+          }
+        },
+        {
+          "name": "extra_480_261",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "extra_480_262",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 508
+          }
+        },
+        {
+          "name": "extra_480_263",
+          "clut_race": {
+            "x": 480,
+            "y": 263
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 510
+          }
+        }
+      ]
     },
     {
       "id": "cortex",
@@ -113,7 +323,7 @@
       "kart_slots": [
         {
           "name": "front",
-          "clut": {
+          "clut_race": {
             "x": 128,
             "y": 254
           },
@@ -124,7 +334,7 @@
         },
         {
           "name": "back",
-          "clut": {
+          "clut_race": {
             "x": 128,
             "y": 255
           },
@@ -135,7 +345,7 @@
         },
         {
           "name": "floor",
-          "clut": {
+          "clut_race": {
             "x": 960,
             "y": 226
           },
@@ -147,7 +357,7 @@
         },
         {
           "name": "brown",
-          "clut": {
+          "clut_race": {
             "x": 992,
             "y": 225
           },
@@ -158,7 +368,7 @@
         },
         {
           "name": "motorside",
-          "clut": {
+          "clut_race": {
             "x": 128,
             "y": 253
           },
@@ -169,7 +379,7 @@
         },
         {
           "name": "motortop",
-          "clut": {
+          "clut_race": {
             "x": 128,
             "y": 252
           },
@@ -180,7 +390,7 @@
         },
         {
           "name": "bridge",
-          "clut": {
+          "clut_race": {
             "x": 496,
             "y": 263
           },
@@ -191,7 +401,7 @@
         },
         {
           "name": "exhaust",
-          "clut": {
+          "clut_race": {
             "x": 384,
             "y": 256
           },
@@ -201,7 +411,140 @@
           }
         }
       ],
-      "skin_slots": []
+      "skin_slots": [
+        {
+          "name": "extra_112_248",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_144_248",
+          "clut_race": {
+            "x": 144,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 504
+          }
+        },
+        {
+          "name": "extra_128_249",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_976_255",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "extra_64_256",
+          "clut_race": {
+            "x": 64,
+            "y": 256
+          },
+          "clut_menu": {
+            "x": 896,
+            "y": 510
+          }
+        },
+        {
+          "name": "extra_384_257",
+          "clut_race": {
+            "x": 384,
+            "y": 257
+          },
+          "clut_menu": {
+            "x": 576,
+            "y": 509
+          }
+        },
+        {
+          "name": "extra_384_258",
+          "clut_race": {
+            "x": 384,
+            "y": 258
+          },
+          "clut_menu": {
+            "x": 576,
+            "y": 510
+          }
+        },
+        {
+          "name": "extra_384_259",
+          "clut_race": {
+            "x": 384,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 736,
+            "y": 504
+          }
+        },
+        {
+          "name": "extra_480_259",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "extra_384_260",
+          "clut_race": {
+            "x": 384,
+            "y": 260
+          },
+          "clut_menu": {
+            "x": 720,
+            "y": 511
+          }
+        },
+        {
+          "name": "extra_384_261",
+          "clut_race": {
+            "x": 384,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 576,
+            "y": 511
+          }
+        },
+        {
+          "name": "extra_480_261",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        }
+      ]
     },
     {
       "id": "tiny",
@@ -211,7 +554,7 @@
       "kart_slots": [
         {
           "name": "front",
-          "clut": {
+          "clut_race": {
             "x": 144,
             "y": 249
           },
@@ -222,7 +565,7 @@
         },
         {
           "name": "back",
-          "clut": {
+          "clut_race": {
             "x": 144,
             "y": 250
           },
@@ -233,7 +576,7 @@
         },
         {
           "name": "floor",
-          "clut": {
+          "clut_race": {
             "x": 960,
             "y": 227
           },
@@ -245,7 +588,7 @@
         },
         {
           "name": "brown",
-          "clut": {
+          "clut_race": {
             "x": 992,
             "y": 226
           },
@@ -256,7 +599,7 @@
         },
         {
           "name": "motorside",
-          "clut": {
+          "clut_race": {
             "x": 144,
             "y": 252
           },
@@ -267,7 +610,7 @@
         },
         {
           "name": "motortop",
-          "clut": {
+          "clut_race": {
             "x": 144,
             "y": 251
           },
@@ -278,7 +621,7 @@
         },
         {
           "name": "bridge",
-          "clut": {
+          "clut_race": {
             "x": 400,
             "y": 257
           },
@@ -289,7 +632,7 @@
         },
         {
           "name": "exhaust",
-          "clut": {
+          "clut_race": {
             "x": 400,
             "y": 258
           },
@@ -299,7 +642,272 @@
           }
         }
       ],
-      "skin_slots": []
+      "skin_slots": [
+        {
+          "name": "extra_1008_224",
+          "clut_race": {
+            "x": 1008,
+            "y": 224
+          },
+          "clut_menu": {
+            "x": 688,
+            "y": 221
+          }
+        },
+        {
+          "name": "extra_976_228",
+          "clut_race": {
+            "x": 976,
+            "y": 228
+          },
+          "clut_menu": {
+            "x": 624,
+            "y": 228
+          }
+        },
+        {
+          "name": "extra_992_243",
+          "clut_race": {
+            "x": 992,
+            "y": 243
+          },
+          "clut_menu": {
+            "x": 576,
+            "y": 226
+          }
+        },
+        {
+          "name": "extra_992_244",
+          "clut_race": {
+            "x": 992,
+            "y": 244
+          },
+          "clut_menu": {
+            "x": 576,
+            "y": 227
+          }
+        },
+        {
+          "name": "extra_272_246",
+          "clut_race": {
+            "x": 272,
+            "y": 246
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 504
+          }
+        },
+        {
+          "name": "extra_112_248",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_128_248",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "extra_128_249",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_48_251",
+          "clut_race": {
+            "x": 48,
+            "y": 251
+          },
+          "clut_menu": {
+            "x": 912,
+            "y": 511
+          }
+        },
+        {
+          "name": "extra_64_252",
+          "clut_race": {
+            "x": 64,
+            "y": 252
+          },
+          "clut_menu": {
+            "x": 624,
+            "y": 499
+          }
+        },
+        {
+          "name": "extra_64_253",
+          "clut_race": {
+            "x": 64,
+            "y": 253
+          },
+          "clut_menu": {
+            "x": 624,
+            "y": 500
+          }
+        },
+        {
+          "name": "extra_144_253",
+          "clut_race": {
+            "x": 144,
+            "y": 253
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 505
+          }
+        },
+        {
+          "name": "extra_144_254",
+          "clut_race": {
+            "x": 144,
+            "y": 254
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 506
+          }
+        },
+        {
+          "name": "extra_144_255",
+          "clut_race": {
+            "x": 144,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 507
+          }
+        },
+        {
+          "name": "extra_976_255",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "extra_416_256",
+          "clut_race": {
+            "x": 416,
+            "y": 256
+          },
+          "clut_menu": {
+            "x": 576,
+            "y": 506
+          }
+        },
+        {
+          "name": "extra_64_258",
+          "clut_race": {
+            "x": 64,
+            "y": 258
+          },
+          "clut_menu": {
+            "x": 896,
+            "y": 509
+          }
+        },
+        {
+          "name": "extra_400_259",
+          "clut_race": {
+            "x": 400,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 752,
+            "y": 511
+          }
+        },
+        {
+          "name": "extra_480_259",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "extra_400_260",
+          "clut_race": {
+            "x": 400,
+            "y": 260
+          },
+          "clut_menu": {
+            "x": 576,
+            "y": 502
+          }
+        },
+        {
+          "name": "extra_400_261",
+          "clut_race": {
+            "x": 400,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 576,
+            "y": 503
+          }
+        },
+        {
+          "name": "extra_480_261",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "extra_400_262",
+          "clut_race": {
+            "x": 400,
+            "y": 262
+          },
+          "clut_menu": {
+            "x": 576,
+            "y": 504
+          }
+        },
+        {
+          "name": "extra_400_263",
+          "clut_race": {
+            "x": 400,
+            "y": 263
+          },
+          "clut_menu": {
+            "x": 576,
+            "y": 505
+          }
+        }
+      ]
     },
     {
       "id": "coco",
@@ -309,7 +917,7 @@
       "kart_slots": [
         {
           "name": "front",
-          "clut": {
+          "clut_race": {
             "x": 160,
             "y": 249
           },
@@ -320,7 +928,7 @@
         },
         {
           "name": "back",
-          "clut": {
+          "clut_race": {
             "x": 160,
             "y": 253
           },
@@ -331,7 +939,7 @@
         },
         {
           "name": "floor",
-          "clut": {
+          "clut_race": {
             "x": 960,
             "y": 231
           },
@@ -343,7 +951,7 @@
         },
         {
           "name": "brown",
-          "clut": {
+          "clut_race": {
             "x": 992,
             "y": 227
           },
@@ -354,7 +962,7 @@
         },
         {
           "name": "motorside",
-          "clut": {
+          "clut_race": {
             "x": 160,
             "y": 252
           },
@@ -365,7 +973,7 @@
         },
         {
           "name": "motortop",
-          "clut": {
+          "clut_race": {
             "x": 160,
             "y": 251
           },
@@ -376,7 +984,7 @@
         },
         {
           "name": "bridge",
-          "clut": {
+          "clut_race": {
             "x": 416,
             "y": 262
           },
@@ -387,7 +995,7 @@
         },
         {
           "name": "exhaust",
-          "clut": {
+          "clut_race": {
             "x": 416,
             "y": 263
           },
@@ -397,7 +1005,162 @@
           }
         }
       ],
-      "skin_slots": []
+      "skin_slots": [
+        {
+          "name": "extra_1008_225",
+          "clut_race": {
+            "x": 1008,
+            "y": 225
+          },
+          "clut_menu": {
+            "x": 688,
+            "y": 220
+          }
+        },
+        {
+          "name": "extra_992_245",
+          "clut_race": {
+            "x": 992,
+            "y": 245
+          },
+          "clut_menu": {
+            "x": 576,
+            "y": 225
+          }
+        },
+        {
+          "name": "extra_112_248",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_128_249",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_160_250",
+          "clut_race": {
+            "x": 160,
+            "y": 250
+          },
+          "clut_menu": {
+            "x": 880,
+            "y": 249
+          }
+        },
+        {
+          "name": "extra_64_254",
+          "clut_race": {
+            "x": 64,
+            "y": 254
+          },
+          "clut_menu": {
+            "x": 624,
+            "y": 498
+          }
+        },
+        {
+          "name": "extra_976_255",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "extra_432_256",
+          "clut_race": {
+            "x": 432,
+            "y": 256
+          },
+          "clut_menu": {
+            "x": 752,
+            "y": 508
+          }
+        },
+        {
+          "name": "extra_480_259",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "extra_416_260",
+          "clut_race": {
+            "x": 416,
+            "y": 260
+          },
+          "clut_menu": {
+            "x": 752,
+            "y": 504
+          }
+        },
+        {
+          "name": "extra_416_261",
+          "clut_race": {
+            "x": 416,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 752,
+            "y": 505
+          }
+        },
+        {
+          "name": "extra_480_261",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "extra_480_262",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 508
+          }
+        },
+        {
+          "name": "extra_480_263",
+          "clut_race": {
+            "x": 480,
+            "y": 263
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 510
+          }
+        }
+      ]
     },
     {
       "id": "ngin",
@@ -407,7 +1170,7 @@
       "kart_slots": [
         {
           "name": "front",
-          "clut": {
+          "clut_race": {
             "x": 160,
             "y": 255
           },
@@ -418,7 +1181,7 @@
         },
         {
           "name": "back",
-          "clut": {
+          "clut_race": {
             "x": 176,
             "y": 248
           },
@@ -429,7 +1192,7 @@
         },
         {
           "name": "floor",
-          "clut": {
+          "clut_race": {
             "x": 960,
             "y": 232
           },
@@ -441,7 +1204,7 @@
         },
         {
           "name": "brown",
-          "clut": {
+          "clut_race": {
             "x": 992,
             "y": 228
           },
@@ -452,7 +1215,7 @@
         },
         {
           "name": "motorside",
-          "clut": {
+          "clut_race": {
             "x": 176,
             "y": 249
           },
@@ -463,7 +1226,7 @@
         },
         {
           "name": "motortop",
-          "clut": {
+          "clut_race": {
             "x": 160,
             "y": 254
           },
@@ -474,7 +1237,7 @@
         },
         {
           "name": "bridge",
-          "clut": {
+          "clut_race": {
             "x": 432,
             "y": 258
           },
@@ -485,7 +1248,7 @@
         },
         {
           "name": "exhaust",
-          "clut": {
+          "clut_race": {
             "x": 432,
             "y": 259
           },
@@ -495,7 +1258,206 @@
           }
         }
       ],
-      "skin_slots": []
+      "skin_slots": [
+        {
+          "name": "extra_1008_226",
+          "clut_race": {
+            "x": 1008,
+            "y": 226
+          },
+          "clut_menu": {
+            "x": 576,
+            "y": 230
+          }
+        },
+        {
+          "name": "extra_1008_227",
+          "clut_race": {
+            "x": 1008,
+            "y": 227
+          },
+          "clut_menu": {
+            "x": 688,
+            "y": 219
+          }
+        },
+        {
+          "name": "extra_960_233",
+          "clut_race": {
+            "x": 960,
+            "y": 233
+          },
+          "clut_menu": {
+            "x": 944,
+            "y": 504
+          }
+        },
+        {
+          "name": "extra_992_246",
+          "clut_race": {
+            "x": 992,
+            "y": 246
+          },
+          "clut_menu": {
+            "x": 576,
+            "y": 224
+          }
+        },
+        {
+          "name": "extra_112_248",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_128_248",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "extra_176_250",
+          "clut_race": {
+            "x": 176,
+            "y": 250
+          },
+          "clut_menu": {
+            "x": 864,
+            "y": 254
+          }
+        },
+        {
+          "name": "extra_176_251",
+          "clut_race": {
+            "x": 176,
+            "y": 251
+          },
+          "clut_menu": {
+            "x": 864,
+            "y": 255
+          }
+        },
+        {
+          "name": "extra_976_255",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "extra_320_256",
+          "clut_race": {
+            "x": 320,
+            "y": 256
+          },
+          "clut_menu": {
+            "x": 736,
+            "y": 511
+          }
+        },
+        {
+          "name": "extra_384_259",
+          "clut_race": {
+            "x": 384,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 736,
+            "y": 504
+          }
+        },
+        {
+          "name": "extra_480_259",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "extra_384_260",
+          "clut_race": {
+            "x": 384,
+            "y": 260
+          },
+          "clut_menu": {
+            "x": 720,
+            "y": 511
+          }
+        },
+        {
+          "name": "extra_432_260",
+          "clut_race": {
+            "x": 432,
+            "y": 260
+          },
+          "clut_menu": {
+            "x": 736,
+            "y": 507
+          }
+        },
+        {
+          "name": "extra_432_261",
+          "clut_race": {
+            "x": 432,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 736,
+            "y": 508
+          }
+        },
+        {
+          "name": "extra_480_261",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "extra_432_262",
+          "clut_race": {
+            "x": 432,
+            "y": 262
+          },
+          "clut_menu": {
+            "x": 736,
+            "y": 509
+          }
+        },
+        {
+          "name": "extra_432_263",
+          "clut_race": {
+            "x": 432,
+            "y": 263
+          },
+          "clut_menu": {
+            "x": 736,
+            "y": 510
+          }
+        }
+      ]
     },
     {
       "id": "dingo",
@@ -505,7 +1467,7 @@
       "kart_slots": [
         {
           "name": "front",
-          "clut": {
+          "clut_race": {
             "x": 176,
             "y": 253
           },
@@ -516,7 +1478,7 @@
         },
         {
           "name": "back",
-          "clut": {
+          "clut_race": {
             "x": 176,
             "y": 252
           },
@@ -527,7 +1489,7 @@
         },
         {
           "name": "floor",
-          "clut": {
+          "clut_race": {
             "x": 960,
             "y": 234
           },
@@ -539,7 +1501,7 @@
         },
         {
           "name": "brown",
-          "clut": {
+          "clut_race": {
             "x": 992,
             "y": 229
           },
@@ -550,7 +1512,7 @@
         },
         {
           "name": "motorside",
-          "clut": {
+          "clut_race": {
             "x": 176,
             "y": 255
           },
@@ -561,7 +1523,7 @@
         },
         {
           "name": "motortop",
-          "clut": {
+          "clut_race": {
             "x": 176,
             "y": 254
           },
@@ -572,7 +1534,7 @@
         },
         {
           "name": "bridge",
-          "clut": {
+          "clut_race": {
             "x": 320,
             "y": 259
           },
@@ -583,7 +1545,7 @@
         },
         {
           "name": "exhaust",
-          "clut": {
+          "clut_race": {
             "x": 320,
             "y": 260
           },
@@ -593,7 +1555,195 @@
           }
         }
       ],
-      "skin_slots": []
+      "skin_slots": [
+        {
+          "name": "extra_960_235",
+          "clut_race": {
+            "x": 960,
+            "y": 235
+          },
+          "clut_menu": {
+            "x": 944,
+            "y": 502
+          }
+        },
+        {
+          "name": "extra_976_235",
+          "clut_race": {
+            "x": 976,
+            "y": 235
+          },
+          "clut_menu": {
+            "x": 624,
+            "y": 227
+          }
+        },
+        {
+          "name": "extra_80_248",
+          "clut_race": {
+            "x": 80,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 624,
+            "y": 497
+          }
+        },
+        {
+          "name": "extra_112_248",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_128_248",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "extra_128_249",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_976_250",
+          "clut_race": {
+            "x": 976,
+            "y": 250
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 220
+          }
+        },
+        {
+          "name": "extra_64_255",
+          "clut_race": {
+            "x": 64,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 624,
+            "y": 496
+          }
+        },
+        {
+          "name": "extra_976_255",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "extra_64_259",
+          "clut_race": {
+            "x": 64,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 944,
+            "y": 508
+          }
+        },
+        {
+          "name": "extra_480_259",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "extra_320_261",
+          "clut_race": {
+            "x": 320,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 720,
+            "y": 508
+          }
+        },
+        {
+          "name": "extra_480_261",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "extra_320_262",
+          "clut_race": {
+            "x": 320,
+            "y": 262
+          },
+          "clut_menu": {
+            "x": 720,
+            "y": 509
+          }
+        },
+        {
+          "name": "extra_480_262",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 508
+          }
+        },
+        {
+          "name": "extra_320_263",
+          "clut_race": {
+            "x": 320,
+            "y": 263
+          },
+          "clut_menu": {
+            "x": 720,
+            "y": 510
+          }
+        },
+        {
+          "name": "extra_480_263",
+          "clut_race": {
+            "x": 480,
+            "y": 263
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 510
+          }
+        }
+      ]
     },
     {
       "id": "polar",
@@ -603,7 +1753,7 @@
       "kart_slots": [
         {
           "name": "front",
-          "clut": {
+          "clut_race": {
             "x": 192,
             "y": 251
           },
@@ -614,7 +1764,7 @@
         },
         {
           "name": "back",
-          "clut": {
+          "clut_race": {
             "x": 192,
             "y": 252
           },
@@ -625,7 +1775,7 @@
         },
         {
           "name": "floor",
-          "clut": {
+          "clut_race": {
             "x": 960,
             "y": 236
           },
@@ -637,7 +1787,7 @@
         },
         {
           "name": "brown",
-          "clut": {
+          "clut_race": {
             "x": 992,
             "y": 230
           },
@@ -648,7 +1798,7 @@
         },
         {
           "name": "motorside",
-          "clut": {
+          "clut_race": {
             "x": 192,
             "y": 250
           },
@@ -659,7 +1809,7 @@
         },
         {
           "name": "motortop",
-          "clut": {
+          "clut_race": {
             "x": 192,
             "y": 249
           },
@@ -670,7 +1820,7 @@
         },
         {
           "name": "bridge",
-          "clut": {
+          "clut_race": {
             "x": 336,
             "y": 258
           },
@@ -681,7 +1831,7 @@
         },
         {
           "name": "exhaust",
-          "clut": {
+          "clut_race": {
             "x": 336,
             "y": 257
           },
@@ -691,7 +1841,129 @@
           }
         }
       ],
-      "skin_slots": []
+      "skin_slots": [
+        {
+          "name": "extra_976_236",
+          "clut_race": {
+            "x": 976,
+            "y": 236
+          },
+          "clut_menu": {
+            "x": 624,
+            "y": 226
+          }
+        },
+        {
+          "name": "extra_112_248",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_128_248",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "extra_128_249",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_976_255",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "extra_336_259",
+          "clut_race": {
+            "x": 336,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 704,
+            "y": 511
+          }
+        },
+        {
+          "name": "extra_480_259",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "extra_336_260",
+          "clut_race": {
+            "x": 336,
+            "y": 260
+          },
+          "clut_menu": {
+            "x": 720,
+            "y": 504
+          }
+        },
+        {
+          "name": "extra_336_261",
+          "clut_race": {
+            "x": 336,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 720,
+            "y": 505
+          }
+        },
+        {
+          "name": "extra_480_261",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "extra_464_262",
+          "clut_race": {
+            "x": 464,
+            "y": 262
+          },
+          "clut_menu": {
+            "x": 800,
+            "y": 511
+          }
+        }
+      ]
     },
     {
       "id": "pura",
@@ -701,7 +1973,7 @@
       "kart_slots": [
         {
           "name": "front",
-          "clut": {
+          "clut_race": {
             "x": 208,
             "y": 248
           },
@@ -712,7 +1984,7 @@
         },
         {
           "name": "back",
-          "clut": {
+          "clut_race": {
             "x": 192,
             "y": 253
           },
@@ -723,7 +1995,7 @@
         },
         {
           "name": "floor",
-          "clut": {
+          "clut_race": {
             "x": 960,
             "y": 238
           },
@@ -735,7 +2007,7 @@
         },
         {
           "name": "brown",
-          "clut": {
+          "clut_race": {
             "x": 992,
             "y": 231
           },
@@ -746,7 +2018,7 @@
         },
         {
           "name": "motorside",
-          "clut": {
+          "clut_race": {
             "x": 192,
             "y": 254
           },
@@ -757,7 +2029,7 @@
         },
         {
           "name": "motortop",
-          "clut": {
+          "clut_race": {
             "x": 192,
             "y": 255
           },
@@ -768,7 +2040,7 @@
         },
         {
           "name": "bridge",
-          "clut": {
+          "clut_race": {
             "x": 352,
             "y": 256
           },
@@ -779,7 +2051,7 @@
         },
         {
           "name": "exhaust",
-          "clut": {
+          "clut_race": {
             "x": 336,
             "y": 263
           },
@@ -789,7 +2061,151 @@
           }
         }
       ],
-      "skin_slots": []
+      "skin_slots": [
+        {
+          "name": "extra_112_248",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_128_248",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "extra_128_249",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_976_255",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "extra_352_257",
+          "clut_race": {
+            "x": 352,
+            "y": 257
+          },
+          "clut_menu": {
+            "x": 880,
+            "y": 510
+          }
+        },
+        {
+          "name": "extra_352_258",
+          "clut_race": {
+            "x": 352,
+            "y": 258
+          },
+          "clut_menu": {
+            "x": 880,
+            "y": 511
+          }
+        },
+        {
+          "name": "extra_352_259",
+          "clut_race": {
+            "x": 352,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 704,
+            "y": 504
+          }
+        },
+        {
+          "name": "extra_480_259",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "extra_352_260",
+          "clut_race": {
+            "x": 352,
+            "y": 260
+          },
+          "clut_menu": {
+            "x": 704,
+            "y": 505
+          }
+        },
+        {
+          "name": "extra_352_261",
+          "clut_race": {
+            "x": 352,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 704,
+            "y": 506
+          }
+        },
+        {
+          "name": "extra_480_261",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "extra_352_262",
+          "clut_race": {
+            "x": 352,
+            "y": 262
+          },
+          "clut_menu": {
+            "x": 704,
+            "y": 507
+          }
+        },
+        {
+          "name": "extra_352_263",
+          "clut_race": {
+            "x": 352,
+            "y": 263
+          },
+          "clut_menu": {
+            "x": 704,
+            "y": 508
+          }
+        }
+      ]
     },
     {
       "id": "pinstripe",
@@ -799,7 +2215,7 @@
       "kart_slots": [
         {
           "name": "front",
-          "clut": {
+          "clut_race": {
             "x": 208,
             "y": 249
           },
@@ -810,7 +2226,7 @@
         },
         {
           "name": "back",
-          "clut": {
+          "clut_race": {
             "x": 208,
             "y": 252
           },
@@ -821,7 +2237,7 @@
         },
         {
           "name": "floor",
-          "clut": {
+          "clut_race": {
             "x": 960,
             "y": 239
           },
@@ -833,7 +2249,7 @@
         },
         {
           "name": "brown",
-          "clut": {
+          "clut_race": {
             "x": 992,
             "y": 232
           },
@@ -844,7 +2260,7 @@
         },
         {
           "name": "motorside",
-          "clut": {
+          "clut_race": {
             "x": 208,
             "y": 251
           },
@@ -855,7 +2271,7 @@
         },
         {
           "name": "motortop",
-          "clut": {
+          "clut_race": {
             "x": 208,
             "y": 250
           },
@@ -866,7 +2282,7 @@
         },
         {
           "name": "bridge",
-          "clut": {
+          "clut_race": {
             "x": 368,
             "y": 258
           },
@@ -877,7 +2293,7 @@
         },
         {
           "name": "exhaust",
-          "clut": {
+          "clut_race": {
             "x": 368,
             "y": 260
           },
@@ -887,7 +2303,162 @@
           }
         }
       ],
-      "skin_slots": []
+      "skin_slots": [
+        {
+          "name": "extra_1008_229",
+          "clut_race": {
+            "x": 1008,
+            "y": 229
+          },
+          "clut_menu": {
+            "x": 576,
+            "y": 229
+          }
+        },
+        {
+          "name": "extra_992_233",
+          "clut_race": {
+            "x": 992,
+            "y": 233
+          },
+          "clut_menu": {
+            "x": 592,
+            "y": 219
+          }
+        },
+        {
+          "name": "extra_976_245",
+          "clut_race": {
+            "x": 976,
+            "y": 245
+          },
+          "clut_menu": {
+            "x": 624,
+            "y": 230
+          }
+        },
+        {
+          "name": "extra_976_246",
+          "clut_race": {
+            "x": 976,
+            "y": 246
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 219
+          }
+        },
+        {
+          "name": "extra_112_248",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_128_248",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "extra_80_249",
+          "clut_race": {
+            "x": 80,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 501
+          }
+        },
+        {
+          "name": "extra_128_249",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_976_255",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "extra_368_259",
+          "clut_race": {
+            "x": 368,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 880,
+            "y": 506
+          }
+        },
+        {
+          "name": "extra_480_259",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "extra_480_261",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "extra_480_262",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 508
+          }
+        },
+        {
+          "name": "extra_464_263",
+          "clut_race": {
+            "x": 464,
+            "y": 263
+          },
+          "clut_menu": {
+            "x": 800,
+            "y": 510
+          }
+        }
+      ]
     },
     {
       "id": "papu",
@@ -897,7 +2468,7 @@
       "kart_slots": [
         {
           "name": "front",
-          "clut": {
+          "clut_race": {
             "x": 208,
             "y": 254
           },
@@ -908,7 +2479,7 @@
         },
         {
           "name": "back",
-          "clut": {
+          "clut_race": {
             "x": 208,
             "y": 253
           },
@@ -919,7 +2490,7 @@
         },
         {
           "name": "floor",
-          "clut": {
+          "clut_race": {
             "x": 304,
             "y": 252
           },
@@ -931,7 +2502,7 @@
         },
         {
           "name": "brown",
-          "clut": {
+          "clut_race": {
             "x": 992,
             "y": 234
           },
@@ -942,7 +2513,7 @@
         },
         {
           "name": "motorside",
-          "clut": {
+          "clut_race": {
             "x": 208,
             "y": 255
           },
@@ -953,7 +2524,7 @@
         },
         {
           "name": "motortop",
-          "clut": {
+          "clut_race": {
             "x": 224,
             "y": 248
           },
@@ -964,7 +2535,7 @@
         },
         {
           "name": "bridge",
-          "clut": {
+          "clut_race": {
             "x": 368,
             "y": 262
           },
@@ -975,7 +2546,7 @@
         },
         {
           "name": "exhaust",
-          "clut": {
+          "clut_race": {
             "x": 368,
             "y": 263
           },
@@ -985,7 +2556,195 @@
           }
         }
       ],
-      "skin_slots": []
+      "skin_slots": [
+        {
+          "name": "extra_992_235",
+          "clut_race": {
+            "x": 992,
+            "y": 235
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 229
+          }
+        },
+        {
+          "name": "extra_960_240",
+          "clut_race": {
+            "x": 960,
+            "y": 240
+          },
+          "clut_menu": {
+            "x": 944,
+            "y": 496
+          }
+        },
+        {
+          "name": "extra_960_241",
+          "clut_race": {
+            "x": 960,
+            "y": 241
+          },
+          "clut_menu": {
+            "x": 944,
+            "y": 497
+          }
+        },
+        {
+          "name": "extra_928_244",
+          "clut_race": {
+            "x": 928,
+            "y": 244
+          },
+          "clut_menu": {
+            "x": 864,
+            "y": 509
+          }
+        },
+        {
+          "name": "extra_928_245",
+          "clut_race": {
+            "x": 928,
+            "y": 245
+          },
+          "clut_menu": {
+            "x": 864,
+            "y": 510
+          }
+        },
+        {
+          "name": "extra_928_246",
+          "clut_race": {
+            "x": 928,
+            "y": 246
+          },
+          "clut_menu": {
+            "x": 864,
+            "y": 511
+          }
+        },
+        {
+          "name": "extra_928_247",
+          "clut_race": {
+            "x": 928,
+            "y": 247
+          },
+          "clut_menu": {
+            "x": 880,
+            "y": 504
+          }
+        },
+        {
+          "name": "extra_976_247",
+          "clut_race": {
+            "x": 976,
+            "y": 247
+          },
+          "clut_menu": {
+            "x": 624,
+            "y": 229
+          }
+        },
+        {
+          "name": "extra_112_248",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_128_248",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "extra_128_249",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_224_249",
+          "clut_race": {
+            "x": 224,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 832,
+            "y": 249
+          }
+        },
+        {
+          "name": "extra_80_250",
+          "clut_race": {
+            "x": 80,
+            "y": 250
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 500
+          }
+        },
+        {
+          "name": "extra_48_252",
+          "clut_race": {
+            "x": 48,
+            "y": 252
+          },
+          "clut_menu": {
+            "x": 928,
+            "y": 510
+          }
+        },
+        {
+          "name": "extra_976_255",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "extra_480_259",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "extra_480_261",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        }
+      ]
     },
     {
       "id": "roo",
@@ -995,7 +2754,7 @@
       "kart_slots": [
         {
           "name": "front",
-          "clut": {
+          "clut_race": {
             "x": 224,
             "y": 251
           },
@@ -1006,7 +2765,7 @@
         },
         {
           "name": "back",
-          "clut": {
+          "clut_race": {
             "x": 224,
             "y": 250
           },
@@ -1017,7 +2776,7 @@
         },
         {
           "name": "floor",
-          "clut": {
+          "clut_race": {
             "x": 960,
             "y": 244
           },
@@ -1029,7 +2788,7 @@
         },
         {
           "name": "brown",
-          "clut": {
+          "clut_race": {
             "x": 992,
             "y": 236
           },
@@ -1040,7 +2799,7 @@
         },
         {
           "name": "motorside",
-          "clut": {
+          "clut_race": {
             "x": 224,
             "y": 253
           },
@@ -1051,7 +2810,7 @@
         },
         {
           "name": "motortop",
-          "clut": {
+          "clut_race": {
             "x": 224,
             "y": 252
           },
@@ -1062,7 +2821,7 @@
         },
         {
           "name": "bridge",
-          "clut": {
+          "clut_race": {
             "x": 928,
             "y": 249
           },
@@ -1073,7 +2832,7 @@
         },
         {
           "name": "exhaust",
-          "clut": {
+          "clut_race": {
             "x": 928,
             "y": 250
           },
@@ -1083,7 +2842,129 @@
           }
         }
       ],
-      "skin_slots": []
+      "skin_slots": [
+        {
+          "name": "extra_976_237",
+          "clut_race": {
+            "x": 976,
+            "y": 237
+          },
+          "clut_menu": {
+            "x": 624,
+            "y": 225
+          }
+        },
+        {
+          "name": "extra_992_247",
+          "clut_race": {
+            "x": 992,
+            "y": 247
+          },
+          "clut_menu": {
+            "x": 576,
+            "y": 223
+          }
+        },
+        {
+          "name": "extra_112_248",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_128_248",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "extra_128_249",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_80_251",
+          "clut_race": {
+            "x": 80,
+            "y": 251
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 499
+          }
+        },
+        {
+          "name": "extra_928_251",
+          "clut_race": {
+            "x": 928,
+            "y": 251
+          },
+          "clut_menu": {
+            "x": 864,
+            "y": 506
+          }
+        },
+        {
+          "name": "extra_976_255",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "extra_480_256",
+          "clut_race": {
+            "x": 480,
+            "y": 256
+          },
+          "clut_menu": {
+            "x": 800,
+            "y": 509
+          }
+        },
+        {
+          "name": "extra_480_259",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "extra_480_261",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        }
+      ]
     },
     {
       "id": "joe",
@@ -1093,7 +2974,7 @@
       "kart_slots": [
         {
           "name": "front",
-          "clut": {
+          "clut_race": {
             "x": 224,
             "y": 254
           },
@@ -1104,7 +2985,7 @@
         },
         {
           "name": "back",
-          "clut": {
+          "clut_race": {
             "x": 240,
             "y": 249
           },
@@ -1115,7 +2996,7 @@
         },
         {
           "name": "floor",
-          "clut": {
+          "clut_race": {
             "x": 960,
             "y": 245
           },
@@ -1127,7 +3008,7 @@
         },
         {
           "name": "brown",
-          "clut": {
+          "clut_race": {
             "x": 992,
             "y": 237
           },
@@ -1138,7 +3019,7 @@
         },
         {
           "name": "motorside",
-          "clut": {
+          "clut_race": {
             "x": 224,
             "y": 255
           },
@@ -1149,7 +3030,7 @@
         },
         {
           "name": "motortop",
-          "clut": {
+          "clut_race": {
             "x": 240,
             "y": 248
           },
@@ -1160,7 +3041,7 @@
         },
         {
           "name": "bridge",
-          "clut": {
+          "clut_race": {
             "x": 928,
             "y": 253
           },
@@ -1171,7 +3052,7 @@
         },
         {
           "name": "exhaust",
-          "clut": {
+          "clut_race": {
             "x": 944,
             "y": 245
           },
@@ -1181,7 +3062,173 @@
           }
         }
       ],
-      "skin_slots": []
+      "skin_slots": [
+        {
+          "name": "extra_976_238",
+          "clut_race": {
+            "x": 976,
+            "y": 238
+          },
+          "clut_menu": {
+            "x": 624,
+            "y": 224
+          }
+        },
+        {
+          "name": "extra_944_244",
+          "clut_race": {
+            "x": 944,
+            "y": 244
+          },
+          "clut_menu": {
+            "x": 848,
+            "y": 509
+          }
+        },
+        {
+          "name": "extra_272_245",
+          "clut_race": {
+            "x": 272,
+            "y": 245
+          },
+          "clut_menu": {
+            "x": 576,
+            "y": 222
+          }
+        },
+        {
+          "name": "extra_944_246",
+          "clut_race": {
+            "x": 944,
+            "y": 246
+          },
+          "clut_menu": {
+            "x": 848,
+            "y": 511
+          }
+        },
+        {
+          "name": "extra_112_248",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_128_248",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "extra_992_248",
+          "clut_race": {
+            "x": 992,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 576,
+            "y": 221
+          }
+        },
+        {
+          "name": "extra_128_249",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_80_252",
+          "clut_race": {
+            "x": 80,
+            "y": 252
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 498
+          }
+        },
+        {
+          "name": "extra_272_254",
+          "clut_race": {
+            "x": 272,
+            "y": 254
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 502
+          }
+        },
+        {
+          "name": "extra_272_255",
+          "clut_race": {
+            "x": 272,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 503
+          }
+        },
+        {
+          "name": "extra_976_255",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "extra_480_259",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "extra_480_261",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "extra_480_262",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 508
+          }
+        }
+      ]
     },
     {
       "id": "tropy",
@@ -1191,7 +3238,7 @@
       "kart_slots": [
         {
           "name": "front",
-          "clut": {
+          "clut_race": {
             "x": 240,
             "y": 250
           },
@@ -1202,7 +3249,7 @@
         },
         {
           "name": "back",
-          "clut": {
+          "clut_race": {
             "x": 240,
             "y": 253
           },
@@ -1213,7 +3260,7 @@
         },
         {
           "name": "floor",
-          "clut": {
+          "clut_race": {
             "x": 960,
             "y": 246
           },
@@ -1225,7 +3272,7 @@
         },
         {
           "name": "brown",
-          "clut": {
+          "clut_race": {
             "x": 992,
             "y": 238
           },
@@ -1236,7 +3283,7 @@
         },
         {
           "name": "motorside",
-          "clut": {
+          "clut_race": {
             "x": 240,
             "y": 251
           },
@@ -1247,7 +3294,7 @@
         },
         {
           "name": "motortop",
-          "clut": {
+          "clut_race": {
             "x": 240,
             "y": 252
           },
@@ -1258,7 +3305,7 @@
         },
         {
           "name": "bridge",
-          "clut": {
+          "clut_race": {
             "x": 944,
             "y": 248
           },
@@ -1269,7 +3316,7 @@
         },
         {
           "name": "exhaust",
-          "clut": {
+          "clut_race": {
             "x": 944,
             "y": 249
           },
@@ -1279,7 +3326,272 @@
           }
         }
       ],
-      "skin_slots": []
+      "skin_slots": [
+        {
+          "name": "extra_1008_232",
+          "clut_race": {
+            "x": 1008,
+            "y": 232
+          },
+          "clut_menu": {
+            "x": 576,
+            "y": 228
+          }
+        },
+        {
+          "name": "extra_256_242",
+          "clut_race": {
+            "x": 256,
+            "y": 242
+          },
+          "clut_menu": {
+            "x": 848,
+            "y": 506
+          }
+        },
+        {
+          "name": "extra_256_243",
+          "clut_race": {
+            "x": 256,
+            "y": 243
+          },
+          "clut_menu": {
+            "x": 848,
+            "y": 507
+          }
+        },
+        {
+          "name": "extra_288_246",
+          "clut_race": {
+            "x": 288,
+            "y": 246
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 505
+          }
+        },
+        {
+          "name": "extra_960_247",
+          "clut_race": {
+            "x": 960,
+            "y": 247
+          },
+          "clut_menu": {
+            "x": 624,
+            "y": 508
+          }
+        },
+        {
+          "name": "extra_112_248",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_128_248",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "extra_960_248",
+          "clut_race": {
+            "x": 960,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 624,
+            "y": 509
+          }
+        },
+        {
+          "name": "extra_128_249",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_992_249",
+          "clut_race": {
+            "x": 992,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 576,
+            "y": 219
+          }
+        },
+        {
+          "name": "extra_944_250",
+          "clut_race": {
+            "x": 944,
+            "y": 250
+          },
+          "clut_menu": {
+            "x": 832,
+            "y": 510
+          }
+        },
+        {
+          "name": "extra_992_250",
+          "clut_race": {
+            "x": 992,
+            "y": 250
+          },
+          "clut_menu": {
+            "x": 576,
+            "y": 220
+          }
+        },
+        {
+          "name": "extra_96_251",
+          "clut_race": {
+            "x": 96,
+            "y": 251
+          },
+          "clut_menu": {
+            "x": 624,
+            "y": 501
+          }
+        },
+        {
+          "name": "extra_944_251",
+          "clut_race": {
+            "x": 944,
+            "y": 251
+          },
+          "clut_menu": {
+            "x": 832,
+            "y": 511
+          }
+        },
+        {
+          "name": "extra_96_252",
+          "clut_race": {
+            "x": 96,
+            "y": 252
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 248
+          }
+        },
+        {
+          "name": "extra_944_252",
+          "clut_race": {
+            "x": 944,
+            "y": 252
+          },
+          "clut_menu": {
+            "x": 848,
+            "y": 504
+          }
+        },
+        {
+          "name": "extra_80_253",
+          "clut_race": {
+            "x": 80,
+            "y": 253
+          },
+          "clut_menu": {
+            "x": 928,
+            "y": 511
+          }
+        },
+        {
+          "name": "extra_944_253",
+          "clut_race": {
+            "x": 944,
+            "y": 253
+          },
+          "clut_menu": {
+            "x": 848,
+            "y": 505
+          }
+        },
+        {
+          "name": "extra_80_254",
+          "clut_race": {
+            "x": 80,
+            "y": 254
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 496
+          }
+        },
+        {
+          "name": "extra_80_255",
+          "clut_race": {
+            "x": 80,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 497
+          }
+        },
+        {
+          "name": "extra_976_255",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "extra_480_259",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "extra_480_261",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "extra_480_262",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 508
+          }
+        }
+      ]
     },
     {
       "id": "penta",
@@ -1289,7 +3601,7 @@
       "kart_slots": [
         {
           "name": "front",
-          "clut": {
+          "clut_race": {
             "x": 240,
             "y": 254
           },
@@ -1300,7 +3612,7 @@
         },
         {
           "name": "back",
-          "clut": {
+          "clut_race": {
             "x": 448,
             "y": 256
           },
@@ -1311,7 +3623,7 @@
         },
         {
           "name": "floor",
-          "clut": {
+          "clut_race": {
             "x": 960,
             "y": 249
           },
@@ -1323,7 +3635,7 @@
         },
         {
           "name": "brown",
-          "clut": {
+          "clut_race": {
             "x": 992,
             "y": 239
           },
@@ -1334,7 +3646,7 @@
         },
         {
           "name": "motorside",
-          "clut": {
+          "clut_race": {
             "x": 448,
             "y": 257
           },
@@ -1345,7 +3657,7 @@
         },
         {
           "name": "motortop",
-          "clut": {
+          "clut_race": {
             "x": 240,
             "y": 255
           },
@@ -1356,7 +3668,7 @@
         },
         {
           "name": "bridge",
-          "clut": {
+          "clut_race": {
             "x": 256,
             "y": 246
           },
@@ -1367,7 +3679,7 @@
         },
         {
           "name": "exhaust",
-          "clut": {
+          "clut_race": {
             "x": 256,
             "y": 247
           },
@@ -1377,7 +3689,129 @@
           }
         }
       ],
-      "skin_slots": []
+      "skin_slots": [
+        {
+          "name": "extra_976_239",
+          "clut_race": {
+            "x": 976,
+            "y": 239
+          },
+          "clut_menu": {
+            "x": 624,
+            "y": 223
+          }
+        },
+        {
+          "name": "extra_112_248",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_128_248",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "extra_256_248",
+          "clut_race": {
+            "x": 256,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 832,
+            "y": 506
+          }
+        },
+        {
+          "name": "extra_128_249",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_256_249",
+          "clut_race": {
+            "x": 256,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 832,
+            "y": 507
+          }
+        },
+        {
+          "name": "extra_992_251",
+          "clut_race": {
+            "x": 992,
+            "y": 251
+          },
+          "clut_menu": {
+            "x": 592,
+            "y": 230
+          }
+        },
+        {
+          "name": "extra_976_255",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "extra_480_259",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "extra_480_261",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "extra_480_262",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 508
+          }
+        }
+      ]
     },
     {
       "id": "fakecrash",
@@ -1387,7 +3821,7 @@
       "kart_slots": [
         {
           "name": "front",
-          "clut": {
+          "clut_race": {
             "x": 448,
             "y": 258
           },
@@ -1398,7 +3832,7 @@
         },
         {
           "name": "back",
-          "clut": {
+          "clut_race": {
             "x": 448,
             "y": 259
           },
@@ -1409,7 +3843,7 @@
         },
         {
           "name": "floor",
-          "clut": {
+          "clut_race": {
             "x": 960,
             "y": 250
           },
@@ -1421,7 +3855,7 @@
         },
         {
           "name": "brown",
-          "clut": {
+          "clut_race": {
             "x": 992,
             "y": 240
           },
@@ -1432,7 +3866,7 @@
         },
         {
           "name": "motorside",
-          "clut": {
+          "clut_race": {
             "x": 448,
             "y": 261
           },
@@ -1443,7 +3877,7 @@
         },
         {
           "name": "motortop",
-          "clut": {
+          "clut_race": {
             "x": 448,
             "y": 260
           },
@@ -1454,7 +3888,7 @@
         },
         {
           "name": "bridge",
-          "clut": {
+          "clut_race": {
             "x": 256,
             "y": 251
           },
@@ -1465,7 +3899,7 @@
         },
         {
           "name": "exhaust",
-          "clut": {
+          "clut_race": {
             "x": 256,
             "y": 252
           },
@@ -1475,7 +3909,206 @@
           }
         }
       ],
-      "skin_slots": []
+      "skin_slots": [
+        {
+          "name": "extra_112_248",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_128_248",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "extra_128_249",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "extra_128_250",
+          "clut_race": {
+            "x": 128,
+            "y": 250
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 252
+          }
+        },
+        {
+          "name": "extra_304_250",
+          "clut_race": {
+            "x": 304,
+            "y": 250
+          },
+          "clut_menu": {
+            "x": 624,
+            "y": 503
+          }
+        },
+        {
+          "name": "extra_112_251",
+          "clut_race": {
+            "x": 112,
+            "y": 251
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 249
+          }
+        },
+        {
+          "name": "extra_304_251",
+          "clut_race": {
+            "x": 304,
+            "y": 251
+          },
+          "clut_menu": {
+            "x": 624,
+            "y": 504
+          }
+        },
+        {
+          "name": "extra_112_252",
+          "clut_race": {
+            "x": 112,
+            "y": 252
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 250
+          }
+        },
+        {
+          "name": "extra_48_253",
+          "clut_race": {
+            "x": 48,
+            "y": 253
+          },
+          "clut_menu": {
+            "x": 928,
+            "y": 509
+          }
+        },
+        {
+          "name": "extra_288_254",
+          "clut_race": {
+            "x": 288,
+            "y": 254
+          },
+          "clut_menu": {
+            "x": 624,
+            "y": 502
+          }
+        },
+        {
+          "name": "extra_976_254",
+          "clut_race": {
+            "x": 976,
+            "y": 254
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 222
+          }
+        },
+        {
+          "name": "extra_976_255",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "extra_480_258",
+          "clut_race": {
+            "x": 480,
+            "y": 258
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 505
+          }
+        },
+        {
+          "name": "extra_480_259",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "extra_480_260",
+          "clut_race": {
+            "x": 480,
+            "y": 260
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 504
+          }
+        },
+        {
+          "name": "extra_480_261",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "extra_480_262",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 508
+          }
+        },
+        {
+          "name": "extra_480_263",
+          "clut_race": {
+            "x": 480,
+            "y": 263
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 510
+          }
+        }
+      ]
     }
   ],
   "paintjob_slots": [
@@ -1538,10 +4171,6 @@
     {
       "name": "Fake Crash",
       "default_character_id": "fakecrash"
-    },
-    {
-      "name": "Saphi",
-      "default_character_id": null
     }
   ]
 }

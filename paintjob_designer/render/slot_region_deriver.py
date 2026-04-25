@@ -37,7 +37,7 @@ class SlotRegionDeriver:
         character: CharacterProfile,
     ) -> CharacterSlotRegions:
         groups = self._group_layouts(mesh)
-        slots_by_clut = {(s.clut.x, s.clut.y): s for s in character.slots}
+        slots_by_clut = {(s.clut_race.x, s.clut_race.y): s for s in character.slots}
 
         result = CharacterSlotRegions(character_id=character.id)
         unmatched_by_clut: dict[tuple[int, int], SlotRegions] = {}
