@@ -66,4 +66,5 @@ class PickCharacterDialog(QDialog):
     def selected_character_id(self) -> str | None:
         if self._combo.count() == 0:
             return None
+
         return self._combo.currentData()

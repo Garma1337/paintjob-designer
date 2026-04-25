@@ -95,6 +95,7 @@ class SkinLibraryController(LibraryController[Skin, SkinLibrary]):
         character = self._character_picker.pick(
             "New skin — pick character to skin", parent=self._parent_widget,
         )
+
         if character is None:
             return
 

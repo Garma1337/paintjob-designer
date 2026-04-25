@@ -30,6 +30,7 @@ class ProfileReader:
         schema_version = int(
             raw.get(CommonKey.SCHEMA_VERSION, Profile.SCHEMA_VERSION),
         )
+
         if schema_version != Profile.SCHEMA_VERSION:
             raise ValueError(
                 f"Unsupported profile schema_version {schema_version} "
@@ -45,6 +46,7 @@ class ProfileReader:
         characters = [
             self._parse_character(c) for c in raw.get(ProfileKey.CHARACTERS, [])
         ]
+
         paintjob_slots = [
             self._parse_paintjob_slot(s)
             for s in raw.get(ProfileKey.PAINTJOB_SLOTS, [])

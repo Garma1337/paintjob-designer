@@ -100,6 +100,7 @@ class LibraryController(QObject, Generic[TItem, TLibrary]):
         items = self._items()
         if not (0 <= index < len(items)):
             return
+
         self._set_sidebar_selection(index)
         self._current = items[index]
 

@@ -37,6 +37,7 @@ class PaintjobReader:
         schema_version = int(
             raw.get(CommonKey.SCHEMA_VERSION, Paintjob.SCHEMA_VERSION),
         )
+
         if schema_version > Paintjob.SCHEMA_VERSION:
             raise ValueError(
                 f"Paintjob schema_version {schema_version} is newer than this "

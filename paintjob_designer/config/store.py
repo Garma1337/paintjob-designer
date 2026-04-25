@@ -38,9 +38,9 @@ class ConfigStore:
         return AppConfig(
             iso_root=str(raw.get("iso_root", "")),
             last_profile_id=str(raw.get("last_profile_id", "vanilla-ntsc-u")),
-            library=self._coerce_library(raw.get("library")),
-            palettes=self._coerce_palettes(raw.get("palettes")),
-            skins=self._coerce_library(raw.get("skins")),
+            library=self.coerce_library(raw.get("library")),
+            palettes=self.coerce_palettes(raw.get("palettes")),
+            skins=self.coerce_library(raw.get("skins")),
         )
 
     def save(self, config: AppConfig) -> None:
@@ -61,14 +61,14 @@ class ConfigStore:
         self._path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
     @staticmethod
-    def _coerce_library(value: Any) -> dict | None:
+    def coerce_library(value: Any) -> dict | None:
         if isinstance(value, dict):
             return value
 
         return None
 
     @staticmethod
-    def _coerce_palettes(value: Any) -> list[dict]:
+    def coerce_palettes(value: Any) -> list[dict]:
         if not isinstance(value, list):
             return []
 

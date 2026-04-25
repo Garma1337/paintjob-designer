@@ -42,9 +42,9 @@ class LibraryRowDelegate(QStyledItemDelegate):
         primary = index.data(Qt.ItemDataRole.DisplayRole) or ""
         secondary = index.data(self.SECONDARY_ROLE) or ""
 
-        primary_color, muted_color = self._text_colors(option, self._SECONDARY_ALPHA)
+        primary_color, muted_color = self.text_colors(option, self._SECONDARY_ALPHA)
         primary_font = option.font
-        secondary_font = self._secondary_font(option.font)
+        secondary_font = self.secondary_font(option.font)
         fm_primary = QFontMetrics(primary_font)
 
         text_rect = option.rect.adjusted(
@@ -79,12 +79,12 @@ class LibraryRowDelegate(QStyledItemDelegate):
         total = self._PADDING_Y * 2 + primary_h
 
         if secondary:
-            total += self._LINE_GAP + QFontMetrics(self._secondary_font(option.font)).height()
+            total += self._LINE_GAP + QFontMetrics(self.secondary_font(option.font)).height()
 
         return QSize(option.rect.width(), total)
 
     @staticmethod
-    def _secondary_font(base: QFont) -> QFont:
+    def secondary_font(base: QFont) -> QFont:
         font = QFont(base)
         size = base.pointSizeF()
 
@@ -94,7 +94,7 @@ class LibraryRowDelegate(QStyledItemDelegate):
         return font
 
     @staticmethod
-    def _text_colors(option, muted_alpha: int) -> tuple[QColor, QColor]:
+    def text_colors(option, muted_alpha: int) -> tuple[QColor, QColor]:
         if option.state & QStyle.StateFlag.State_Selected:
             foreground = option.palette.color(QPalette.ColorRole.HighlightedText)
             background = option.palette.color(QPalette.ColorRole.Highlight)
@@ -102,9 +102,9 @@ class LibraryRowDelegate(QStyledItemDelegate):
             foreground = option.palette.color(QPalette.ColorRole.Text)
             background = option.palette.color(QPalette.ColorRole.Base)
 
-        background_is_dark = LibraryRowDelegate._is_dark(background)
-        if LibraryRowDelegate._is_dark(foreground) == background_is_dark:
-            primary = QColor("#eaeaea") if background_is_dark else QColor("#202020")
+        backgroundis_dark = LibraryRowDelegate.is_dark(background)
+        if LibraryRowDelegate.is_dark(foreground) == backgroundis_dark:
+            primary = QColor("#eaeaea") if backgroundis_dark else QColor("#202020")
         else:
             primary = foreground
 
@@ -113,7 +113,7 @@ class LibraryRowDelegate(QStyledItemDelegate):
         return primary, muted
 
     @staticmethod
-    def _is_dark(color: QColor) -> bool:
+    def is_dark(color: QColor) -> bool:
         luminance = (color.red() * 299 + color.green() * 587 + color.blue() * 114) / 1000
         return luminance < 128
 

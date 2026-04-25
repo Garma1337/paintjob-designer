@@ -14,7 +14,7 @@ class ProfileRegistry:
 
     def __init__(self, profile_reader: ProfileReader) -> None:
         self._reader = profile_reader
-        self._bundled_dir = self._resolve_bundled_dir()
+        self._bundled_dir = self.resolve_bundled_dir()
 
     def available(self) -> list[str]:
         """Return sorted list of profile IDs that ship with the tool."""
@@ -28,7 +28,7 @@ class ProfileRegistry:
         return self._reader.read(path.read_bytes())
 
     @staticmethod
-    def _resolve_bundled_dir() -> Path:
+    def resolve_bundled_dir() -> Path:
         """Resolve `config/profiles/` whether we're running from source or a PyInstaller one-file bundle."""
         meipass = getattr(sys, "_MEIPASS", None)
         if meipass:

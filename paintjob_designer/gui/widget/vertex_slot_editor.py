@@ -85,7 +85,7 @@ class VertexSlotEditor(QWidget):
         for i, color in enumerate(self._colors):
             btn = QPushButton(f"v{i}")
             btn.setFixedSize(_BUTTON_W, _BUTTON_H)
-            self._style_button(btn, color)
+            self.style_button(btn, color)
             btn.clicked.connect(lambda _checked=False, idx=i: self._open_picker(idx))
             self._grid.addWidget(btn, i // _COLUMNS, i % _COLUMNS)
             self._buttons.append(btn)
@@ -96,7 +96,7 @@ class VertexSlotEditor(QWidget):
         """Refresh one swatch after an override write."""
         if 0 <= index < len(self._buttons):
             self._colors[index] = color
-            self._style_button(self._buttons[index], color)
+            self.style_button(self._buttons[index], color)
 
     def set_editable(self, editable: bool) -> None:
         """Enable / disable all swatches in lockstep."""
@@ -135,17 +135,19 @@ class VertexSlotEditor(QWidget):
     def _sync_enabled(self) -> None:
         for btn in self._buttons:
             btn.setEnabled(self._enabled)
+
         # Transform makes no sense without a target asset and a
         # populated color list — track the same enable signal as the
         # per-swatch buttons.
         self._transform_button.setEnabled(self._enabled and bool(self._colors))
 
     @staticmethod
-    def _style_button(btn: QPushButton, color: Rgb888) -> None:
+    def style_button(btn: QPushButton, color: Rgb888) -> None:
         # Light-on-dark / dark-on-light label so the index stays readable
         # across the full color range.
         lum = (color.r * 299 + color.g * 587 + color.b * 114) // 1000
         fg = "#000" if lum > 140 else "#fff"
+
         btn.setStyleSheet(
             f"QPushButton {{ background-color: rgb({color.r},{color.g},{color.b}); "
             f"color: {fg}; border: 1px solid #222; }}"

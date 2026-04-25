@@ -146,6 +146,7 @@ class PaletteApplyDialog(QDialog):
                 _MappingRowDelegate.COLOR_ROLE, PsxColor(value=color.value),
             )
             self._list.addItem(item)
+
         layout.addWidget(self._list, 1)
 
         buttons = QDialogButtonBox(
@@ -160,9 +161,12 @@ class PaletteApplyDialog(QDialog):
     def ordered_colors(self) -> list[PsxColor]:
         """Return palette colors in their current (possibly reordered) list order."""
         result: list[PsxColor] = []
+
         for row in range(self._list.count()):
             item = self._list.item(row)
             color = item.data(_MappingRowDelegate.COLOR_ROLE)
+
             if color is not None:
                 result.append(color)
+
         return result

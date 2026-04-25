@@ -110,6 +110,7 @@ class ColorTransformer:
             src_rgb.g / RGB_COMPONENT_MAX,
             src_rgb.b / RGB_COMPONENT_MAX,
         )
+
         if src_s < self._HUE_SATURATION_FLOOR:
             # Source is near-gray — no meaningful hue to match against.
             return color
@@ -127,6 +128,7 @@ class ColorTransformer:
             rgb.g / RGB_COMPONENT_MAX,
             rgb.b / RGB_COMPONENT_MAX,
         )
+
         if s < self._HUE_SATURATION_FLOOR:
             return color
 
@@ -138,6 +140,7 @@ class ColorTransformer:
         new_h = (h + delta) % 1.0
 
         r_f, g_f, b_f = colorsys.hsv_to_rgb(new_h, s, v)
+
         return self._converter.rgb_to_psx(
             Rgb888(
                 r=round(r_f * RGB_COMPONENT_MAX),

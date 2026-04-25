@@ -1937,10 +1937,12 @@ class MainWindow(QMainWindow):
         if isinstance(asset, Skin):
             if self._current_skin is asset:
                 return
+
             try:
                 index = self._skin_library.skins.index(asset)
             except ValueError:
                 return
+
             self._editor_mode = EditorMode.SKIN
             self._skin_controller.select_index(index)
             self._reload_preview()
@@ -1948,12 +1950,14 @@ class MainWindow(QMainWindow):
 
         if self._current_paintjob is asset:
             return
+
         try:
             self._library.paintjobs.index(asset)
         except ValueError:
             # Asset isn't in the library anymore (deletion should have
             # cleared undo, so this is a rare safety net).
             return
+
         self._editor_mode = EditorMode.PAINTJOB
         self._paintjob_controller.select_paintjob(asset)
         self._reload_preview()

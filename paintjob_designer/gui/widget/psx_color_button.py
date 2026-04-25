@@ -44,6 +44,7 @@ class PsxColorButton(QPushButton):
         # so the hex label stays readable across the picker's whole range.
         lum = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) // 1000
         fg = "#000" if lum > 140 else "#fff"
+
         self.setStyleSheet(
             f"QPushButton#{self._OBJECT_NAME} {{ "
             f"background-color: rgb({rgb.r},{rgb.g},{rgb.b}); "

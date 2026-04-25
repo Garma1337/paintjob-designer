@@ -18,7 +18,7 @@ class PsxRgbaLut:
     LENGTH = PSX_U16_MASK + 1
 
     def __init__(self) -> None:
-        self._values = self._build()
+        self._values = self.build()
 
     def as_array(self) -> np.ndarray:
         """Raw (65536,) uint32 LUT. Callers index with a `np.uint16` buffer."""
@@ -28,7 +28,7 @@ class PsxRgbaLut:
         return self._values[key]
 
     @staticmethod
-    def _build() -> np.ndarray:
+    def build() -> np.ndarray:
         values = np.arange(PsxRgbaLut.LENGTH, dtype=np.uint32)
         r5 = values & PSX_COMPONENT_MASK
         g5 = (values >> PSX_GREEN_SHIFT) & PSX_COMPONENT_MASK

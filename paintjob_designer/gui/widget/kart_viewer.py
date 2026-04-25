@@ -153,7 +153,7 @@ class KartViewer(QOpenGLWidget):
                 self._uv_mapper.map(assembled, texture_layouts),
                 dtype=np.float32,
             )
-            normals = self._compute_flat_normals(positions)
+            normals = self.compute_flat_normals(positions)
             colors = np.asarray(assembled.gouraud_colors, dtype=np.float32)
             if len(colors) != len(positions):
                 # Fall back to white if the assembler didn't emit colors
@@ -204,7 +204,7 @@ class KartViewer(QOpenGLWidget):
         self.update()
 
     @staticmethod
-    def _compute_flat_normals(positions: np.ndarray) -> np.ndarray:
+    def compute_flat_normals(positions: np.ndarray) -> np.ndarray:
         """Per-triangle normals (cross of two edges), replicated across the 3
         vertices of each triangle so flat shading lands without an index buffer.
         """
@@ -273,7 +273,7 @@ class KartViewer(QOpenGLWidget):
             # leave the last valid frame on screen rather than crashing.
             return
 
-        normals = self._compute_flat_normals(positions)
+        normals = self.compute_flat_normals(positions)
         pick_positions = positions.astype(np.float32)
         self._pending_mesh = (pick_positions, uvs, normals, colors)
         # Pick buffer follows the animation frame so the eyedropper hits

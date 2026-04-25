@@ -31,6 +31,7 @@ class ColorConverter:
             | (g5 << PSX_GREEN_SHIFT)
             | r5
         )
+
         return PsxColor(value=value)
 
     def rgb_to_hex(self, rgb: Rgb888) -> str:

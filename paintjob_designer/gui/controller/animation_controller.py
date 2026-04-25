@@ -5,6 +5,7 @@ from typing import Callable
 import numpy as np
 from PySide6.QtCore import QObject, QTimer
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QFormLayout,
     QGroupBox,
@@ -104,6 +105,13 @@ class AnimationController(QObject):
         self._fps_spin.valueChanged.connect(self._on_fps_changed)
         layout.addRow("FPS:", self._fps_spin)
 
+        self._loop_check = QCheckBox("Loop")
+        self._loop_check.setToolTip(
+            "When unchecked, playback stops on the last frame instead of "
+            "wrapping back to the start.",
+        )
+        layout.addRow("", self._loop_check)
+
         self._set_controls_enabled(False)
         return group
 
@@ -138,6 +146,15 @@ class AnimationController(QObject):
             self._timer.stop()
             self._play_button.setText("Play")
         else:
+            # Restart from the beginning when the user hits Play after a
+            # non-looping clip has parked on its last frame.
+            frames = self._current_frames()
+
+            if frames and self._frame_index >= len(frames) - 1:
+                self._frame_index = 0
+                self._update_frame_label()
+                self._render_current_frame()
+
             self._timer.start()
             self._play_button.setText("Pause")
 
@@ -147,7 +164,16 @@ class AnimationController(QObject):
             self._timer.stop()
             return
 
-        self._frame_index = (self._frame_index + 1) % len(frames)
+        next_index = self._frame_index + 1
+        if next_index >= len(frames):
+            if self._loop_check.isChecked():
+                next_index = 0
+            else:
+                self._timer.stop()
+                self._play_button.setText("Play")
+                return
+
+        self._frame_index = next_index
         self._update_frame_label()
         self._render_current_frame()
 
