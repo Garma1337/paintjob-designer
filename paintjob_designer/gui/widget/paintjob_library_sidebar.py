@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from PySide6.QtCore import QPoint, Signal
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QListWidget, QListWidgetItem
 
 from paintjob_designer.gui.widget.library_sidebar import (
@@ -19,7 +19,6 @@ class PaintjobLibrarySidebar(LibrarySidebar):
         super().__init__(
             new_tooltip="Create a blank paintjob in the library.",
             delete_tooltip="Remove the selected paintjob from the library.",
-            transform_tooltip="Open the Transform Colors panel for the selected paintjob.",
             export_tooltip="Export the entire paintjob library to a directory of JSONs.",
             parent=parent,
         )

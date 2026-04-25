@@ -131,14 +131,12 @@ class LibrarySidebar(QWidget):
     new_requested = Signal()
     delete_requested = Signal(int)
     export_requested = Signal()
-    transform_requested = Signal(int)
     context_requested = Signal(int, QPoint)
 
     def __init__(
         self,
         new_tooltip: str,
         delete_tooltip: str,
-        transform_tooltip: str,
         export_tooltip: str,
         parent: QWidget | None = None,
     ) -> None:
@@ -170,9 +168,6 @@ class LibrarySidebar(QWidget):
         )
         self._delete_button = self._add_button(
             "Delete", delete_tooltip, self._on_delete_clicked,
-        )
-        self._transform_button = self._add_button(
-            "Transform...", transform_tooltip, self._on_transform_clicked,
         )
         self._add_extra_buttons()
         self._export_button = self._add_button(
@@ -259,15 +254,11 @@ class LibrarySidebar(QWidget):
         if row >= 0:
             self.delete_requested.emit(row)
 
-    def _on_transform_clicked(self) -> None:
-        row = self._list.currentRow()
-        if row >= 0:
-            self.transform_requested.emit(row)
-
     def _on_context_menu_requested(self, local_pos: QPoint) -> None:
         item = self._list.itemAt(local_pos)
         if item is None:
             return
+
         self.context_requested.emit(
             self._list.row(item),
             self._list.viewport().mapToGlobal(local_pos),
@@ -275,7 +266,6 @@ class LibrarySidebar(QWidget):
 
     def _refresh_button_state(self) -> None:
         has_selection = self._list.currentRow() >= 0
-        self._transform_button.setEnabled(has_selection)
         self._delete_button.setEnabled(has_selection)
 
         for btn in self._selection_dependent_buttons():

@@ -69,6 +69,21 @@ class LibraryController(QObject, Generic[TItem, TLibrary]):
         initial = 0 if items else None
         self._refresh_sidebar(initial)
 
+    def refresh_sidebar_labels(self) -> None:
+        """Re-render the sidebar without changing selection — use after the
+        character-id → display-name resolver becomes available."""
+        items = self._items()
+        if self._current is None:
+            self._refresh_sidebar(None)
+            return
+
+        try:
+            index = items.index(self._current)
+        except ValueError:
+            index = None
+
+        self._refresh_sidebar(index)
+
     def delete(self, index: int) -> None:
         items = self._items()
         if not (0 <= index < len(items)):

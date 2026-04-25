@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from PySide6.QtCore import QPoint, Signal
+from PySide6.QtCore import QPoint
 from PySide6.QtWidgets import QMenu, QWidget
 
 from paintjob_designer.core import Slugifier
@@ -31,8 +31,6 @@ _SKIN_FILTER = f"Skin (*{_SKIN_EXT})"
 
 class SkinLibraryController(LibraryController[Skin, SkinLibrary]):
     """Owns the skin library + sidebar + skin CRUD."""
-
-    transform_requested = Signal(int)
 
     def __init__(
         self,
@@ -65,7 +63,6 @@ class SkinLibraryController(LibraryController[Skin, SkinLibrary]):
         self._sidebar.new_requested.connect(self.new)
         self._sidebar.delete_requested.connect(self.delete)
         self._sidebar.export_requested.connect(self.export_library)
-        self._sidebar.transform_requested.connect(self.transform_requested.emit)
 
     def set_iso_root(self, iso_root: str) -> None:
         self._iso_root = iso_root

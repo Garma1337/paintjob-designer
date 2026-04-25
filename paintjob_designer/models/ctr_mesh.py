@@ -146,9 +146,6 @@ class CtrMesh:
     gouraud_colors: list[GouraudColor] = field(default_factory=list)
     frame: CtrFrame = field(default_factory=CtrFrame)
 
-    # Every animation the mesh carries. Always empty for static meshes.
-    # For animated meshes, `frame` mirrors `anims[0].frames[0]` so callers that
-    # don't care about playback still see a sensible default pose.
     anims: list[CtrAnim] = field(default_factory=list)
 
 
@@ -167,6 +164,7 @@ class AssembledMesh:
     uvs: list[tuple[int, int]] = field(default_factory=list)
     texture_layout_indices: list[int] = field(default_factory=list)
     gouraud_colors: list[tuple[float, float, float]] = field(default_factory=list)
+    gouraud_color_indices: list[tuple[int, int, int]] = field(default_factory=list)
 
     @property
     def triangle_count(self) -> int:

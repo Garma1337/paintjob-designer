@@ -16,7 +16,6 @@ class SkinLibrarySidebar(LibrarySidebar):
         super().__init__(
             new_tooltip="Create a new skin bound to a character.",
             delete_tooltip="Remove the selected skin from the library.",
-            transform_tooltip="Open the Transform Colors panel for the selected skin.",
             export_tooltip="Export the entire skin library to a directory of JSONs.",
             parent=parent,
         )

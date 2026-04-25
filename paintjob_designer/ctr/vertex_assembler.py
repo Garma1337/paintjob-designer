@@ -23,7 +23,6 @@ class VertexAssembler:
         frame=None,
         vertex_overrides: dict[int, Rgb888] | None = None,
     ) -> AssembledMesh:
-        """Emit triangles for `mesh`'s draw stream."""
         target_frame = frame if frame is not None else mesh.frame
         if not target_frame.vertices:
             return AssembledMesh()
@@ -41,6 +40,7 @@ class VertexAssembler:
         temp_uv: list[tuple[int, int]] = [(0, 0)] * _RING_SIZE
         temp_tex: list[int] = [0] * _RING_SIZE
         temp_color: list[tuple[float, float, float]] = [(1.0, 1.0, 1.0)] * _RING_SIZE
+        temp_color_index: list[int] = [0] * _RING_SIZE
 
         vertex_index = 0
         strip_length = 0
@@ -67,17 +67,25 @@ class VertexAssembler:
             temp_color[0], temp_color[1], temp_color[2] = temp_color[1], temp_color[2], temp_color[3]
             temp_color[3] = self._color_for_draw(mesh, draw, overrides)
 
+            temp_color_index[0], temp_color_index[1], temp_color_index[2] = (
+                temp_color_index[1], temp_color_index[2], temp_color_index[3]
+            )
+            temp_color_index[3] = draw.color_index
+
             if draw.swap_vertex:
                 temp_pos[1] = temp_pos[0]
                 temp_uv[1] = temp_uv[0]
                 temp_tex[1] = temp_tex[0]
                 temp_color[1] = temp_color[0]
+                temp_color_index[1] = temp_color_index[0]
 
             if draw.new_tristrip:
                 strip_length = 0
 
             if strip_length >= 2:
-                self._emit_triangle(result, temp_pos, temp_color, mesh, draw)
+                self._emit_triangle(
+                    result, temp_pos, temp_color, temp_color_index, mesh, draw,
+                )
 
             strip_length += 1
 
@@ -98,6 +106,7 @@ class VertexAssembler:
         result: AssembledMesh,
         temp_pos: list[tuple[float, float, float]],
         temp_color: list[tuple[float, float, float]],
+        temp_color_index: list[int],
         mesh: CtrMesh,
         draw,
     ) -> None:
@@ -107,6 +116,7 @@ class VertexAssembler:
         # `[reversed → [2,1,3]]` for flip_normal.
         positions = [temp_pos[z + 1] for z in (2, 1, 0)]
         colors = [temp_color[z + 1] for z in (2, 1, 0)]
+        color_indices = [temp_color_index[z + 1] for z in (2, 1, 0)]
 
         if draw.tex_index != 0:
             tl = mesh.texture_layouts[draw.tex_index - 1]
@@ -120,15 +130,20 @@ class VertexAssembler:
             positions[1], positions[2] = positions[2], positions[1]
             uvs[1], uvs[2] = uvs[2], uvs[1]
             colors[1], colors[2] = colors[2], colors[1]
+            color_indices[1], color_indices[2] = color_indices[2], color_indices[1]
 
         positions.reverse()
         uvs.reverse()
         colors.reverse()
+        color_indices.reverse()
 
         result.positions.extend(positions)
         result.uvs.extend(uvs)
         result.texture_layout_indices.append(draw.tex_index)
         result.gouraud_colors.extend(colors)
+        result.gouraud_color_indices.append(
+            (color_indices[0], color_indices[1], color_indices[2]),
+        )
 
     def _color_for_draw(
         self,

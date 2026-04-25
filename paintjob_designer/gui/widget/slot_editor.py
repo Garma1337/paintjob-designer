@@ -20,33 +20,65 @@ from paintjob_designer.gui.widget.slot_row import SlotRow
 from paintjob_designer.models import PsxColor, SlotColors
 
 
-class SlotEditor(QScrollArea):
+class SlotEditor(QWidget):
     """Grid of slots × 16 color swatches for the current character."""
 
     color_edit_requested = Signal(str, int)
     slot_reset_requested = Signal(str)
     slot_focus_changed = Signal(object)
-    # Right-click context requests. Payload: (slot_name, color_index | -1, global_pos).
-    # `color_index == -1` means the right-click landed on the row chrome, not a swatch.
+    transform_requested = Signal()
+    reset_all_requested = Signal()
+    # Right-click context. Payload: (slot_name, color_index | -1, global_pos).
+    # `color_index == -1` means the right-click landed on row chrome, not a swatch.
     context_requested = Signal(str, int, object)
 
     def __init__(self, color_converter: ColorConverter, parent=None) -> None:
         super().__init__(parent)
-        self.setWidgetResizable(True)
-
         self._converter = color_converter
+
+        self._rows: dict[str, SlotRow] = {}
+        self._swatches: dict[tuple[str, int], ColorSwatch] = {}
+        self._highlight_buttons: dict[str, QPushButton] = {}
+        self._focused_slot: str | None = None
+        self._strip_enabled = False
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(4)
+
+        button_row = QHBoxLayout()
+        button_row.setContentsMargins(8, 6, 8, 0)
+        self._transform_button = QPushButton("Transform...")
+        self._transform_button.setToolTip(
+            "Open the Transform Colors panel to bulk-rewrite slot colors "
+            "via hue / saturation / brightness / RGB pipelines.",
+        )
+        self._transform_button.clicked.connect(self.transform_requested)
+        button_row.addWidget(self._transform_button)
+
+        self._reset_all_button = QPushButton("Reset all")
+        self._reset_all_button.setToolTip(
+            "Revert every slot in the active asset to the default CLUT "
+            "colors from the ISO.",
+        )
+        self._reset_all_button.clicked.connect(self.reset_all_requested)
+        button_row.addWidget(self._reset_all_button)
+        button_row.addStretch()
+        outer.addLayout(button_row)
+
+        self._scroll = QScrollArea()
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setFrameShape(QScrollArea.Shape.NoFrame)
 
         self._root = QWidget()
         self._root_layout = QVBoxLayout(self._root)
         self._root_layout.setContentsMargins(8, 8, 8, 8)
         self._root_layout.setSpacing(6)
         self._root_layout.addStretch()
-        self.setWidget(self._root)
+        self._scroll.setWidget(self._root)
+        outer.addWidget(self._scroll, 1)
 
-        self._rows: dict[str, SlotRow] = {}
-        self._swatches: dict[tuple[str, int], ColorSwatch] = {}
-        self._highlight_buttons: dict[str, QPushButton] = {}
-        self._focused_slot: str | None = None
+        self._sync_top_buttons()
 
     def set_slots(
         self,
@@ -54,9 +86,6 @@ class SlotEditor(QScrollArea):
         *,
         dimensions: dict[str, str] | None = None,
     ) -> None:
-        """(Re)build the grid with one row per slot. Colors start transparent until
-        `update_color` is called for each entry.
-        """
         self._clear()
 
         dimensions = dimensions or {}
@@ -65,9 +94,8 @@ class SlotEditor(QScrollArea):
             self._rows[slot_name] = row
             self._root_layout.insertWidget(self._root_layout.count() - 1, row)
 
-        # New slot set → previous focus no longer maps to anything; drop it
-        # quietly so the 3D viewer returns to "everything visible" state.
         self._set_focus(None)
+        self._sync_top_buttons()
 
     def update_color(self, slot_name: str, color_index: int, color: PsxColor) -> None:
         swatch = self._swatches.get((slot_name, color_index))
@@ -86,8 +114,11 @@ class SlotEditor(QScrollArea):
             self.update_color(slot_name, i, color)
 
     def focused_slot(self) -> str | None:
-        """Current Highlight-toggle slot, or None if nothing's focused."""
         return self._focused_slot
+
+    def set_button_strip_enabled(self, enabled: bool) -> None:
+        self._strip_enabled = enabled
+        self._sync_top_buttons()
 
     def _clear(self) -> None:
         for row in self._rows.values():
@@ -98,6 +129,11 @@ class SlotEditor(QScrollArea):
         self._swatches.clear()
         self._highlight_buttons.clear()
 
+    def _sync_top_buttons(self) -> None:
+        active = self._strip_enabled and bool(self._rows)
+        self._transform_button.setEnabled(active)
+        self._reset_all_button.setEnabled(active)
+
     def _build_slot_row(
         self, slot_name: str, dimension_hint: str | None = None,
     ) -> SlotRow:
@@ -107,10 +143,8 @@ class SlotEditor(QScrollArea):
             lambda name=slot_name: self.context_requested.emit(name, -1, QCursor.pos()),
         )
 
-        # Two-row layout: label + swatch grid on top, action buttons below.
-        # Keeping buttons under the swatches instead of beside them stops the
-        # grid from shrinking when the window narrows — the swatches get the
-        # full row width and the button strip is right-aligned underneath.
+        # Buttons live under (not beside) the swatches so the grid keeps
+        # full row width when the window narrows.
         row_layout = QVBoxLayout(row)
         row_layout.setContentsMargins(6, 4, 6, 4)
         row_layout.setSpacing(4)
@@ -134,8 +168,7 @@ class SlotEditor(QScrollArea):
             swatch = ColorSwatch()
 
             if i == 0:
-                # PSX convention: CLUT index 0 is the per-pixel transparency
-                # sentinel. Flag it so the user notices before editing.
+                # PSX convention: CLUT index 0 is the per-pixel transparency sentinel.
                 swatch.mark_as_transparency_index()
 
             swatch.clicked.connect(self._emit_edit(slot_name, i))
@@ -151,10 +184,8 @@ class SlotEditor(QScrollArea):
         bottom.setContentsMargins(0, 0, 0, 0)
         bottom.addStretch()
 
-        # Checkable "Highlight" toggle — explicit, so opening a color picker
-        # doesn't accidentally dim the rest of the kart. Only one slot can be
-        # highlighted at a time; clicking an already-highlighted row's button
-        # clears focus.
+        # Explicit toggle so opening a color picker doesn't accidentally dim
+        # the kart. At most one slot is highlighted at a time.
         highlight_button = QPushButton("Highlight")
         highlight_button.setCheckable(True)
         highlight_button.setToolTip(
@@ -177,8 +208,7 @@ class SlotEditor(QScrollArea):
         return row
 
     def _emit_edit(self, slot_name: str, color_index: int):
-        # Captured-by-value indirection so each swatch's click emits its own
-        # (slot_name, index), not whatever the loop variables ended at.
+        # Captured-by-value closure so each swatch emits its own (slot, index).
         def handler():
             self.color_edit_requested.emit(slot_name, color_index)
 
@@ -198,9 +228,6 @@ class SlotEditor(QScrollArea):
 
     def _emit_highlight_toggle(self, slot_name: str):
         def handler():
-            # Toggle: clicking an already-highlighted row's button clears focus
-            # so the user can get back to the un-dimmed view without hunting
-            # for an "unfocus" target.
             if self._focused_slot == slot_name:
                 self._set_focus(None)
             else:

@@ -3,8 +3,9 @@
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QAction, QKeySequence, QUndoStack
+from PySide6.QtGui import QAction, QColor, QKeySequence, QUndoStack
 from PySide6.QtWidgets import (
+    QColorDialog,
     QComboBox,
     QHBoxLayout,
     QLabel,
@@ -180,8 +181,17 @@ class MainWindow(QMainWindow):
         # to the first compatible character when not.
         self._remembered_character_id: dict[EditorMode, str] = {}
 
-        # Slot → triangle indices lookup for focus-highlight in the 3D view.
+        # Slot / vertex → triangle indices for the focus-highlight overlay.
+        # Vertex mask treats a triangle as affected if any of its 3 vertices
+        # samples the selected gouraud index.
         self._slot_triangle_mask: dict[str, list[int]] = {}
+        self._vertex_triangle_mask: dict[int, list[int]] = {}
+
+        # Lazy-created on first open and reused so slider state survives
+        # Apply→Apply→Close cycles.
+        self._vertex_transform_dialog = None
+        self._vertex_transform_snapshot: dict | None = None
+        self._vertex_transform_dirty: set[int] = set()
 
         # One undo stack for the whole session. Clicking between characters
         # doesn't clear it — Ctrl+Z still unwinds edits across character
@@ -249,14 +259,12 @@ class MainWindow(QMainWindow):
         """Forward controller events to the editor-side handlers."""
         pjc = self._paintjob_controller
         pjc.selection_changed.connect(self._on_paintjob_selection_changed)
-        pjc.transform_requested.connect(self._on_transform_paintjob_requested)
         pjc.library_changed.connect(self._on_paintjob_library_changed)
         pjc.library_reset.connect(self._undo_stack_clear_safely)
         pjc.mutated.connect(self._schedule_autosave)
 
         skc = self._skin_controller
         skc.selection_changed.connect(self._on_skin_selection_changed)
-        skc.transform_requested.connect(self._on_transform_skin_requested)
         skc.library_changed.connect(self._on_skin_library_changed)
         skc.library_reset.connect(self._undo_stack_clear_safely)
         skc.mutated.connect(self._schedule_autosave)
@@ -469,13 +477,29 @@ class MainWindow(QMainWindow):
         self._slot_editor.slot_reset_requested.connect(self._on_slot_reset_requested)
         self._slot_editor.slot_focus_changed.connect(self._on_slot_focus_changed)
         self._slot_editor.context_requested.connect(self._on_slot_editor_context)
+        self._slot_editor.transform_requested.connect(self._on_slot_transform_requested)
+        self._slot_editor.reset_all_requested.connect(
+            self._on_slot_reset_all_requested,
+        )
 
         # Vertex-color editor for the gouraud table; only meaningful in
         # skin mode (paintjobs don't carry vertex overrides). Lives next
         # to the CLUT slot editor in a tab widget so the right pane stays
         # one column wide regardless of which mode is active.
         self._vertex_editor = VertexSlotEditor()
-        self._vertex_editor.color_edited.connect(self._on_vertex_color_edited)
+        self._vertex_editor.color_edit_requested.connect(
+            self._on_vertex_color_edit_requested,
+        )
+        self._vertex_editor.vertex_reset_requested.connect(
+            self._on_vertex_reset_requested,
+        )
+        self._vertex_editor.reset_all_requested.connect(
+            self._on_vertex_reset_all_requested,
+        )
+        self._vertex_editor.vertex_focus_changed.connect(
+            self._on_vertex_focus_changed,
+        )
+        self._vertex_editor.context_requested.connect(self._on_vertex_editor_context)
         self._vertex_editor.transform_requested.connect(
             self._on_vertex_transform_requested,
         )
@@ -553,6 +577,11 @@ class MainWindow(QMainWindow):
         if hasattr(self, "_preview_sidebar"):
             self._sync_preview_sidebar_sources()
 
+        # Saved libraries are restored before the profile loads, so any
+        # rows rendered earlier still show raw character ids. Re-render
+        # now that the resolver works.
+        self._skin_controller.refresh_sidebar_labels()
+
         # Auto-select the first paintjob in the active tab (Paintjobs is
         # the default). The selection_changed handler will populate the
         # combo and auto-pick a preview character. The skin controller
@@ -581,6 +610,7 @@ class MainWindow(QMainWindow):
         self._current_character = None
         self._current_bundle = None
         self._slot_triangle_mask = {}
+        self._vertex_triangle_mask = {}
         self._slot_editor.set_slots([])
         self._vertex_editor.set_colors([])
         self._kart_viewer.clear()
@@ -704,26 +734,6 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(
             "ISO loaded. Create a paintjob (sidebar → New) or import one to begin.",
         )
-
-    def _on_transform_paintjob_requested(self, index: int) -> None:
-        """Paintjob sidebar Transform button — select + open panel."""
-        if index < 0 or index >= self._library.count():
-            return
-
-        self._sidebar_tabs.setCurrentWidget(self._paintjobs_tab)
-        self._paintjob_controller.select_index(index)
-        self._editor_mode = EditorMode.PAINTJOB
-        self._transform.show()
-
-    def _on_transform_skin_requested(self, index: int) -> None:
-        """Skin sidebar Transform button — select + open panel."""
-        if index < 0 or index >= self._skin_library.count():
-            return
-
-        self._sidebar_tabs.setCurrentWidget(self._skin_sidebar)
-        self._skin_controller.select_index(index)
-        self._editor_mode = EditorMode.SKIN
-        self._transform.show()
 
     def _restore_library_from_config(self) -> PaintjobLibrary:
         """Rehydrate the persisted library from the config blob."""
@@ -1019,6 +1029,7 @@ class MainWindow(QMainWindow):
         self._kart_viewer.set_mesh(assembled, bundle.mesh.texture_layouts)
 
         self._slot_triangle_mask = self._build_slot_triangle_mask(assembled, bundle)
+        self._vertex_triangle_mask = self._build_vertex_triangle_mask(assembled)
 
         self._animation.reload()
         self._populate_slot_editor()
@@ -1118,15 +1129,17 @@ class MainWindow(QMainWindow):
 
         overrides = self._active_vertex_overrides()
         effective: list[Rgb888] = []
+        overridden: set[int] = set()
         for i, base in enumerate(self._current_bundle.mesh.gouraud_colors):
             override = overrides.get(i)
 
             if override is not None:
                 effective.append(Rgb888(r=override.r, g=override.g, b=override.b))
+                overridden.add(i)
             else:
                 effective.append(Rgb888(r=base.r, g=base.g, b=base.b))
 
-        self._vertex_editor.set_colors(effective)
+        self._vertex_editor.set_colors(effective, overridden=overridden)
         self._vertex_editor.set_editable(
             self._editor_mode == EditorMode.SKIN and self._current_skin is not None,
         )
@@ -1196,6 +1209,13 @@ class MainWindow(QMainWindow):
         editable = self._editor_mode in (EditorMode.PAINTJOB, EditorMode.SKIN)
         self._slot_editor.setEnabled(editable)
         self._vertex_editor.setEnabled(editable and self._editor_mode == EditorMode.SKIN)
+        self._refresh_slot_button_strip()
+
+    def _refresh_slot_button_strip(self) -> None:
+        editable = self._editor_mode in (EditorMode.PAINTJOB, EditorMode.SKIN)
+        self._slot_editor.set_button_strip_enabled(
+            editable and self._active_asset() is not None,
+        )
 
     def _sync_preview_sidebar_sources(self) -> None:
         """Push current characters + libraries into the Preview sidebar."""
@@ -1281,9 +1301,16 @@ class MainWindow(QMainWindow):
 
         return mask
 
+    def _build_vertex_triangle_mask(self, assembled) -> dict[int, list[int]]:
+        # A triangle appears under every distinct gouraud index its 3 vertices sample.
+        mask: dict[int, list[int]] = {}
+        for tri_idx, indices in enumerate(assembled.gouraud_color_indices):
+            for color_index in set(indices):
+                mask.setdefault(color_index, []).append(tri_idx)
+
+        return mask
+
     def _on_slot_focus_changed(self, slot_name) -> None:
-        # `slot_name` is either a `str` (focus on that slot) or `None`
-        # (clear focus). Declared as `object` on the signal.
         if slot_name is None:
             self._kart_viewer.set_highlighted_triangles(None)
         else:
@@ -1316,6 +1343,7 @@ class MainWindow(QMainWindow):
         }
 
         self._slot_editor.set_slots(slot_names, dimensions=dimensions)
+        self._refresh_slot_button_strip()
 
         active = self._active_asset()
         for slot_name, slot in visible.items():
@@ -1390,7 +1418,12 @@ class MainWindow(QMainWindow):
         ))
 
     def _on_vertex_transform_requested(self) -> None:
-        """Open the vertex transform dialog and apply the result."""
+        """Open the modeless vertex transform panel.
+
+        Mirrors the slot transform panel's UX: live preview as sliders
+        move, Apply commits + resets sliders for the next pass, Close
+        reverts any in-flight preview.
+        """
         if (
             self._editor_mode != EditorMode.SKIN
             or self._current_skin is None
@@ -1398,82 +1431,275 @@ class MainWindow(QMainWindow):
         ):
             return
 
-        effective: list[Rgb888] = []
-        overrides = self._current_skin.vertex_overrides
-        for i, base in enumerate(self._current_bundle.mesh.gouraud_colors):
-            override = overrides.get(i)
-            if override is not None:
-                effective.append(Rgb888(r=override.r, g=override.g, b=override.b))
+        self._ensure_vertex_transform_dialog()
+        self._vertex_transform_dialog.set_colors(
+            self._current_vertex_effective_colors(),
+            transformable_indices=self._safe_vertex_transform_indices(),
+        )
+
+        if not self._vertex_transform_dialog.isVisible():
+            self._vertex_transform_snapshot = dict(
+                self._current_skin.vertex_overrides,
+            )
+            self._vertex_transform_dirty = set()
+            self._vertex_transform_dialog.show()
+        else:
+            self._vertex_transform_dialog.raise_()
+            self._vertex_transform_dialog.activateWindow()
+
+    def _safe_vertex_transform_indices(self) -> set[int]:
+        """Gouraud indices safe to bulk-transform: those used only by
+        untextured triangles. Indices shared with textured triangles are
+        excluded — the shader's `texture * vcolor * 2` modulation would
+        tint the paintjob otherwise.
+        """
+        if self._current_bundle is None:
+            return set()
+
+        used_textured: set[int] = set()
+        used_untextured: set[int] = set()
+
+        for draw in self._current_bundle.mesh.draw_commands:
+            if draw.tex_index == 0:
+                used_untextured.add(draw.color_index)
             else:
-                effective.append(Rgb888(r=base.r, g=base.g, b=base.b))
+                used_textured.add(draw.color_index)
+
+        return used_untextured - used_textured
+
+    def _ensure_vertex_transform_dialog(self) -> None:
+        if self._vertex_transform_dialog is not None:
+            return
 
         from paintjob_designer.gui.dialog.vertex_transform_dialog import (
             VertexTransformDialog,
         )
 
         dialog = VertexTransformDialog(
-            colors=effective,
             color_transformer=self._color_transformer,
             color_converter=self._color_converter,
             parent=self,
         )
+        dialog.preview_changed.connect(self._on_vertex_transform_preview)
+        dialog.commit_requested.connect(self._on_vertex_transform_commit)
+        dialog.closing.connect(self._on_vertex_transform_closing)
+        self._vertex_transform_dialog = dialog
 
-        if dialog.exec() != VertexTransformDialog.DialogCode.Accepted:
+    def _current_vertex_effective_colors(self) -> list[Rgb888]:
+        if self._current_skin is None or self._current_bundle is None:
+            return []
+
+        overrides = self._current_skin.vertex_overrides
+        result: list[Rgb888] = []
+
+        for i, base in enumerate(self._current_bundle.mesh.gouraud_colors):
+            override = overrides.get(i)
+            if override is not None:
+                result.append(Rgb888(r=override.r, g=override.g, b=override.b))
+            else:
+                result.append(Rgb888(r=base.r, g=base.g, b=base.b))
+
+        return result
+
+    def _on_vertex_transform_preview(self, preview_overrides) -> None:
+        """Reverts to the open-time snapshot first so cross-pass drift cleans
+        up (e.g. a slider that previously dirtied v17 is now back to zero —
+        v17 must drop back to its snapshot value).
+        """
+        if (
+            self._current_skin is None
+            or self._current_bundle is None
+            or self._vertex_transform_snapshot is None
+        ):
             return
 
-        new_overrides = dialog.resulting_overrides()
-        if not new_overrides:
-            return
+        self._current_skin.vertex_overrides.clear()
+        self._current_skin.vertex_overrides.update(self._vertex_transform_snapshot)
 
-        # Merge into the skin's override map and prune entries that
-        # collapse back to the baked color (e.g. a hue rotation that
-        # round-trips to the original RGB after quantization).
-        for index, color in new_overrides.items():
+        for index, color in preview_overrides.items():
             base = self._current_bundle.mesh.gouraud_colors[index]
             if (color.r, color.g, color.b) == (base.r, base.g, base.b):
                 self._current_skin.vertex_overrides.pop(index, None)
             else:
                 self._current_skin.vertex_overrides[index] = color
 
-        # Re-render and refresh the swatch grid so the new colors show
-        # up immediately. Reusing `_reload_preview` keeps the slot
-        # editor / vertex editor / 3D viewer / status bar all in sync
-        # via the same path used after any other asset mutation.
-        self._reload_preview()
+        new_dirty = set(preview_overrides.keys())
+        # Refresh union of old + new dirty so vertices touched last pass
+        # but not this one revert to the snapshot value.
+        self._sync_vertex_view(list(self._vertex_transform_dirty | new_dirty))
+        self._vertex_transform_dirty = new_dirty
+
+    def _on_vertex_transform_commit(self, overrides) -> None:
+        if (
+            self._current_skin is None
+            or self._current_bundle is None
+            or self._vertex_transform_dialog is None
+        ):
+            return
+
+        # Preview already wrote the final state, so persistence is just
+        # snapshot-advance + autosave.
+        self._vertex_transform_snapshot = dict(
+            self._current_skin.vertex_overrides,
+        )
+        self._vertex_transform_dirty = set()
+
+        self._vertex_transform_dialog.set_colors(
+            self._current_vertex_effective_colors(),
+            transformable_indices=self._safe_vertex_transform_indices(),
+        )
+        self._vertex_transform_dialog.commit_finished()
+
         self._schedule_autosave()
         self.statusBar().showMessage(
-            f"Applied vertex transform: {len(new_overrides)} colors changed.",
+            f"Applied vertex transform: {len(overrides)} colors changed.",
         )
 
-    def _on_vertex_color_edited(self, index: int, color: Rgb888) -> None:
-        """Vertex-slot color pick — write the override to the active skin and re-upload the mesh."""
+    def _on_vertex_transform_closing(self) -> None:
+        if (
+            self._current_skin is None
+            or self._current_bundle is None
+            or self._vertex_transform_snapshot is None
+        ):
+            return
+
+        self._current_skin.vertex_overrides.clear()
+        self._current_skin.vertex_overrides.update(self._vertex_transform_snapshot)
+
+        if self._vertex_transform_dirty:
+            self._sync_vertex_view(list(self._vertex_transform_dirty))
+
+        self._vertex_transform_snapshot = None
+        self._vertex_transform_dirty = set()
+
+    def _on_vertex_color_edit_requested(self, index: int) -> None:
+        if (
+            self._editor_mode != EditorMode.SKIN
+            or self._current_skin is None
+            or self._current_bundle is None
+        ):
+            return
+
+        if not (0 <= index < len(self._current_bundle.mesh.gouraud_colors)):
+            return
+
+        current = self._current_skin.vertex_overrides.get(index)
+        if current is None:
+            base = self._current_bundle.mesh.gouraud_colors[index]
+            current = Rgb888(r=base.r, g=base.g, b=base.b)
+
+        chosen = QColorDialog.getColor(
+            QColor(current.r, current.g, current.b),
+            self,
+            f"Pick color for v{index}",
+            QColorDialog.ColorDialogOption.DontUseNativeDialog,
+        )
+
+        if not chosen.isValid():
+            return
+
+        new_color = Rgb888(r=chosen.red(), g=chosen.green(), b=chosen.blue())
+        if (new_color.r, new_color.g, new_color.b) == (current.r, current.g, current.b):
+            return
+
+        self._apply_vertex_override(index, new_color)
+
+    def _on_vertex_reset_requested(self, index: int) -> None:
+        if (
+            self._editor_mode != EditorMode.SKIN
+            or self._current_skin is None
+            or self._current_bundle is None
+        ):
+            return
+
+        if index not in self._current_skin.vertex_overrides:
+            return
+
+        self._current_skin.vertex_overrides.pop(index, None)
+        self._refresh_vertex_after_override_change(touched_indices=[index])
+
+    def _on_vertex_reset_all_requested(self) -> None:
+        if (
+            self._editor_mode != EditorMode.SKIN
+            or self._current_skin is None
+            or self._current_bundle is None
+            or not self._current_skin.vertex_overrides
+        ):
+            return
+
+        touched = list(self._current_skin.vertex_overrides.keys())
+        self._current_skin.vertex_overrides.clear()
+        self._refresh_vertex_after_override_change(touched_indices=touched)
+
+    def _on_vertex_focus_changed(self, index) -> None:
+        if index is None:
+            self._kart_viewer.set_highlighted_triangles(None)
+        else:
+            self._kart_viewer.set_highlighted_triangles(
+                self._vertex_triangle_mask.get(index, []),
+            )
+
+    def _on_vertex_editor_context(self, index: int, global_pos) -> None:
+        if self._editor_mode != EditorMode.SKIN or self._current_skin is None:
+            return
+
+        menu = QMenu(self)
+
+        reset_action = menu.addAction("Reset to baked color")
+        reset_action.setEnabled(index in self._current_skin.vertex_overrides)
+        reset_action.triggered.connect(
+            lambda: self._on_vertex_reset_requested(index),
+        )
+
+        menu.exec(global_pos)
+
+    def _apply_vertex_override(self, index: int, color: Rgb888) -> None:
         if self._current_skin is None or self._current_bundle is None:
             return
 
-        base = (
-            self._current_bundle.mesh.gouraud_colors[index]
-            if 0 <= index < len(self._current_bundle.mesh.gouraud_colors)
-            else None
-        )
-
-        if base is not None and (color.r, color.g, color.b) == (base.r, base.g, base.b):
+        base = self._current_bundle.mesh.gouraud_colors[index]
+        if (color.r, color.g, color.b) == (base.r, base.g, base.b):
             self._current_skin.vertex_overrides.pop(index, None)
         else:
             self._current_skin.vertex_overrides[index] = color
 
-        # Re-assemble with the new override set and push the updated
-        # vertex-color buffer to the GL viewer. Full `_reload_preview`
-        # would redo the atlas + slot regions too, which is wasted work
-        # for a vertex-color edit — only the per-vertex buffer changed.
+        self._refresh_vertex_after_override_change(touched_indices=[index])
+
+    def _refresh_vertex_after_override_change(
+        self, touched_indices: list[int],
+    ) -> None:
+        self._sync_vertex_view(touched_indices)
+        self._schedule_autosave()
+
+    def _sync_vertex_view(self, touched_indices) -> None:
+        if self._current_skin is None or self._current_bundle is None:
+            return
+
+        overrides = self._current_skin.vertex_overrides
+        for index in touched_indices:
+            base = self._current_bundle.mesh.gouraud_colors[index]
+            override = overrides.get(index)
+
+            if override is not None:
+                self._vertex_editor.update_color(
+                    index, Rgb888(r=override.r, g=override.g, b=override.b),
+                    is_overridden=True,
+                )
+            else:
+                self._vertex_editor.update_color(
+                    index, Rgb888(r=base.r, g=base.g, b=base.b),
+                    is_overridden=False,
+                )
+
+        self._vertex_editor.set_editable(True)
+
         assembled = self._vertex_assembler.assemble(
-            self._current_bundle.mesh,
-            vertex_overrides=self._current_skin.vertex_overrides,
+            self._current_bundle.mesh, vertex_overrides=overrides,
         )
+
         self._kart_viewer.set_mesh(
             assembled, self._current_bundle.mesh.texture_layouts,
         )
-
-        self._schedule_autosave()
 
     def _on_slot_reset_requested(self, slot_name: str) -> None:
         if self._current_bundle is None or not self._require_active_asset():
@@ -1487,6 +1713,44 @@ class MainWindow(QMainWindow):
         old_colors = self._snapshot_slot_colors(asset, slot.slot_name)
         self.apply_slot_reset_from_command(asset, slot)
         self._undo_stack.push(ResetSlotCommand(self, asset, slot, old_colors))
+
+    def _on_slot_transform_requested(self) -> None:
+        if self._current_bundle is None or not self._require_active_asset():
+            return
+
+        self._transform.show()
+
+    def _on_slot_reset_all_requested(self) -> None:
+        """Bundled into a single undo macro so one Ctrl+Z reverses the whole
+        Reset all, not just the last slot.
+        """
+        if self._current_bundle is None or not self._require_active_asset():
+            return
+
+        asset = self._active_asset()
+        mode_slots = self._active_slot_names()
+
+        slots = [
+            slot for name, slot in self._current_bundle.slot_regions.slots.items()
+            if name in mode_slots
+        ]
+
+        if not slots:
+            return
+
+        self._undo_stack.beginMacro(f"Reset all ({len(slots)} slots)")
+
+        try:
+            for slot in slots:
+                old_colors = self._snapshot_slot_colors(asset, slot.slot_name)
+                self.apply_slot_reset_from_command(asset, slot)
+                self._undo_stack.push(
+                    ResetSlotCommand(self, asset, slot, old_colors),
+                )
+        finally:
+            self._undo_stack.endMacro()
+
+        self.statusBar().showMessage(f"Reset {len(slots)} slot(s) to defaults.")
 
     def _on_eyedropper_picked(
         self, tex_layout_index: int, byte_u: float, byte_v: float,

@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from PySide6.QtCore import QPoint, Signal
+from PySide6.QtCore import QPoint
 from PySide6.QtWidgets import QMenu, QWidget
 
 from paintjob_designer.core import Slugifier
@@ -31,8 +31,6 @@ _PAINTJOB_FILTER = f"Paintjob (*{_PAINTJOB_EXT})"
 
 class PaintjobLibraryController(LibraryController[Paintjob, PaintjobLibrary]):
     """Owns the paintjob library + sidebar + all paintjob CRUD."""
-
-    transform_requested = Signal(int)
 
     def __init__(
         self,
@@ -66,12 +64,6 @@ class PaintjobLibraryController(LibraryController[Paintjob, PaintjobLibrary]):
         self._sidebar.delete_requested.connect(self.delete)
         self._sidebar.paintjobs_reordered.connect(self._on_reordered)
         self._sidebar.export_requested.connect(self.export_library)
-        # The base class now exposes a `transform_requested(int)` signal;
-        # forward it as our own typed signal so callers don't need to
-        # reach through the sidebar.
-        self._sidebar.transform_requested.connect(
-            self.transform_requested.emit,
-        )
 
     def set_iso_root(self, iso_root: str) -> None:
         self._iso_root = iso_root

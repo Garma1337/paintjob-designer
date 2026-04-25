@@ -146,8 +146,7 @@ class AnimationController(QObject):
             self._timer.stop()
             self._play_button.setText("Play")
         else:
-            # Restart from the beginning when the user hits Play after a
-            # non-looping clip has parked on its last frame.
+            # Rewind if a non-looping clip parked on its last frame.
             frames = self._current_frames()
 
             if frames and self._frame_index >= len(frames) - 1:
