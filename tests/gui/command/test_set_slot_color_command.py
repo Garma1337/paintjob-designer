@@ -5,7 +5,7 @@ import pytest
 # Commands extend `QUndoCommand`; skip this module when Qt isn't available
 # (system Python running the headless suite). The command logic is still
 # exercised via integration when running under the venv.
-pytest.importorskip("PySide6.QtGui")
+pytest.importorskip("PySide6.QtGui", exc_type=ImportError)
 
 from paintjob_designer.gui.command.set_slot_color_command import SetSlotColorCommand
 from paintjob_designer.models import Paintjob, PsxColor, SlotRegions

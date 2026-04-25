@@ -43,10 +43,19 @@ jobs:
           cache: pip
           cache-dependency-path: requirements.txt
 
+      - name: Install Qt system dependencies
+        # PySide6's QtGui/QtWidgets dynamically loads libEGL even when the
+        # tests only construct widgets headless via QT_QPA_PLATFORM=offscreen.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libxkbcommon0 libdbus-1-3
+
       - name: Install dependencies
         run: pip install -r requirements.txt
 
       - name: Run tests
+        env:
+          QT_QPA_PLATFORM: offscreen
         run: pytest tests/
 
   build-portable-windows:
