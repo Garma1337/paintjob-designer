@@ -67,6 +67,7 @@ from paintjob_designer.render.atlas_renderer import AtlasRenderer
 from paintjob_designer.render.atlas_uv_mapper import AtlasUvMapper
 from paintjob_designer.render.ray_picker import RayTrianglePicker
 from paintjob_designer.texture.importer import SizeMismatchMode, TextureImporter
+from paintjob_designer.texture.rotator import TextureRotator
 
 _PAINTJOB_EXT = ".json"
 _PAINTJOB_FILTER = f"Paintjob (*{_PAINTJOB_EXT})"
@@ -93,6 +94,7 @@ class MainWindow(QMainWindow):
         ray_picker: RayTrianglePicker,
         slugifier: Slugifier,
         texture_importer: TextureImporter,
+        texture_rotator: TextureRotator,
         skin_writer,
         message: MessageDialog,
         files: FilePicker,
@@ -117,6 +119,7 @@ class MainWindow(QMainWindow):
         self._ray_picker = ray_picker
         self._slugifier = slugifier
         self._texture_importer = texture_importer
+        self._texture_rotator = texture_rotator
         self._skin_writer = skin_writer
         self._message = message
         self._files = files
@@ -1918,6 +1921,7 @@ class MainWindow(QMainWindow):
                     and asset.slots.get(slot_name) is not None
                     and asset.slots[slot_name].pixels
                 ):
+                    self._add_rotate_texture_submenu(menu, slot_name)
                     menu.addAction(
                         "Remove imported texture",
                         lambda: self._on_remove_slot_texture(slot_name),
@@ -2144,6 +2148,76 @@ class MainWindow(QMainWindow):
         self._reload_preview()
         self._schedule_autosave()
         self.statusBar().showMessage(f"Removed imported texture on {slot_name}")
+
+    def _add_rotate_texture_submenu(self, menu: QMenu, slot_name: str) -> None:
+        asset = self._active_asset()
+        if asset is None:
+            return
+
+        slot = asset.slots.get(slot_name)
+        if slot is None or not slot.pixels:
+            return
+
+        # Multi-region textures aren't rotatable as a unit — bail out
+        # silently so the menu just doesn't grow the submenu.
+        if len(slot.pixels) != 1:
+            return
+
+        region = slot.pixels[0]
+        square = region.width == region.height
+
+        submenu = menu.addMenu("Rotate texture")
+        for degrees, label in ((90, "90° clockwise"), (180, "180°"), (270, "270° clockwise")):
+            action = submenu.addAction(
+                label,
+                lambda _=False, d=degrees: self._on_rotate_slot_texture(slot_name, d),
+            )
+
+            # 90 / 270 swap dimensions; only valid when the texture is square.
+            if degrees != 180 and not square:
+                action.setEnabled(False)
+                action.setToolTip(
+                    "Only available for square textures — 90 / 270° would "
+                    "swap width and height.",
+                )
+
+    def _on_rotate_slot_texture(self, slot_name: str, degrees: int) -> None:
+        if not self._require_active_asset():
+            return
+
+        asset = self._active_asset()
+        slot = asset.slots.get(slot_name)
+        if slot is None or len(slot.pixels) != 1:
+            return
+
+        region = slot.pixels[0]
+        try:
+            rotated = self._texture_rotator.rotate(
+                region.pixels, region.width, region.height, degrees,
+            )
+        except ValueError as exc:
+            QMessageBox.critical(self, "Rotate failed", str(exc))
+            return
+
+        asset.slots[slot_name] = SlotColors(
+            colors=list(slot.colors),
+            pixels=[
+                SlotRegionPixels(
+                    vram_x=region.vram_x,
+                    vram_y=region.vram_y,
+                    width=rotated.width,
+                    height=rotated.height,
+                    pixels=rotated.pixels,
+                ),
+            ],
+        )
+
+        # Texture rotation invalidates undo (commands captured pre-rotate refs).
+        self._undo_stack.clear()
+        self._populate_slot_editor()
+        self._reload_preview()
+        self._schedule_autosave()
+        self.statusBar().showMessage(f"Rotated {slot_name} by {degrees}°")
 
     def apply_bulk_edits_from_command(
         self,

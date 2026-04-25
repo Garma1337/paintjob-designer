@@ -18,6 +18,7 @@ class TransformMode(Enum):
     SHIFT_BRIGHTNESS = "shift_brightness"
     SHIFT_SATURATION = "shift_saturation"
     RGB_DELTA = "rgb_delta"
+    INVERT = "invert"
 
 
 @dataclass
@@ -65,7 +66,11 @@ class ColorTransformer:
         rgb = self._converter.psx_to_rgb(color)
         r, g, b = rgb.r, rgb.g, rgb.b
 
-        if params.mode == TransformMode.RGB_DELTA:
+        if params.mode == TransformMode.INVERT:
+            r = RGB_COMPONENT_MAX - r
+            g = RGB_COMPONENT_MAX - g
+            b = RGB_COMPONENT_MAX - b
+        elif params.mode == TransformMode.RGB_DELTA:
             r = self.clamp_u8(r + params.rgb_delta_r)
             g = self.clamp_u8(g + params.rgb_delta_g)
             b = self.clamp_u8(b + params.rgb_delta_b)

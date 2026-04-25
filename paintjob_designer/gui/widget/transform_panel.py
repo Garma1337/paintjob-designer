@@ -58,6 +58,7 @@ _PIPELINE: tuple[TransformMode, ...] = (
     TransformMode.SHIFT_SATURATION,
     TransformMode.SHIFT_BRIGHTNESS,
     TransformMode.RGB_DELTA,
+    TransformMode.INVERT,
 )
 
 _MODE_LABELS: dict[TransformMode, str] = {
@@ -67,6 +68,7 @@ _MODE_LABELS: dict[TransformMode, str] = {
     TransformMode.SHIFT_SATURATION: "Shift saturation",
     TransformMode.SHIFT_BRIGHTNESS: "Shift brightness",
     TransformMode.RGB_DELTA: "RGB delta",
+    TransformMode.INVERT: "Invert colors",
 }
 
 
@@ -324,6 +326,8 @@ class _OperationSection(QGroupBox):
             self._build_brightness(layout)
         elif mode == TransformMode.RGB_DELTA:
             self._build_rgb_delta(layout)
+        elif mode == TransformMode.INVERT:
+            self._build_invert(layout)
 
     def is_enabled(self) -> bool:
         return self.isChecked()
@@ -370,6 +374,7 @@ class _OperationSection(QGroupBox):
                 rgb_delta_b=self._rgb_b_slider.value(),
             )
 
+        # INVERT and any future parameter-less ops fall through.
         return TransformParams(mode=self._mode)
 
     def reset_values(self) -> None:
@@ -384,8 +389,8 @@ class _OperationSection(QGroupBox):
             self._rgb_r_slider.setValue(0)
             self._rgb_g_slider.setValue(0)
             self._rgb_b_slider.setValue(0)
-        # Replace-matches keeps its current match/target — they're not
-        # sliders, and the checkbox handles on/off.
+        elif self._mode == TransformMode.INVERT:
+            self.setChecked(False)
 
     def _build_replace(self, layout: QFormLayout) -> None:
         self._replace_match = PsxColor(value=PSX_TRANSPARENT_VALUE)
@@ -486,6 +491,15 @@ class _OperationSection(QGroupBox):
         layout.addRow("Red:", self._wrap(self._rgb_r_slider, self._rgb_r_value))
         layout.addRow("Green:", self._wrap(self._rgb_g_slider, self._rgb_g_value))
         layout.addRow("Blue:", self._wrap(self._rgb_b_slider, self._rgb_b_value))
+
+    def _build_invert(self, layout: QFormLayout) -> None:
+        hint = QLabel(
+            "Inverts each color's RGB channels (255 − r, 255 − g, 255 − b). "
+            "No parameters — toggle the section to apply.",
+        )
+        hint.setWordWrap(True)
+        hint.setStyleSheet("color: #888;")
+        layout.addRow(hint)
 
     def _slider(
         self, minimum: int, maximum: int, suffix: str,

@@ -36,8 +36,10 @@ from paintjob_designer.render.ray_picker import RayTrianglePicker
 from paintjob_designer.render.slot_region_deriver import SlotRegionDeriver
 from paintjob_designer.skin.reader import SkinReader
 from paintjob_designer.skin.writer import SkinWriter
+from paintjob_designer.texture.four_bpp_codec import FourBppCodec
 from paintjob_designer.texture.importer import TextureImporter
 from paintjob_designer.texture.quantizer import TextureQuantizer
+from paintjob_designer.texture.rotator import TextureRotator
 from paintjob_designer.vram.cache import VramCache
 from paintjob_designer.vram.reader import VramReader
 
@@ -82,6 +84,8 @@ container.register("profile_holder", lambda c: ProfileHolder())
 container.register("character_picker", lambda c: CharacterPicker(c.resolve("profile_holder").get))
 container.register("texture_quantizer", lambda c: TextureQuantizer(c.resolve("color_converter")))
 container.register("texture_importer", lambda c: TextureImporter(c.resolve("texture_quantizer")))
+container.register("four_bpp_codec", lambda c: FourBppCodec())
+container.register("texture_rotator", lambda c: TextureRotator(c.resolve("four_bpp_codec")))
 container.register("character_handler", lambda c: CharacterHandler(
     c.resolve("ctr_model_reader"),
     c.resolve("vram_cache"),

@@ -32,6 +32,7 @@ def main() -> int:
         ray_picker=container.resolve("ray_triangle_picker"),
         slugifier=container.resolve("slugifier"),
         texture_importer=container.resolve("texture_importer"),
+        texture_rotator=container.resolve("texture_rotator"),
     )
 
     window.show()
