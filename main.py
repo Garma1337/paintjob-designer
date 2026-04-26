@@ -39,6 +39,7 @@ if __name__ == "__main__":
         palette_library_controller=container.resolve("palette_library_controller"),
         preview_sidebar=container.resolve("preview_sidebar"),
         slot_editor=container.resolve("slot_editor"),
+        orphan_slot_editor=container.resolve("orphan_slot_editor"),
         vertex_slot_editor=container.resolve("vertex_slot_editor"),
         kart_viewer=container.resolve("kart_viewer"),
     )

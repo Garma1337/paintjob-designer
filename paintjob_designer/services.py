@@ -145,6 +145,7 @@ container.register("skin_library_controller", lambda c: SkinLibraryController(
 ))
 container.register("preview_sidebar", lambda c: PreviewSidebar())
 container.register("slot_editor", lambda c: SlotEditor(c.resolve("color_converter")))
+container.register("orphan_slot_editor", lambda c: SlotEditor(c.resolve("color_converter")))
 container.register("vertex_slot_editor", lambda c: VertexSlotEditor())
 container.register("kart_viewer", lambda c: KartViewer(
     c.resolve("atlas_uv_mapper"),

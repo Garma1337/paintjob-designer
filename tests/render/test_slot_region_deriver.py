@@ -208,6 +208,42 @@ class TestUnmatched:
         assert result.unmatched_regions[0].clut == ClutCoord(x=480, y=200)
 
 
+class TestOrphanProfileSlots:
+    """Profile slots whose CLUT isn't sampled by any mesh layout still need
+    to be editable — surfaced with an empty `regions` list."""
+
+    def test_orphan_slot_is_surfaced_with_empty_regions(self, slot_region_deriver):
+        # Mesh has no texture layouts at all; profile defines one slot.
+        character = _character([("menu_only", 480, 200)])
+
+        result = slot_region_deriver.derive(CtrMesh(), character)
+
+        assert "menu_only" in result.slots
+        assert result.slots["menu_only"].clut == ClutCoord(x=480, y=200)
+        assert result.slots["menu_only"].regions == []
+
+    def test_mesh_matched_slot_keeps_regions_orphan_stays_empty(self, slot_region_deriver):
+        mesh = CtrMesh(texture_layouts=[_tl(palette_x=7, palette_y=255)])
+        character = _character([
+            ("front", 112, 255),
+            ("menu_only", 480, 200),
+        ])
+
+        result = slot_region_deriver.derive(mesh, character)
+
+        assert len(result.slots["front"].regions) == 1
+        assert result.slots["menu_only"].regions == []
+
+    def test_orphan_slot_does_not_appear_as_unmatched(self, slot_region_deriver):
+        # An empty-region profile slot is a known editable slot, not an
+        # unmatched palette pulled from the mesh.
+        character = _character([("menu_only", 480, 200)])
+
+        result = slot_region_deriver.derive(CtrMesh(), character)
+
+        assert result.unmatched_regions == []
+
+
 class TestMultipleSlots:
 
     def test_each_palette_routes_to_its_own_slot(self, slot_region_deriver):

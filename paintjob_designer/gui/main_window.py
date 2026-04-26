@@ -63,6 +63,7 @@ from paintjob_designer.models import (
     SkinLibrary,
     SlotColors,
     SlotRegionPixels,
+    SlotRegions,
 )
 from paintjob_designer.profile.registry import ProfileRegistry
 from paintjob_designer.render.atlas_renderer import AtlasRenderer
@@ -113,6 +114,7 @@ class MainWindow(QMainWindow):
         palette_library_controller: PaletteLibraryController,
         preview_sidebar: PreviewSidebar,
         slot_editor: SlotEditor,
+        orphan_slot_editor: SlotEditor,
         vertex_slot_editor: VertexSlotEditor,
         kart_viewer: KartViewer,
     ) -> None:
@@ -146,8 +148,12 @@ class MainWindow(QMainWindow):
 
         self._preview_sidebar = preview_sidebar
         self._slot_editor = slot_editor
+        self._orphan_slot_editor = orphan_slot_editor
         self._vertex_editor = vertex_slot_editor
         self._kart_viewer = kart_viewer
+        # Both editors fan out the same per-slot updates — `update_color` /
+        # `set_slot_colors` are no-ops when a slot isn't owned by that editor.
+        self._slot_editors: tuple[SlotEditor, ...] = (slot_editor, orphan_slot_editor)
 
         # Make sidebars discoverable via short aliases — most editor
         # logic still asks for them by name. Controllers own the actual
@@ -493,14 +499,13 @@ class MainWindow(QMainWindow):
         self._kart_viewer.eyedropper_picked.connect(self._on_eyedropper_picked)
         viewer_layout.addWidget(self._kart_viewer, 1)
 
-        self._slot_editor.color_edit_requested.connect(self._on_color_edit_requested)
-        self._slot_editor.slot_reset_requested.connect(self._on_slot_reset_requested)
-        self._slot_editor.slot_focus_changed.connect(self._on_slot_focus_changed)
-        self._slot_editor.context_requested.connect(self._on_slot_editor_context)
-        self._slot_editor.transform_requested.connect(self._on_slot_transform_requested)
-        self._slot_editor.reset_all_requested.connect(
-            self._on_slot_reset_all_requested,
-        )
+        for editor in self._slot_editors:
+            editor.color_edit_requested.connect(self._on_color_edit_requested)
+            editor.slot_reset_requested.connect(self._on_slot_reset_requested)
+            editor.slot_focus_changed.connect(self._on_slot_focus_changed)
+            editor.context_requested.connect(self._on_slot_editor_context)
+            editor.transform_requested.connect(self._on_slot_transform_requested)
+            editor.reset_all_requested.connect(self._on_slot_reset_all_requested)
 
         # Vertex-color editor for the gouraud table; only meaningful in
         # skin mode (paintjobs don't carry vertex overrides). Lives next
@@ -526,6 +531,7 @@ class MainWindow(QMainWindow):
         self._right_tabs = QTabWidget()
         self._right_tabs.addTab(self._slot_editor, "CLUT slots")
         self._right_tabs.addTab(self._vertex_editor, "Vertex slots")
+        self._right_tabs.addTab(self._orphan_slot_editor, "Orphan Slots")
 
         splitter.addWidget(sidebar_container)
         splitter.addWidget(viewer_container)
@@ -630,7 +636,8 @@ class MainWindow(QMainWindow):
         self._current_bundle = None
         self._slot_triangle_mask = {}
         self._vertex_triangle_mask = {}
-        self._slot_editor.set_slots([])
+        for editor in self._slot_editors:
+            editor.set_slots([])
         self._vertex_editor.set_colors([])
         self._kart_viewer.clear()
 
@@ -847,7 +854,10 @@ class MainWindow(QMainWindow):
 
             return
 
-        slot_name = self._slot_editor.focused_slot()
+        slot_name = next(
+            (e.focused_slot() for e in self._slot_editors if e.focused_slot()),
+            None,
+        )
         if slot_name is None:
             self._message.info(
                 self, "No focused slot",
@@ -1226,15 +1236,19 @@ class MainWindow(QMainWindow):
     def _update_editors_for_mode(self) -> None:
         """Enable or disable the right-pane editor tabs based on current mode."""
         editable = self._editor_mode in (EditorMode.PAINTJOB, EditorMode.SKIN)
-        self._slot_editor.setEnabled(editable)
+
+        for editor in self._slot_editors:
+            editor.setEnabled(editable)
+
         self._vertex_editor.setEnabled(editable and self._editor_mode == EditorMode.SKIN)
         self._refresh_slot_button_strip()
 
     def _refresh_slot_button_strip(self) -> None:
         editable = self._editor_mode in (EditorMode.PAINTJOB, EditorMode.SKIN)
-        self._slot_editor.set_button_strip_enabled(
-            editable and self._active_asset() is not None,
-        )
+        enabled = editable and self._active_asset() is not None
+
+        for editor in self._slot_editors:
+            editor.set_button_strip_enabled(enabled)
 
     def _sync_preview_sidebar_sources(self) -> None:
         """Push current characters + libraries into the Preview sidebar."""
@@ -1343,29 +1357,43 @@ class MainWindow(QMainWindow):
             self._transform.refresh()
 
     def _populate_slot_editor(self) -> None:
-        """Refresh the slot-editor swatches for the active asset + preview."""
+        """Refresh both slot-editor tabs (mesh-mapped + orphan) for the active asset + preview."""
         if self._current_bundle is None:
-            self._slot_editor.set_slots([])
+            for editor in self._slot_editors:
+                editor.set_slots([])
+        
             return
 
         mode_slots = self._active_slot_names()
-        visible = {
-            name: regions
-            for name, regions in self._current_bundle.slot_regions.slots.items()
-            if name in mode_slots
-        }
+        mesh_mapped: dict[str, SlotRegions] = {}
+        orphan: dict[str, SlotRegions] = {}
 
-        slot_names = self._ordered_slot_names(visible.keys())
+        for name, regions in self._current_bundle.slot_regions.slots.items():
+            if name not in mode_slots:
+                continue
+
+            if regions.regions:
+                mesh_mapped[name] = regions
+            else:
+                orphan[name] = regions
+
+        self._populate_one_slot_editor(self._slot_editor, mesh_mapped)
+        self._populate_one_slot_editor(self._orphan_slot_editor, orphan)
+        self._refresh_slot_button_strip()
+
+    def _populate_one_slot_editor(
+        self, editor: SlotEditor, slots: dict[str, SlotRegions],
+    ) -> None:
+        slot_names = self._ordered_slot_names(slots.keys())
         dimensions = {
-            name: self._slot_dimension_hint(visible[name])
+            name: self._slot_dimension_hint(slots[name])
             for name in slot_names
         }
 
-        self._slot_editor.set_slots(slot_names, dimensions=dimensions)
-        self._refresh_slot_button_strip()
+        editor.set_slots(slot_names, dimensions=dimensions)
 
         active = self._active_asset()
-        for slot_name, slot in visible.items():
+        for slot_name, slot in slots.items():
             if active is not None and slot_name in active.slots:
                 colors = list(active.slots[slot_name].colors)
             else:
@@ -1373,7 +1401,7 @@ class MainWindow(QMainWindow):
                     self._config.iso_root, slot,
                 )
 
-            self._slot_editor.set_slot_colors(slot_name, colors)
+            editor.set_slot_colors(slot_name, colors)
 
     def _slot_dimension_hint(self, slot_regions) -> str:
         """Pixel-space size hint shown next to a slot label in the editor."""
@@ -1921,8 +1949,10 @@ class MainWindow(QMainWindow):
             # Texture import is only offered on slots whose VRAM rect is
             # dim-invariant across characters. Non-portable slots (e.g.
             # kart `floor`) skip it because the imported pixels couldn't
-            # upload cleanly across all characters.
-            if not self._slot_is_non_portable(slot_name):
+            # upload cleanly across all characters. Orphan slots (CLUT
+            # defined in the profile but not sampled by any mesh layout)
+            # have no region to upload pixels into, so skip them too.
+            if not self._slot_is_non_portable(slot_name) and slot.regions:
                 menu.addSeparator()
                 menu.addAction(
                     "Import texture...",
@@ -2310,9 +2340,10 @@ class MainWindow(QMainWindow):
 
             if asset is self._active_asset():
                 for color_index, new_color in slot_ops:
-                    self._slot_editor.update_color(
-                        slot.slot_name, color_index, new_color,
-                    )
+                    for editor in self._slot_editors:
+                        editor.update_color(
+                            slot.slot_name, color_index, new_color,
+                        )
 
         self._kart_viewer.set_atlas(
             self._current_bundle.atlas_rgba,
@@ -2373,7 +2404,8 @@ class MainWindow(QMainWindow):
         )
 
         self._push_slot_region_to_viewer(slot)
-        self._slot_editor.update_color(slot.slot_name, color_index, new_color)
+        for editor in self._slot_editors:
+            editor.update_color(slot.slot_name, color_index, new_color)
 
     def apply_slot_reset_from_command(
         self, asset: Paintjob | Skin, slot,
@@ -2398,7 +2430,8 @@ class MainWindow(QMainWindow):
         )
 
         self._push_slot_region_to_viewer(slot)
-        self._slot_editor.set_slot_colors(slot.slot_name, defaults)
+        for editor in self._slot_editors:
+            editor.set_slot_colors(slot.slot_name, defaults)
 
     def _base_clut_coord_for(
         self, asset: Paintjob | Skin, slot_name: str,
@@ -2450,7 +2483,8 @@ class MainWindow(QMainWindow):
         )
 
         self._push_slot_region_to_viewer(slot)
-        self._slot_editor.set_slot_colors(slot.slot_name, colors)
+        for editor in self._slot_editors:
+            editor.set_slot_colors(slot.slot_name, colors)
 
     def _push_slot_region_to_viewer(self, slot) -> None:
         """Upload just the dirty rectangle of the atlas after a slot edit."""

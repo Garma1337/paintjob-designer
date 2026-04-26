@@ -73,6 +73,20 @@ class SlotRegionDeriver:
 
             entry.regions.append(region)
 
+        # Profile slots whose CLUT isn't sampled by any mesh layout still need
+        # to be editable — the colors live in VRAM and may be referenced by
+        # game code outside the mesh.
+        # Surface them with an empty `regions` list so the slot editor shows
+        # a row but no preview/highlight kicks in.
+        for slot in character.slots:
+            if slot.name in result.slots:
+                continue
+
+            result.slots[slot.name] = SlotRegions(
+                slot_name=slot.name,
+                clut=ClutCoord(x=slot.clut_race.x, y=slot.clut_race.y),
+            )
+
         result.unmatched_regions = [unmatched_by_clut[k] for k in sorted(unmatched_by_clut)]
         return result
 
