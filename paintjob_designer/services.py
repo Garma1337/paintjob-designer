@@ -48,6 +48,7 @@ from paintjob_designer.skin.writer import SkinWriter
 from paintjob_designer.texture.four_bpp_codec import FourBppCodec
 from paintjob_designer.texture.multi_region_texture_importer import MultiRegionTextureImporter
 from paintjob_designer.texture.single_region_texture_importer import SingleRegionTextureImporter
+from paintjob_designer.texture.texture_exporter import TextureExporter
 from paintjob_designer.texture.texture_quantizer import TextureQuantizer
 from paintjob_designer.texture.texture_rotator import TextureRotator
 from paintjob_designer.vram.cache import VramCache
@@ -103,6 +104,10 @@ container.register("multi_region_texture_importer", lambda c: MultiRegionTexture
 ))
 container.register("four_bpp_codec", lambda c: FourBppCodec())
 container.register("texture_rotator", lambda c: TextureRotator(c.resolve("four_bpp_codec")))
+container.register("texture_exporter", lambda c: TextureExporter(
+    c.resolve("color_converter"),
+    c.resolve("four_bpp_codec"),
+))
 container.register("palette_from_image_creator", lambda c: PaletteFromImageCreator(c.resolve("texture_quantizer")))
 container.register("palette_from_colors_creator", lambda c: PaletteFromColorsCreator())
 container.register("character_handler", lambda c: CharacterHandler(

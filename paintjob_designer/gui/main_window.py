@@ -75,6 +75,7 @@ from paintjob_designer.texture.single_region_texture_importer import (
     SingleRegionTextureImporter,
     SizeMismatchMode,
 )
+from paintjob_designer.texture.texture_exporter import TextureExporter
 from paintjob_designer.texture.texture_rotator import TextureRotator
 
 _PAINTJOB_EXT = ".json"
@@ -105,6 +106,7 @@ class MainWindow(QMainWindow):
         single_region_texture_importer: SingleRegionTextureImporter,
         multi_region_texture_importer: MultiRegionTextureImporter,
         texture_rotator: TextureRotator,
+        texture_exporter: TextureExporter,
         skin_writer,
         message: MessageDialog,
         files: FilePicker,
@@ -137,6 +139,7 @@ class MainWindow(QMainWindow):
         self._single_region_texture_importer = single_region_texture_importer
         self._multi_region_texture_importer = multi_region_texture_importer
         self._texture_rotator = texture_rotator
+        self._texture_exporter = texture_exporter
         self._skin_writer = skin_writer
         self._message = message
         self._files = files
@@ -1946,17 +1949,18 @@ class MainWindow(QMainWindow):
 
             self._add_apply_palette_submenu(menu, slot_name)
 
-            # Texture import is only offered on slots whose VRAM rect is
-            # dim-invariant across characters. Non-portable slots (e.g.
-            # kart `floor`) skip it because the imported pixels couldn't
-            # upload cleanly across all characters. Orphan slots (CLUT
-            # defined in the profile but not sampled by any mesh layout)
-            # have no region to upload pixels into, so skip them too.
-            if not self._slot_is_non_portable(slot_name) and slot.regions:
+            if slot.regions:
                 menu.addSeparator()
+
+                if not self._slot_is_non_portable(slot_name):
+                    menu.addAction(
+                        "Import texture...",
+                        lambda: self._on_import_slot_texture(slot_name),
+                    )
+
                 menu.addAction(
-                    "Import texture...",
-                    lambda: self._on_import_slot_texture(slot_name),
+                    "Export texture...",
+                    lambda: self._on_export_slot_texture(slot_name),
                 )
 
                 asset = self._active_asset()
@@ -2164,6 +2168,98 @@ class MainWindow(QMainWindow):
         self._after_texture_import(
             slot_name, f"{len(paths)} regions",
         )
+
+    def _on_export_slot_texture(self, slot_name: str) -> None:
+        """Save the slot's pixel data as PNG(s) using the current CLUT.
+
+        Single-region slots write one file at the chosen path. Multi-region
+        slots write one file per region with `_<index>` suffixed before the
+        extension so the regions stay grouped on disk.
+        """
+        if self._current_bundle is None or self._current_character is None:
+            return
+
+        slot = self._current_bundle.slot_regions.slots.get(slot_name)
+        if slot is None or not slot.regions:
+            return
+
+        default_name = f"{self._current_character.id}_{slot_name}.png"
+        default_path = Path(self._config.iso_root or Path.home()) / default_name
+        save_path = self._files.pick_save_path(
+            self, f"Export texture for {slot_name}",
+            default_path, "PNG images (*.png)",
+        )
+
+        if save_path is None:
+            return
+
+        save_path = save_path.with_suffix(".png")
+        clut = self._current_clut_for_slot(slot)
+
+        try:
+            paths_written = self._write_slot_textures(slot, clut, save_path)
+        except (OSError, ValueError) as exc:
+            self._message.error(
+                self, "Export failed", str(exc),
+            )
+
+            return
+
+        self.statusBar().showMessage(
+            f"Exported {slot_name} → {len(paths_written)} file(s)",
+        )
+
+    def _current_clut_for_slot(self, slot: SlotRegions) -> list[PsxColor]:
+        """Resolve the 16 colors currently displayed for this slot — asset
+        override if present, otherwise the live VRAM defaults."""
+        asset = self._active_asset()
+        if asset is not None and slot.slot_name in asset.slots:
+            return list(asset.slots[slot.slot_name].colors)
+
+        return self._color_handler.default_slot_colors(self._config.iso_root, slot)
+
+    def _write_slot_textures(
+        self, slot: SlotRegions, clut: list[PsxColor], base_path: Path,
+    ) -> list[Path]:
+        asset = self._active_asset()
+        imported_pixels = (
+            asset.slots[slot.slot_name].pixels
+            if asset is not None and slot.slot_name in asset.slots
+            else []
+        )
+
+        imported_by_coord = {
+            (rp.vram_x, rp.vram_y): rp for rp in imported_pixels
+        }
+
+        written: list[Path] = []
+        multi = len(slot.regions) > 1
+        for index, region in enumerate(slot.regions):
+            override = imported_by_coord.get((region.vram_x, region.vram_y))
+            if override is not None:
+                pixel_bytes = bytes(override.pixels)
+                width, height = override.width, override.height
+            else:
+                pixel_bytes = self._color_handler.default_region_pixels(
+                    self._config.iso_root, region,
+                )
+                width, height = region.pixel_dimensions
+
+            image = self._texture_exporter.to_image(
+                pixel_bytes, width, height, clut,
+            )
+
+            if multi:
+                target = base_path.with_name(
+                    f"{base_path.stem}_{index}{base_path.suffix}",
+                )
+            else:
+                target = base_path
+
+            image.save(target)
+            written.append(target)
+
+        return written
 
     def _after_texture_import(self, slot_name: str, source_label: str) -> None:
         # Texture imports invalidate undo (commands captured pre-import

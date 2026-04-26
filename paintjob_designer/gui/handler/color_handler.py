@@ -6,6 +6,7 @@ from paintjob_designer.models import (
     Paintjob,
     PsxColor,
     SlotColors,
+    SlotRegion,
     SlotRegions,
     VramPage,
 )
@@ -96,6 +97,28 @@ class ColorHandler:
             PsxColor(value=vram.u16_at(clut_x + i, clut_y))
             for i in range(SlotColors.SIZE)
         ]
+
+    def default_region_pixels(
+        self,
+        iso_root: str | Path,
+        region: SlotRegion,
+    ) -> bytes:
+        """Read packed 4bpp pixel bytes from VRAM at `region`'s coords.
+
+        Used by the texture exporter when a slot has no imported pixel
+        override — we dump whatever the ISO ships with.
+        """
+        vram = self._vram_cache.get(iso_root)
+        bytes_per_column = VramPage.BYTES_PER_PIXEL
+        out = bytearray()
+
+        for row in range(region.vram_height):
+            start = (
+                (region.vram_y + row) * VramPage.WIDTH + region.vram_x
+            ) * bytes_per_column
+            out.extend(vram.data[start:start + region.vram_width * bytes_per_column])
+
+        return bytes(out)
 
     def reset_slot(
         self,

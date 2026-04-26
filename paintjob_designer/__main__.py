@@ -31,6 +31,7 @@ def main() -> int:
         single_region_texture_importer=container.resolve("single_region_texture_importer"),
         multi_region_texture_importer=container.resolve("multi_region_texture_importer"),
         texture_rotator=container.resolve("texture_rotator"),
+        texture_exporter=container.resolve("texture_exporter"),
         skin_writer=container.resolve("skin_writer"),
         message=container.resolve("message_dialog"),
         files=container.resolve("file_picker"),
