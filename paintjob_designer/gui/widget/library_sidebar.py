@@ -7,6 +7,7 @@ from PySide6.QtGui import QColor, QFont, QFontMetrics, QPalette
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
+    QLineEdit,
     QListWidget,
     QPushButton,
     QStyle,
@@ -15,6 +16,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from paintjob_designer.gui.widget.filters.library_filter import LibraryFilter
 
 
 class LibraryRowDelegate(QStyledItemDelegate):
@@ -147,9 +150,17 @@ class LibrarySidebar(QWidget):
         # instead of raw character ids.
         self._character_resolver: Callable[[str], str] = lambda cid: cid or ""
 
+        self._filter = LibraryFilter()
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
+
+        self._search = QLineEdit()
+        self._search.setPlaceholderText("Filter...")
+        self._search.setClearButtonEnabled(True)
+        self._search.textChanged.connect(self._on_filter_text_changed)
+        layout.addWidget(self._search)
 
         self._list = QListWidget()
         self._list.setItemDelegate(LibraryRowDelegate(self._list))
@@ -197,6 +208,23 @@ class LibrarySidebar(QWidget):
         self._list.blockSignals(False)
         self._refresh_button_state()
 
+    def _on_filter_text_changed(self, _query: str) -> None:
+        self._reapply_filter()
+
+    def _reapply_filter(self) -> None:
+        query = self._search.text()
+
+        for i in range(self._list.count()):
+            item = self._list.item(i)
+            primary = item.text() if item is not None else ""
+            secondary = (
+                item.data(LibraryRowDelegate.SECONDARY_ROLE)
+                if item is not None else ""
+            )
+
+            visible = self._filter.matches(query, primary, secondary)
+            self._list.setRowHidden(i, not visible)
+
     def _apply_selection_after_rebuild(
         self, index: int | None, total_count: int,
     ) -> None:
@@ -207,6 +235,10 @@ class LibrarySidebar(QWidget):
         signal is suppressed so consumers don't treat it as a fresh
         selection and run expensive side effects.
         """
+        # Re-apply the filter against the freshly-populated rows. Any rebuild
+        # path (rename, import, delete) must keep the current query active.
+        self._reapply_filter()
+
         valid = index is not None and 0 <= index < total_count
         if not valid:
             self._last_emitted_index = -1

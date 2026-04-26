@@ -7,13 +7,10 @@ import pytest
 
 from paintjob_designer.core import Slugifier
 from paintjob_designer.gui.controller.character_picker import CharacterPicker
-from paintjob_designer.gui.controller.skin_library_controller import (
-    SkinLibraryController,
-)
+from paintjob_designer.gui.controller.skin_library_controller import SkinLibraryController
 from paintjob_designer.gui.util.library_writer import LibraryWriter
 from paintjob_designer.gui.widget.skin_library_sidebar import SkinLibrarySidebar
-from paintjob_designer.models import Skin, SkinLibrary
-from paintjob_designer.skin.reader import SkinReader
+from paintjob_designer.models import MetadataEdit, Skin, SkinLibrary
 from paintjob_designer.skin.writer import SkinWriter
 
 
@@ -128,6 +125,30 @@ def test_set_author_writes_new_value(controller, fake_prompt):
     controller.set_author(1)
 
     assert controller.library.skins[1].author == "Garma"
+
+
+def test_apply_metadata_writes_name_and_author(controller):
+    _seed(controller)
+
+    controller.apply_metadata(0, MetadataEdit(
+        name="Renamed", author="Garma", base_character_id=None,
+    ))
+
+    skin = controller.library.skins[0]
+    assert skin.name == "Renamed"
+    assert skin.author == "Garma"
+
+
+def test_apply_metadata_does_not_change_character_id(controller):
+    _seed(controller)
+    original_char = controller.library.skins[0].character_id
+
+    # Even passing a base_character_id, skin's character_id is immutable.
+    controller.apply_metadata(0, MetadataEdit(
+        name="x", author="y", base_character_id="some-other-character",
+    ))
+
+    assert controller.library.skins[0].character_id == original_char
 
 
 def test_export_library_writes_files(controller, fake_files, tmp_path):

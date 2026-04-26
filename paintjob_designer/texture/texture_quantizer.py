@@ -1,21 +1,10 @@
 # coding: utf-8
 
-from dataclasses import dataclass
-
 from PIL import Image
 
 from paintjob_designer.color.converter import ColorConverter
 from paintjob_designer.constants import CLUT_PALETTE_SIZE
-from paintjob_designer.models import PsxColor, Rgb888
-
-
-@dataclass
-class QuantizedTexture:
-    """PSX-ready 4bpp texture: packed pixel indices + 16-entry CLUT."""
-    width: int
-    height: int
-    pixels: bytes
-    palette: list[PsxColor]
+from paintjob_designer.models import PsxColor, QuantizedTexture, Rgb888
 
 
 class TextureQuantizer:
@@ -59,7 +48,6 @@ class TextureQuantizer:
         self, rgba: Image.Image,
     ) -> tuple[list[int], list[PsxColor]]:
         """Quantize the opaque pixels into 15 colors, reserving slot 0 for transparent."""
-        # Quantize as RGB (alpha ignored); we'll re-merge alpha after.
         rgb = rgba.convert("RGB")
         quantized = rgb.quantize(
             colors=self._NON_TRANSPARENT_SLOTS,
@@ -80,24 +68,20 @@ class TextureQuantizer:
             else:
                 indices.append(source_indices[i] + 1)
 
-        palette: list[PsxColor] = [PsxColor(value=0)]  # slot 0: transparent
+        palette: list[PsxColor] = [PsxColor(value=0)]
         for r, g, b in pil_palette_rgb:
             palette.append(self._converter.rgb_to_psx(Rgb888(r=r, g=g, b=b)))
 
-        # Pad if PIL returned fewer than 15 colors (small / low-color images).
         while len(palette) < self._PALETTE_SIZE:
             palette.append(PsxColor(value=0))
 
         return indices, palette
 
     def _extract_pil_palette(self, quantized: Image.Image) -> list[tuple[int, int, int]]:
-        """Read PIL's packed palette bytes into RGB triples."""
         raw = quantized.getpalette()
         if raw is None:
             return []
 
-        # Distinct indices the image actually uses. `getextrema` on a palette
-        # image returns (min, max) of indices — max + 1 is the used count.
         min_idx, max_idx = quantized.getextrema()
         used = max_idx + 1 if max_idx is not None else 0
         used = min(used, self._NON_TRANSPARENT_SLOTS)

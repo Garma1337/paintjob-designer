@@ -3,6 +3,7 @@
 import pytest
 
 from paintjob_designer.models import (
+    BlendingMode,
     CtrDraw,
     CtrFrame,
     CtrMesh,
@@ -280,6 +281,64 @@ class TestTexturedTriangle:
 
         assert result.uvs == [(0, 0), (0, 0), (0, 0)]
         assert result.texture_layout_indices == [0]
+
+
+class TestBlendModeEmission:
+
+    def test_textured_triangle_records_layout_blending_mode(self, vertex_assembler):
+        tl = TextureLayout(
+            uv0_u=0, uv0_v=0, uv1_u=0, uv1_v=0, uv2_u=0, uv2_v=0,
+            blending=BlendingMode.Additive,
+        )
+        mesh = _mesh(
+            [
+                _cmd(new_tristrip=True, stack_index=0, tex_index=1),
+                _cmd(stack_index=1, tex_index=1),
+                _cmd(stack_index=2, tex_index=1),
+            ],
+            [(0, 0, 0), (255, 0, 0), (0, 255, 0)],
+            layouts=[tl],
+        )
+
+        result = vertex_assembler.assemble(mesh)
+
+        assert result.blend_modes == [BlendingMode.Additive]
+
+    def test_untextured_triangle_falls_back_to_standard(self, vertex_assembler):
+        # Untextured draws render via Gouraud only — no PSX blend state applies.
+        mesh = _mesh(
+            [
+                _cmd(new_tristrip=True, stack_index=0),
+                _cmd(stack_index=1),
+                _cmd(stack_index=2),
+            ],
+            [(0, 0, 0), (255, 0, 0), (0, 255, 0)],
+        )
+
+        result = vertex_assembler.assemble(mesh)
+
+        assert result.blend_modes == [BlendingMode.Standard]
+
+    def test_blend_mode_count_matches_triangle_count(self, vertex_assembler):
+        translucent = TextureLayout(
+            uv0_u=0, uv0_v=0, uv1_u=0, uv1_v=0, uv2_u=0, uv2_v=0,
+            blending=BlendingMode.Translucent,
+        )
+        mesh = _mesh(
+            [
+                _cmd(new_tristrip=True, stack_index=0, tex_index=1),
+                _cmd(stack_index=1, tex_index=1),
+                _cmd(stack_index=2, tex_index=1),
+                _cmd(stack_index=3, tex_index=1),  # second triangle in strip
+            ],
+            [(0, 0, 0), (255, 0, 0), (0, 255, 0), (0, 0, 255)],
+            layouts=[translucent],
+        )
+
+        result = vertex_assembler.assemble(mesh)
+
+        assert len(result.blend_modes) == result.triangle_count
+        assert all(m == BlendingMode.Translucent for m in result.blend_modes)
 
 
 class TestGouraudColors:

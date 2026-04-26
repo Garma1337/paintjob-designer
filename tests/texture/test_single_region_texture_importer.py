@@ -2,13 +2,16 @@
 
 import pytest
 
-pytest.importorskip("PIL")
+pytest.importorskip("PIL", exc_type=ImportError)
 
 from PIL import Image
 
 from paintjob_designer.color.converter import ColorConverter
-from paintjob_designer.texture.importer import SizeMismatchMode, TextureImporter
-from paintjob_designer.texture.quantizer import TextureQuantizer
+from paintjob_designer.texture.single_region_texture_importer import (
+    SingleRegionTextureImporter,
+    SizeMismatchMode,
+)
+from paintjob_designer.texture.texture_quantizer import TextureQuantizer
 
 
 def _write_png(tmp_path, filename: str, size: tuple[int, int], color=(255, 0, 0, 255)):
@@ -18,10 +21,10 @@ def _write_png(tmp_path, filename: str, size: tuple[int, int], color=(255, 0, 0,
     return path
 
 
-class TestTextureImporter:
+class TestSingleRegionTextureImporter:
 
     def setup_method(self) -> None:
-        self._importer = TextureImporter(TextureQuantizer(ColorConverter()))
+        self._importer = SingleRegionTextureImporter(TextureQuantizer(ColorConverter()))
 
     def test_imports_matching_size_without_resize(self, tmp_path) -> None:
         path = _write_png(tmp_path, "exact.png", (4, 2))

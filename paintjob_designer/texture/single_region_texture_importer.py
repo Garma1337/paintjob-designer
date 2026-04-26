@@ -5,7 +5,8 @@ from pathlib import Path
 
 from PIL import Image
 
-from paintjob_designer.texture.quantizer import QuantizedTexture, TextureQuantizer
+from paintjob_designer.models import QuantizedTexture
+from paintjob_designer.texture.texture_quantizer import TextureQuantizer
 
 
 class SizeMismatchMode(Enum):
@@ -16,8 +17,10 @@ class SizeMismatchMode(Enum):
     CENTER_CROP = "crop"  # Center-crop; requires source >= target on both axes
 
 
-class TextureImporter:
-    """Loads a PNG file and produces a target-sized `QuantizedTexture`."""
+class SingleRegionTextureImporter:
+    """Loads a PNG file and produces a target-sized `QuantizedTexture` for a
+    slot whose VRAM rectangle is a single contiguous region.
+    """
 
     def __init__(self, quantizer: TextureQuantizer) -> None:
         self._quantizer = quantizer

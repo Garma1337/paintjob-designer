@@ -238,14 +238,50 @@ class SkinLibraryController(LibraryController[Skin, SkinLibrary]):
 
         skin = self._library.skins[index]
         menu = QMenu(self._parent_widget)
-        menu.addAction("Rename...", lambda: self.rename(index))
-        menu.addAction("Set author...", lambda: self.set_author(index))
+        menu.addAction("Edit metadata...", lambda: self.edit_metadata(index))
         menu.addSeparator()
         menu.addAction("Export as JSON...", lambda: self.export_one(skin))
         menu.addAction("Replace from JSON...", lambda: self.replace_from_file(index))
         menu.addSeparator()
         menu.addAction("Delete", lambda: self.delete(index))
         menu.exec(global_pos)
+
+    def edit_metadata(self, index: int) -> None:
+        from paintjob_designer.gui.dialog.edit_metadata_dialog import (
+            EditMetadataDialog,
+        )
+
+        if not (0 <= index < self._library.count()):
+            return
+
+        skin = self._library.skins[index]
+        dialog = EditMetadataDialog(
+            self._parent_widget,
+            title="Edit skin metadata",
+            name=skin.name or "",
+            author=skin.author or "",
+            base_character_options=None,  # skins are character-bound; not editable
+        )
+
+        edit = dialog.exec_get()
+        if edit is None:
+            return
+
+        self.apply_metadata(index, edit)
+
+    def apply_metadata(self, index: int, edit) -> None:
+        """Atomic mutation: name + author. Skin character_id stays put.
+        Pure data manipulation; unit-testable without a Qt event loop.
+        """
+        if not (0 <= index < self._library.count()):
+            return
+
+        skin = self._library.skins[index]
+        skin.name = edit.name
+        skin.author = edit.author
+
+        self._refresh_sidebar(index)
+        self._after_mutation()
 
     def _seed_slots(self, character: CharacterProfile) -> dict[str, SlotColors]:
         slots: dict[str, SlotColors] = {}

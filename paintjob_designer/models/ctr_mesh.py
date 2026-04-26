@@ -165,6 +165,7 @@ class AssembledMesh:
     texture_layout_indices: list[int] = field(default_factory=list)
     gouraud_colors: list[tuple[float, float, float]] = field(default_factory=list)
     gouraud_color_indices: list[tuple[int, int, int]] = field(default_factory=list)
+    blend_modes: list[BlendingMode] = field(default_factory=list)
 
     @property
     def triangle_count(self) -> int:

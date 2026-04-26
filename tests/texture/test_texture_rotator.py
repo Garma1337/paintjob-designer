@@ -3,7 +3,7 @@
 import pytest
 
 from paintjob_designer.texture.four_bpp_codec import FourBppCodec
-from paintjob_designer.texture.rotator import TextureRotator
+from paintjob_designer.texture.texture_rotator import TextureRotator
 
 
 def _make_rotator() -> TextureRotator:

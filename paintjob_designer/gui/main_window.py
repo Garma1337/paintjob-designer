@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from PIL import Image
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction, QColor, QKeySequence, QUndoStack
 from PySide6.QtWidgets import (
@@ -35,6 +36,7 @@ from paintjob_designer.gui.controller.profile_holder import ProfileHolder
 from paintjob_designer.gui.controller.skin_library_controller import SkinLibraryController
 from paintjob_designer.gui.controller.transform_panel_coordinator import TransformPanelCoordinator
 from paintjob_designer.gui.dialog.gradient_fill_dialog import GradientFillDialog
+from paintjob_designer.gui.dialog.multi_region_texture_import_dialog import MultiRegionTextureImportDialog
 from paintjob_designer.gui.dialog.palette_apply_dialog import PaletteApplyDialog
 from paintjob_designer.gui.dialog.profile_picker_dialog import ProfilePickerDialog
 from paintjob_designer.gui.editor_mode import EditorMode
@@ -65,9 +67,14 @@ from paintjob_designer.models import (
 from paintjob_designer.profile.registry import ProfileRegistry
 from paintjob_designer.render.atlas_renderer import AtlasRenderer
 from paintjob_designer.render.atlas_uv_mapper import AtlasUvMapper
+from paintjob_designer.render.blend_mode_grouper import BlendModeGrouper
 from paintjob_designer.render.ray_picker import RayTrianglePicker
-from paintjob_designer.texture.importer import SizeMismatchMode, TextureImporter
-from paintjob_designer.texture.rotator import TextureRotator
+from paintjob_designer.texture.multi_region_texture_importer import MultiRegionTextureImporter
+from paintjob_designer.texture.single_region_texture_importer import (
+    SingleRegionTextureImporter,
+    SizeMismatchMode,
+)
+from paintjob_designer.texture.texture_rotator import TextureRotator
 
 _PAINTJOB_EXT = ".json"
 _PAINTJOB_FILTER = f"Paintjob (*{_PAINTJOB_EXT})"
@@ -92,8 +99,10 @@ class MainWindow(QMainWindow):
         color_transformer: ColorTransformer,
         gradient_generator: GradientGenerator,
         ray_picker: RayTrianglePicker,
+        blend_mode_grouper: BlendModeGrouper,
         slugifier: Slugifier,
-        texture_importer: TextureImporter,
+        single_region_texture_importer: SingleRegionTextureImporter,
+        multi_region_texture_importer: MultiRegionTextureImporter,
         texture_rotator: TextureRotator,
         skin_writer,
         message: MessageDialog,
@@ -102,6 +111,10 @@ class MainWindow(QMainWindow):
         paintjob_library_controller: PaintjobLibraryController,
         skin_library_controller: SkinLibraryController,
         palette_library_controller: PaletteLibraryController,
+        preview_sidebar: PreviewSidebar,
+        slot_editor: SlotEditor,
+        vertex_slot_editor: VertexSlotEditor,
+        kart_viewer: KartViewer,
     ) -> None:
         super().__init__()
         self._config_store = config_store
@@ -117,8 +130,10 @@ class MainWindow(QMainWindow):
         self._color_transformer = color_transformer
         self._gradient_generator = gradient_generator
         self._ray_picker = ray_picker
+        self._blend_mode_grouper = blend_mode_grouper
         self._slugifier = slugifier
-        self._texture_importer = texture_importer
+        self._single_region_texture_importer = single_region_texture_importer
+        self._multi_region_texture_importer = multi_region_texture_importer
         self._texture_rotator = texture_rotator
         self._skin_writer = skin_writer
         self._message = message
@@ -128,6 +143,11 @@ class MainWindow(QMainWindow):
         self._paintjob_controller = paintjob_library_controller
         self._skin_controller = skin_library_controller
         self._palette_controller = palette_library_controller
+
+        self._preview_sidebar = preview_sidebar
+        self._slot_editor = slot_editor
+        self._vertex_editor = vertex_slot_editor
+        self._kart_viewer = kart_viewer
 
         # Make sidebars discoverable via short aliases — most editor
         # logic still asks for them by name. Controllers own the actual
@@ -402,7 +422,6 @@ class MainWindow(QMainWindow):
         sidebar_layout = QVBoxLayout(sidebar_container)
         sidebar_layout.setContentsMargins(8, 8, 8, 8)
 
-        self._preview_sidebar = PreviewSidebar()
         self._preview_sidebar.composition_changed.connect(
             self._on_preview_composition_changed,
         )
@@ -470,12 +489,10 @@ class MainWindow(QMainWindow):
         preview_strip_layout.addWidget(self._preview_character_combo, 1)
         viewer_layout.addWidget(self._preview_strip)
 
-        self._kart_viewer = KartViewer(self._atlas_uv_mapper, self._ray_picker)
         self._kart_viewer.gl_init_failed.connect(self._on_gl_init_failed)
         self._kart_viewer.eyedropper_picked.connect(self._on_eyedropper_picked)
         viewer_layout.addWidget(self._kart_viewer, 1)
 
-        self._slot_editor = SlotEditor(self._color_converter)
         self._slot_editor.color_edit_requested.connect(self._on_color_edit_requested)
         self._slot_editor.slot_reset_requested.connect(self._on_slot_reset_requested)
         self._slot_editor.slot_focus_changed.connect(self._on_slot_focus_changed)
@@ -489,7 +506,6 @@ class MainWindow(QMainWindow):
         # skin mode (paintjobs don't carry vertex overrides). Lives next
         # to the CLUT slot editor in a tab widget so the right pane stays
         # one column wide regardless of which mode is active.
-        self._vertex_editor = VertexSlotEditor()
         self._vertex_editor.color_edit_requested.connect(
             self._on_vertex_color_edit_requested,
         )
@@ -1366,9 +1382,7 @@ class MainWindow(QMainWindow):
 
         sizes: list[str] = []
         for region in slot_regions.regions:
-            stretch = {0: 4, 1: 2}.get(int(region.bpp), 1)
-            pixel_w = region.vram_width * stretch
-            pixel_h = region.vram_height
+            pixel_w, pixel_h = region.pixel_dimensions
             sizes.append(f"{pixel_w}x{pixel_h}")
 
         return " + ".join(sizes)
@@ -2035,20 +2049,13 @@ class MainWindow(QMainWindow):
         if slot_regions is None or not slot_regions.regions:
             return
 
-        if len(slot_regions.regions) != 1:
-            QMessageBox.information(
-                self, "Multi-region slot",
-                f"'{slot_name}' occupies {len(slot_regions.regions)} separate "
-                f"VRAM regions on this character. Texture import for "
-                f"multi-region slots isn't supported yet — edit the CLUT "
-                f"instead, or use a single-region slot.",
-            )
-            return
+        if len(slot_regions.regions) == 1:
+            self._import_single_region_texture(slot_name, slot_regions.regions[0])
+        else:
+            self._import_multi_region_texture(slot_name, slot_regions.regions)
 
-        region = slot_regions.regions[0]
-        stretch = {0: 4, 1: 2}.get(int(region.bpp), 1)
-        width = region.vram_width * stretch
-        height = region.vram_height
+    def _import_single_region_texture(self, slot_name: str, region) -> None:
+        width, height = region.pixel_dimensions
 
         path = self._files.pick_open_path(
             self, f"Import texture for {slot_name} ({width}x{height})",
@@ -2059,17 +2066,11 @@ class MainWindow(QMainWindow):
         if path is None:
             return
 
-        path_str = str(path)
-
-        path = Path(path_str)
-
+        path = Path(str(path))
         texture = self._import_png_with_prompt(path, width, height)
         if texture is None:
             return
 
-        # Replace the slot's CLUT with the quantized palette and stash
-        # pixels keyed by VRAM position so re-parsing the mesh doesn't
-        # invalidate the assignment.
         asset = self._active_asset()
         asset.slots[slot_name] = SlotColors(
             colors=list(texture.palette),
@@ -2084,20 +2085,69 @@ class MainWindow(QMainWindow):
             ],
         )
 
+        self._after_texture_import(slot_name, path.name)
+
+    def _import_multi_region_texture(self, slot_name: str, regions) -> None:
+        region_specs = [r.pixel_dimensions for r in regions]
+
+        dialog = MultiRegionTextureImportDialog(
+            self,
+            slot_name=slot_name,
+            region_specs=region_specs,
+            files=self._files,
+            default_dir=self._config.iso_root or None,
+        )
+
+        if dialog.exec() != MultiRegionTextureImportDialog.DialogCode.Accepted:
+            return
+
+        paths = dialog.chosen_paths()
+        try:
+            images = [Image.open(p).copy() for p in paths]
+        except OSError as exc:
+            QMessageBox.critical(self, "Import failed", str(exc))
+            return
+
+        try:
+            result = self._multi_region_texture_importer.import_for_regions(
+                images, region_specs,
+            )
+        except ValueError as exc:
+            QMessageBox.critical(self, "Import failed", str(exc))
+            return
+
+        asset = self._active_asset()
+        asset.slots[slot_name] = SlotColors(
+            colors=list(result.palette),
+            pixels=[
+                SlotRegionPixels(
+                    vram_x=region.vram_x,
+                    vram_y=region.vram_y,
+                    width=region_import.width,
+                    height=region_import.height,
+                    pixels=region_import.pixels,
+                )
+                for region, region_import in zip(regions, result.regions)
+            ],
+        )
+
+        self._after_texture_import(
+            slot_name, f"{len(paths)} regions",
+        )
+
+    def _after_texture_import(self, slot_name: str, source_label: str) -> None:
         # Texture imports invalidate undo (commands captured pre-import
         # SlotColors refs).
         self._undo_stack.clear()
         self._populate_slot_editor()
         self._reload_preview()
         self._schedule_autosave()
-        self.statusBar().showMessage(
-            f"Imported {path.name} → {slot_name}",
-        )
+        self.statusBar().showMessage(f"Imported {source_label} → {slot_name}")
 
     def _import_png_with_prompt(self, path: Path, width: int, height: int):
         """Try REJECT mode first; on size mismatch, ask the artist whether to scale/crop."""
         try:
-            return self._texture_importer.import_from_path(path, width, height)
+            return self._single_region_texture_importer.import_from_path(path, width, height)
         except ValueError as exc:
             # Size mismatch — offer Scale / Crop / Cancel.
             msg = QMessageBox(self)
@@ -2121,7 +2171,7 @@ class MainWindow(QMainWindow):
                 return None
 
             try:
-                return self._texture_importer.import_from_path(
+                return self._single_region_texture_importer.import_from_path(
                     path, width, height, mode=mode,
                 )
             except ValueError as exc2:

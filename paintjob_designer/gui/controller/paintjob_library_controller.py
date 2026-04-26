@@ -276,17 +276,61 @@ class PaintjobLibraryController(LibraryController[Paintjob, PaintjobLibrary]):
 
         paintjob = self._library.paintjobs[index]
         menu = QMenu(self._parent_widget)
-        menu.addAction("Rename...", lambda: self.rename(index))
-        menu.addAction("Set author...", lambda: self.set_author(index))
-        menu.addAction(
-            "Change base character...", lambda: self.change_base_character(index),
-        )
+        menu.addAction("Edit metadata...", lambda: self.edit_metadata(index))
         menu.addSeparator()
         menu.addAction("Export as JSON...", lambda: self.export_one(paintjob))
         menu.addAction("Replace from JSON...", lambda: self.replace_from_file(index))
         menu.addSeparator()
         menu.addAction("Delete", lambda: self.delete(index))
         menu.exec(global_pos)
+
+    def edit_metadata(self, index: int) -> None:
+        from paintjob_designer.gui.dialog.edit_metadata_dialog import (
+            EditMetadataDialog,
+        )
+
+        if not (0 <= index < self._library.count()):
+            return
+
+        paintjob = self._library.paintjobs[index]
+        profile = self._character_picker.current_profile()
+        base_options = (
+            [c.id for c in profile.characters] if profile is not None else []
+        )
+
+        dialog = EditMetadataDialog(
+            self._parent_widget,
+            title="Edit paintjob metadata",
+            name=paintjob.name,
+            author=paintjob.author,
+            base_character_options=base_options,
+            base_character_current=paintjob.base_character_id,
+        )
+
+        edit = dialog.exec_get()
+        if edit is None:
+            return
+
+        self.apply_metadata(index, edit)
+
+    def apply_metadata(self, index: int, edit) -> None:
+        """Atomic mutation: name + author + base_character_id in one go.
+        Pure data manipulation; unit-testable without a Qt event loop.
+        """
+        if not (0 <= index < self._library.count()):
+            return
+
+        paintjob = self._library.paintjobs[index]
+        previous_base = paintjob.base_character_id
+        paintjob.name = edit.name
+        paintjob.author = edit.author
+        paintjob.base_character_id = edit.base_character_id
+
+        self._refresh_sidebar(index)
+        self._after_mutation()
+
+        if paintjob is self._current and previous_base != edit.base_character_id:
+            self.selection_changed.emit(self._current)
 
     def _seed_slots(self, character: CharacterProfile) -> dict[str, SlotColors]:
         slots: dict[str, SlotColors] = {}

@@ -16,9 +16,9 @@ from paintjob_designer.gui.widget.paintjob_library_sidebar import (
 )
 from paintjob_designer.models import (
     KartType,
+    MetadataEdit,
     Paintjob,
     PaintjobLibrary,
-    Profile,
     PsxColor,
     SlotColors,
 )
@@ -151,6 +151,40 @@ def test_set_author_writes_new_value(controller, fake_message, fake_files, fake_
     controller.set_author(1)
 
     assert controller.library.paintjobs[1].author == "Garma"
+
+
+def test_apply_metadata_writes_all_three_fields(controller):
+    _seed_two_paintjobs(controller)
+
+    controller.apply_metadata(0, MetadataEdit(
+        name="renamed", author="Garma", base_character_id="cortex",
+    ))
+
+    paintjob = controller.library.paintjobs[0]
+    assert paintjob.name == "renamed"
+    assert paintjob.author == "Garma"
+    assert paintjob.base_character_id == "cortex"
+
+
+def test_apply_metadata_supports_unbinding_base_character(controller):
+    _seed_two_paintjobs(controller)
+
+    controller.apply_metadata(0, MetadataEdit(
+        name="alpha", author="", base_character_id=None,
+    ))
+
+    assert controller.library.paintjobs[0].base_character_id is None
+
+
+def test_apply_metadata_ignores_out_of_range_index(controller):
+    _seed_two_paintjobs(controller)
+    before = [p.name for p in controller.library.paintjobs]
+
+    controller.apply_metadata(99, MetadataEdit(
+        name="ghost", author="x", base_character_id=None,
+    ))
+
+    assert [p.name for p in controller.library.paintjobs] == before
 
 
 def test_export_library_skips_when_empty(controller, fake_message, fake_files, fake_prompt):

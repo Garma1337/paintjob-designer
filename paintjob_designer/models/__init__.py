@@ -16,6 +16,11 @@ from paintjob_designer.models.ctr_mesh import (
     Vector3b,
     Vector3f,
 )
+from paintjob_designer.models.metadata_edit import MetadataEdit
+from paintjob_designer.models.multi_region_texture_import import (
+    MultiRegionTextureImport,
+    MultiRegionTextureRegionImport,
+)
 from paintjob_designer.models.paintjob import (
     KART_SLOT_NAMES,
     Paintjob,
@@ -33,6 +38,8 @@ from paintjob_designer.models.profile import (
     SlotProfile,
     VramPageDimensions,
 )
+from paintjob_designer.models.quantized_texture import QuantizedTexture
+from paintjob_designer.models.rotated_texture import RotatedTexture
 from paintjob_designer.models.skin import Skin, SkinLibrary
 from paintjob_designer.models.slot_regions import (
     CharacterSlotRegions,
@@ -42,6 +49,11 @@ from paintjob_designer.models.slot_regions import (
 from paintjob_designer.models.vram_page import VramPage
 
 __all__ = [
+    "MetadataEdit",
+    "MultiRegionTextureImport",
+    "MultiRegionTextureRegionImport",
+    "QuantizedTexture",
+    "RotatedTexture",
     "PsxColor",
     "Rgb888",
     "Profile",

@@ -1,8 +1,10 @@
 # coding: utf-8
 
 import struct
+import sys
 
 import pytest
+from PySide6.QtWidgets import QApplication
 
 from paintjob_designer.color.converter import ColorConverter
 from paintjob_designer.config.iso_root_validator import IsoRootValidator
@@ -15,13 +17,13 @@ from paintjob_designer.gui.handler.project_handler import ProjectHandler
 from paintjob_designer.models import SlotColors, PsxColor
 from paintjob_designer.paintjob.reader import PaintjobReader
 from paintjob_designer.paintjob.writer import PaintjobWriter
-from paintjob_designer.skin.reader import SkinReader
-from paintjob_designer.skin.writer import SkinWriter
 from paintjob_designer.profile.reader import ProfileReader
 from paintjob_designer.profile.registry import ProfileRegistry
 from paintjob_designer.render.atlas_renderer import AtlasRenderer
 from paintjob_designer.render.atlas_uv_mapper import AtlasUvMapper
 from paintjob_designer.render.slot_region_deriver import SlotRegionDeriver
+from paintjob_designer.skin.reader import SkinReader
+from paintjob_designer.skin.writer import SkinWriter
 from paintjob_designer.vram.cache import VramCache
 from paintjob_designer.vram.reader import VramReader
 
@@ -129,8 +131,6 @@ def qapp():
     widgets without one segfaults. Tests that need a sidebar / dialog
     pull this fixture; pure-logic tests can ignore it.
     """
-    import sys
-    from PySide6.QtWidgets import QApplication
     app = QApplication.instance() or QApplication(sys.argv)
     return app
 

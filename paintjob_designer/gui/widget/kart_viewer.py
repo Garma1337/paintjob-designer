@@ -9,8 +9,9 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QSurfaceFormat
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
-from paintjob_designer.models import AssembledMesh, TextureLayout
+from paintjob_designer.models import AssembledMesh, BlendingMode, TextureLayout
 from paintjob_designer.render.atlas_uv_mapper import AtlasUvMapper
+from paintjob_designer.render.blend_mode_grouper import BlendModeGrouper
 from paintjob_designer.render.orbit_camera import OrbitCamera
 from paintjob_designer.render.ray_picker import RayTrianglePicker
 
@@ -44,6 +45,7 @@ class KartViewer(QOpenGLWidget):
         self,
         uv_mapper: AtlasUvMapper,
         ray_picker: RayTrianglePicker,
+        blend_mode_grouper: BlendModeGrouper,
         parent=None,
     ) -> None:
         fmt = QSurfaceFormat()
@@ -59,6 +61,7 @@ class KartViewer(QOpenGLWidget):
 
         self._uv_mapper = uv_mapper
         self._ray_picker = ray_picker
+        self._blend_grouper = blend_mode_grouper
         self._camera = OrbitCamera()
 
         self._viewport_w = 1
@@ -86,6 +89,12 @@ class KartViewer(QOpenGLWidget):
         self._pending_atlas: tuple[bytes, int, int] | None = None
         self._pending_atlas_region: tuple[bytes, int, int, int, int, int, int] | None = None
         self._pending_highlight: np.ndarray | None = None
+        # Per-mode vertex-index arrays to upload as EBOs. The kart viewer
+        # draws one pass per blend mode so PSX semi-transparency renders
+        # via the right `glBlendFunc`/`glBlendEquation` per group.
+        self._pending_blend_indices: dict[BlendingMode, np.ndarray] | None = None
+        self._ebos: dict[BlendingMode, int] = {}
+        self._index_counts: dict[BlendingMode, int] = {}
 
         # UVs and per-vertex Gouraud colors from the last `set_mesh` call, kept
         # around so `set_frame_positions` can build new pending meshes even after
@@ -120,6 +129,7 @@ class KartViewer(QOpenGLWidget):
             np.zeros((0, 3), dtype=np.float32),
             np.zeros((0, 3), dtype=np.float32),
         )
+        self._pending_blend_indices = {}
         self._base_uvs = None
         self._base_colors = None
         self._pick_positions = None
@@ -141,6 +151,7 @@ class KartViewer(QOpenGLWidget):
                 np.zeros((0, 3), dtype=np.float32),
                 np.zeros((0, 3), dtype=np.float32),
             )
+            self._pending_blend_indices = {}
             self._base_uvs = None
             self._base_colors = None
             self._pick_positions = None
@@ -175,6 +186,16 @@ class KartViewer(QOpenGLWidget):
             self._pending_highlight = np.ones(len(positions), dtype=np.float32)
             self._has_focus = False
             self._camera.fit_to_bounds(positions)
+
+            # Group triangles by blend mode so paintGL can issue one draw
+            # call per mode with the right GL blend state. Fall back to
+            # all-Standard for legacy meshes that don't carry blend_modes.
+            blend_modes = list(assembled.blend_modes) or [
+                BlendingMode.Standard
+            ] * assembled.triangle_count
+            self._pending_blend_indices = self._blend_grouper.group_triangle_indices(
+                blend_modes,
+            )
 
         self.update()
 
@@ -340,6 +361,10 @@ class KartViewer(QOpenGLWidget):
             self._upload_mesh(*self._pending_mesh)
             self._pending_mesh = None
 
+        if self._pending_blend_indices is not None:
+            self._upload_blend_indices(self._pending_blend_indices)
+            self._pending_blend_indices = None
+
         if self._pending_highlight is not None:
             self._upload_highlight(self._pending_highlight)
             self._pending_highlight = None
@@ -369,9 +394,59 @@ class KartViewer(QOpenGLWidget):
         GL.glUniform1i(self._uniform_atlas, 0)
 
         GL.glBindVertexArray(self._vao)
-        GL.glDrawArrays(GL.GL_TRIANGLES, 0, self._triangle_count * 3)
+        self._draw_blend_passes()
         GL.glBindVertexArray(0)
         GL.glUseProgram(0)
+
+    def _draw_blend_passes(self) -> None:
+        """One draw call per PSX blend mode. Opaque first (depth-write on),
+        then translucent passes with depth-test only so they layer over the
+        opaque shell without occluding each other.
+        """
+        # Pass 1: opaque (Standard).
+        GL.glDisable(GL.GL_BLEND)
+        GL.glDepthMask(GL.GL_TRUE)
+        self._draw_blend_pass(BlendingMode.Standard)
+
+        if not any(
+            mode in self._ebos
+            for mode in (BlendingMode.Translucent, BlendingMode.Additive, BlendingMode.Subtractive)
+        ):
+            return
+
+        GL.glEnable(GL.GL_BLEND)
+        GL.glDepthMask(GL.GL_FALSE)
+
+        # Pass 2: translucent (50/50). PSX hardware does `0.5*back + 0.5*front`
+        # which the GL constant-alpha blend reproduces exactly.
+        GL.glBlendEquation(GL.GL_FUNC_ADD)
+        GL.glBlendColor(0.0, 0.0, 0.0, 0.5)
+        GL.glBlendFunc(GL.GL_CONSTANT_ALPHA, GL.GL_ONE_MINUS_CONSTANT_ALPHA)
+        self._draw_blend_pass(BlendingMode.Translucent)
+
+        # Pass 3: additive — final = back + front.
+        GL.glBlendFunc(GL.GL_ONE, GL.GL_ONE)
+        self._draw_blend_pass(BlendingMode.Additive)
+
+        # Pass 4: subtractive — final = back − front.
+        GL.glBlendEquation(GL.GL_FUNC_REVERSE_SUBTRACT)
+        self._draw_blend_pass(BlendingMode.Subtractive)
+
+        # Restore defaults so other GL users (or the next paintGL) start clean.
+        GL.glBlendEquation(GL.GL_FUNC_ADD)
+        GL.glDepthMask(GL.GL_TRUE)
+        GL.glDisable(GL.GL_BLEND)
+
+    def _draw_blend_pass(self, mode: BlendingMode) -> None:
+        ebo = self._ebos.get(mode)
+        if ebo is None:
+            return
+
+        GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, ebo)
+        GL.glDrawElements(
+            GL.GL_TRIANGLES, self._index_counts[mode],
+            GL.GL_UNSIGNED_INT, ctypes.c_void_p(0),
+        )
 
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
@@ -525,6 +600,30 @@ class KartViewer(QOpenGLWidget):
         GL.glBufferData(GL.GL_ARRAY_BUFFER, colors.nbytes, colors, GL.GL_STATIC_DRAW)
 
         GL.glBindBuffer(GL.GL_ARRAY_BUFFER, 0)
+
+    def _upload_blend_indices(
+        self, groups: dict[BlendingMode, np.ndarray],
+    ) -> None:
+        # Recreate every pass — the previous mesh's mode set may not match
+        # the new one, and orphaned EBOs would either leak GPU memory or
+        # render stale geometry.
+        for ebo in self._ebos.values():
+            GL.glDeleteBuffers(1, [ebo])
+
+        self._ebos = {}
+        self._index_counts = {}
+
+        for mode, indices in groups.items():
+            ebo = GL.glGenBuffers(1)
+            GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, ebo)
+            GL.glBufferData(
+                GL.GL_ELEMENT_ARRAY_BUFFER, indices.nbytes, indices,
+                GL.GL_STATIC_DRAW,
+            )
+            self._ebos[mode] = ebo
+            self._index_counts[mode] = len(indices)
+
+        GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, 0)
 
     def _upload_highlight(self, highlight: np.ndarray) -> None:
         GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self._vbo_highlight)

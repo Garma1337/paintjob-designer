@@ -1,9 +1,5 @@
 # coding: utf-8
 
-"""Console-script entry point for `python -m paintjob_designer` and for the
-`paintjob-designer` script installed via `pipx`/`pip`.
-"""
-
 import sys
 
 from PySide6.QtWidgets import QApplication
@@ -30,9 +26,22 @@ def main() -> int:
         color_transformer=container.resolve("color_transformer"),
         gradient_generator=container.resolve("gradient_generator"),
         ray_picker=container.resolve("ray_triangle_picker"),
+        blend_mode_grouper=container.resolve("blend_mode_grouper"),
         slugifier=container.resolve("slugifier"),
-        texture_importer=container.resolve("texture_importer"),
+        single_region_texture_importer=container.resolve("single_region_texture_importer"),
+        multi_region_texture_importer=container.resolve("multi_region_texture_importer"),
         texture_rotator=container.resolve("texture_rotator"),
+        skin_writer=container.resolve("skin_writer"),
+        message=container.resolve("message_dialog"),
+        files=container.resolve("file_picker"),
+        profile_holder=container.resolve("profile_holder"),
+        paintjob_library_controller=container.resolve("paintjob_library_controller"),
+        skin_library_controller=container.resolve("skin_library_controller"),
+        palette_library_controller=container.resolve("palette_library_controller"),
+        preview_sidebar=container.resolve("preview_sidebar"),
+        slot_editor=container.resolve("slot_editor"),
+        vertex_slot_editor=container.resolve("vertex_slot_editor"),
+        kart_viewer=container.resolve("kart_viewer"),
     )
 
     window.show()

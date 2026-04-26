@@ -131,6 +131,7 @@ class PaletteSidebar(QWidget):
     palette_selected = Signal(int)
     new_palette_requested = Signal()
     save_from_slot_requested = Signal()
+    save_from_image_requested = Signal()
     delete_palette_requested = Signal(int)
     edit_palette_requested = Signal(int)
     rename_palette_requested = Signal(int)
@@ -168,6 +169,13 @@ class PaletteSidebar(QWidget):
         )
         self._save_slot_button.clicked.connect(self.save_from_slot_requested)
         button_row_1.addWidget(self._save_slot_button)
+
+        self._save_image_button = QPushButton("From Image...")
+        self._save_image_button.setToolTip(
+            "Quantize a PNG down to 16 PSX colors and save it as a new palette.",
+        )
+        self._save_image_button.clicked.connect(self.save_from_image_requested)
+        button_row_1.addWidget(self._save_image_button)
 
         button_row_1.addStretch()
         layout.addLayout(button_row_1)

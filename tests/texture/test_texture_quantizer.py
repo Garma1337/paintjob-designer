@@ -2,12 +2,12 @@
 
 import pytest
 
-pytest.importorskip("PIL")
+pytest.importorskip("PIL", exc_type=ImportError)
 
 from PIL import Image
 
 from paintjob_designer.color.converter import ColorConverter
-from paintjob_designer.texture.quantizer import TextureQuantizer
+from paintjob_designer.texture.texture_quantizer import TextureQuantizer
 
 
 def _solid_rgba(width: int, height: int, rgba: tuple[int, int, int, int]) -> Image.Image:

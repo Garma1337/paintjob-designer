@@ -3,6 +3,7 @@
 from paintjob_designer.constants import RGB_COMPONENT_MAX
 from paintjob_designer.models import (
     AssembledMesh,
+    BlendingMode,
     CtrMesh,
     Rgb888,
     Vector3b,
@@ -144,6 +145,13 @@ class VertexAssembler:
         result.gouraud_color_indices.append(
             (color_indices[0], color_indices[1], color_indices[2]),
         )
+
+        if draw.tex_index != 0:
+            result.blend_modes.append(
+                mesh.texture_layouts[draw.tex_index - 1].blending,
+            )
+        else:
+            result.blend_modes.append(BlendingMode.Standard)
 
     def _color_for_draw(
         self,

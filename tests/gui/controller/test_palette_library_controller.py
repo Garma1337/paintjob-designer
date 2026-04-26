@@ -5,9 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from paintjob_designer.color.converter import ColorConverter
-from paintjob_designer.gui.controller.palette_library_controller import (
-    PaletteLibraryController,
-)
+from paintjob_designer.gui.controller.palette_library_controller import PaletteLibraryController
 from paintjob_designer.gui.widget.palette_sidebar import PaletteSidebar
 from paintjob_designer.models import Palette, PaletteLibrary
 
@@ -27,7 +25,31 @@ def fake_prompt():
 
 
 @pytest.fixture
-def controller(qapp, fake_message, fake_prompt):
+def fake_files():
+    fake = MagicMock()
+    fake.pick_open_path.return_value = None
+    return fake
+
+
+@pytest.fixture
+def fake_palette_from_image_creator():
+    fake = MagicMock()
+    fake.create.return_value = Palette(name="from_image")
+    return fake
+
+
+@pytest.fixture
+def fake_palette_from_colors_creator():
+    fake = MagicMock()
+    fake.create.return_value = Palette(name="from_colors")
+    return fake
+
+
+@pytest.fixture
+def controller(
+    qapp, fake_message, fake_prompt, fake_files,
+    fake_palette_from_image_creator, fake_palette_from_colors_creator,
+):
     converter = ColorConverter()
     sidebar = PaletteSidebar(converter)
     return PaletteLibraryController(
@@ -35,6 +57,9 @@ def controller(qapp, fake_message, fake_prompt):
         color_converter=converter,
         message=fake_message,
         prompt=fake_prompt,
+        files=fake_files,
+        palette_from_image_creator=fake_palette_from_image_creator,
+        palette_from_colors_creator=fake_palette_from_colors_creator,
     )
 
 
@@ -93,3 +118,11 @@ def test_out_of_bounds_index_is_safe(controller):
     controller.edit(5)
 
     assert len(controller.library.palettes) == 2
+
+
+def test_save_from_image_aborts_when_user_cancels_picker(controller, fake_files, fake_palette_from_image_creator):
+    fake_files.pick_open_path.return_value = None
+
+    controller.save_from_image()
+
+    fake_palette_from_image_creator.create.assert_not_called()
