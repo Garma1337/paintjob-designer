@@ -18,6 +18,7 @@ Things that aren't obvious from the UI. The basics — click a swatch, pick a co
 - [Skin Library](#skin-library)
   - [Sidebar Context Menu](#sidebar-context-menu-1)
   - [Vertex Slots Tab](#vertex-slots-tab)
+  - [Orphan Slots Tab](#orphan-slots-tab)
   - [Vertex Transform Panel](#vertex-transform-panel)
 - [Preview Tab](#preview-tab)
 - [Preview Character](#preview-character)
@@ -40,6 +41,7 @@ Things that aren't obvious from the UI. The basics — click a swatch, pick a co
   - [Live Preview and Apply](#live-preview-and-apply)
 - [Gradient Fill](#gradient-fill)
 - [Texture Import](#texture-import)
+- [Texture Export](#texture-export)
   - [Rotate Texture](#rotate-texture)
 - [Undo / Redo](#undo--redo)
 - [Library I/O](#library-io)
@@ -100,13 +102,15 @@ Each paintjob carries:
 
 The sidebar's top-to-bottom order becomes the library's index order. When you save, each paintjob is written with a numeric prefix (`00_...`, `01_...`) that preserves the order. Downstream tools that consume the library use that index — typically to map library positions to in-game paintjob slots — so reordering the sidebar has real downstream effects.
 
+### Sidebar Filter
+
+Above the row list there's a **Filter...** text box. Typing narrows the visible rows to ones whose name (or author) contains the substring; clearing the box restores the full list. The filter is purely a view — it doesn't reorder, persist, or affect library export.
+
 ### Sidebar Context Menu
 
 Right-click a paintjob row for:
 
-- **Rename...** — change the display name. Doesn't reset the preview.
-- **Set author...** — change the author credit. Doesn't reset the preview.
-- **Change base character...** — change which character this paintjob belongs to.
+- **Edit metadata...** — opens a single dialog that edits the paintjob's name, author, and base character together. None of these changes reset the preview.
 - **Export as JSON...** — save just that paintjob to a file of your choice.
 - **Replace from JSON...** — overwrite the selected paintjob with one loaded from a file. Clears the undo history.
 - **Delete** — remove the paintjob after a confirmation. Clears the undo history.
@@ -136,12 +140,12 @@ Each skin carries:
 
 Right-click a skin row for:
 
-- **Rename...** / **Set author...** — same as paintjobs. Don't reset the preview.
+- **Edit metadata...** — opens a single dialog that edits the skin's name and author. Doesn't touch the bound character (moving a skin between characters would corrupt it — skin slot names key into one specific character's VRAM rects).
 - **Export as JSON...** — save just this skin.
 - **Replace from JSON...** — overwrite from a file. Clears undo.
 - **Delete** — confirmation prompt. Clears undo.
 
-There's no "Change bound character" — moving a skin between characters would corrupt it (skin slot names key into one specific character's VRAM rects).
+The Skins sidebar also has the same **Filter...** box as the Paintjobs tab.
 
 ### Vertex Slots Tab
 
@@ -158,6 +162,17 @@ Each row carries a swatch + **Highlight** toggle + **Reset** button, mirroring t
 Above the list, a button strip exposes **Transform...** (opens the modeless vertex transform panel — see below) and **Reset all** (drops every vertex override on the active skin in one undo step).
 
 The Vertex slots tab is disabled in paintjob mode (paintjobs can't carry vertex overrides) and read-only in preview mode.
+
+### Orphan Slots Tab
+
+The right pane has a third tab labeled **Orphan Slots** (after CLUT slots and Vertex slots). It lists every CLUT slot the active profile defines whose VRAM coord isn't actually sampled by any triangle in the character's mesh — typically slots whose colors are referenced from outside the racer mesh (menu screens, particles, hard-coded animation frames).
+
+- The colors are read live from VRAM at the slot's profile-defined CLUT coord, just like regular slots.
+- Right-click → **Transform colors...**, **Gradient fill...**, and **Apply Color Palette** all work normally — they only need the 16 colors, not a mesh region.
+- **Import / Export texture...** are hidden — there's no VRAM rectangle to upload pixels into or dump out of.
+- Highlight on focus is a no-op for the same reason. The slot dimension hint next to the row name is empty.
+
+Orphan slots respect the active editor mode: a slot defined in a character's `kart_slots` only appears in the orphan tab while the Paintjobs tab is active, and a `skin_slots` orphan only appears in skin mode.
 
 ### Vertex Transform Panel
 
@@ -251,6 +266,8 @@ Character models mix several kinds of surfaces, and the editor mode decides whic
 
 The editor renders all of them the way the real game does, so the preview matches what the PS1 would draw. CTR ships many textures as greyscale templates that tint at runtime; you'll see them in their final tinted colors in the preview.
 
+The viewer also reads each triangle's PSX **blend mode** (Standard / Add / Subtract / Multiply) and renders semi-transparent surfaces (visors, glass panes, glows) in separate passes with the correct GPU blend equation. Faces that the game blends additively show through what's behind them in the preview rather than appearing opaque.
+
 ### When the 3D View Doesn't Come Up
 
 Some systems can't bring up hardware 3D (old drivers, remote desktop without graphics acceleration, and so on). In that case the 3D pane is replaced with a message telling you so. The slot editor, sidebars, and library saving all stay fully functional — only the live preview is disabled.
@@ -274,9 +291,12 @@ The picker also exposes the **alpha** slider for the PSX semi-transparency bit. 
 Color Palettes live nested inside the Paintjobs tab as a second list below the paintjob list. They're a workflow aid for paintjobs only — a saved palette is 16 PSX colors you can apply across multiple paintjob slots without re-picking.
 
 - **New** — opens an empty palette in the editor for hand-picking.
-- **From Slot** — captures the focused slot's 16 colors into a new palette.
+- **From Slot** — captures the focused slot's 16 colors into a new palette. Works from either the CLUT slots or the Orphan Slots tab — whichever has a focused row.
+- **From Image...** — pick a PNG and the image is quantized to 15 colors + transparent (the same quantizer the texture importer uses), seeded into a new palette named after the file.
 - **Edit** / **Rename** / **Delete** — standard list operations.
 - **Apply** — right-click any slot row in paintjob mode → **Apply Color Palette** → pick a saved palette. The palette's colors become that slot's colors as a single undo entry.
+
+The palette sidebar also has a **Filter...** box at the top.
 
 Palettes aren't tied to a specific paintjob and persist across sessions in the same config blob the libraries do.
 
@@ -345,8 +365,16 @@ Right-click a slot row → **Gradient fill...** fills a contiguous range of the 
 Right-click a slot row → **Import texture...** → pick a PNG → the slot's colors and pixels are baked from the image (15 colors + transparent, packed 4bpp). Available for both paintjobs and skins on slots whose VRAM rect dimensions are dim-invariant across characters.
 
 - The dialog refuses slots flagged as `non_portable` in the profile (kart `floor` is the canonical case — different dimensions per character, so an imported image couldn't reuse cleanly across the roster).
-- Multi-region slots (slots that occupy multiple disjoint VRAM rectangles) aren't supported yet — the dialog rejects with a clear message.
+- **Multi-region slots** (slots whose CLUT is sampled by multiple disjoint VRAM rectangles) open a **multi-region import dialog** with one row per region. Pick a PNG per region; a single 16-color palette is built across all the regions together so they share the same CLUT.
 - A second context-menu entry, **Remove imported texture**, appears when the slot already has imported pixels and drops them while keeping the CLUT colors as-is.
+
+## Texture Export
+
+Right-click a slot row → **Export texture...** → pick a save path → the slot's current pixels are written back out as PNG. The current asset's CLUT (or the live VRAM defaults if the slot hasn't been edited) decodes the indices, so the export round-trips cleanly through an external editor and back through Import.
+
+- Single-region slots write one file at the chosen path.
+- Multi-region slots write one file per region, suffixing `_0`, `_1`, ... before the `.png` extension.
+- Export is available even on `non_portable` slots — there's no cross-character upload concern when you're just saving what's already there. (Orphan slots can't export — there are no mesh regions to dump.)
 
 ### Rotate Texture
 

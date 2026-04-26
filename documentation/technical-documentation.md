@@ -4,248 +4,103 @@
 
 ```
 config/
-    profiles/                       Target profile JSONs (vanilla-ntsc-u.json,
-                                    saphi.json) — schema v3 splits each
-                                    character's slots into kart_slots /
-                                    skin_slots, tags slots non_portable, and
-                                    carries `clut_race` + optional `clut_menu`
-                                    VRAM coords per slot
+    profiles/                       Target profile JSONs (vanilla-ntsc-u,
+                                    saphi). Each profile lists characters,
+                                    splits their CLUTs into kart vs skin
+                                    slots, and pins each slot's race + menu
+                                    VRAM coordinates.
 
 paintjob_designer/
-    core/                           DI container, binary / bitstream readers,
-                                    Slugifier
-    models/                         Pydantic v2 BaseModels
-                                      paintjob.py    Paintjob, PaintjobLibrary,
-                                                     SlotColors, SlotRegionPixels,
-                                                     KartType, KART_SLOT_NAMES
-                                      skin.py        Skin, SkinLibrary
-                                      profile.py     Profile, CharacterProfile,
-                                                     SlotProfile (clut_race +
-                                                     optional clut_menu),
-                                                     ClutCoord
-                                      color.py       PsxColor, Rgb888
-                                      palette.py     Palette, PaletteLibrary
-                                      ctr_mesh.py    CtrMesh, GouraudColor,
-                                                     TextureLayout, anim types
-                                      vram_page.py   VramPage container
-                                      slot_regions.py CharacterSlotRegions, ...
+    core/                           Cross-cutting primitives — DI container,
+                                    binary / bitstream readers, slug helpers.
+    models/                         Pydantic v2 + dataclass shapes for every
+                                    persisted, serialized, or runtime data
+                                    structure (paintjob, skin, profile, mesh,
+                                    palette, slot regions, color, VRAM).
 
-    color/
-        converter                   PSX15 <-> RGB888 conversion, hex formatting
-        transform                   Bulk-transform pipeline (replace matches,
-                                    replace hue, shift hue/sat/brightness,
-                                    RGB delta, invert)
-        gradient                    Two-endpoint linear gradients in RGB or HSV space
+    color/                          PSX↔RGB conversion, bulk color-transform
+                                    pipeline, gradient generator.
+    profile/                        Profile JSON I/O + registry + skin-slot
+                                    derivation + menu-CLUT lookup.
+    paintjob/                       Paintjob JSON read / write.
+    skin/                           Skin JSON read / write.
+    palette/                        Build palettes from a focused slot or by
+                                    quantizing a PNG.
+    vram/                           CTR `.vrm` / TIM decode + per-ISO cache.
+    ctr/                            `.ctr` mesh parsing, vertex assembly,
+                                    animation decode.
 
-    profile/                        ProfileReader + ProfileRegistry +
-                                    SkinSlotDeriver (mesh CLUTs minus kart
-                                    slots → extra_<x>_<y> entries) +
-                                    MenuClutLocator (find a CLUT's twin in
-                                    another VRAM page by signature match)
-    paintjob/                       PaintjobReader / PaintjobWriter (.json I/O)
-    skin/                           SkinReader / SkinWriter (.json I/O)
-    vram/                           VramReader (.vrm + TIM decode), VramCache
-    ctr/                            CtrModelReader (.ctr parsing), VertexAssembler,
-                                    AnimationDecoder
+    render/                         Off-screen pipelines that turn meshes +
+                                    VRAM into the data the GL viewer draws:
+                                    atlas render, slot-region derivation,
+                                    UV mapping, ray-picker (eyedropper),
+                                    blend-mode grouping, orbit camera.
+    texture/                        4bpp pack/unpack, PNG↔CLUT quantizing,
+                                    single- and multi-region importers,
+                                    rotator, exporter (slot → PNG).
 
-    render/
-        atlas_renderer              VRAM + asset -> RGBA atlas
-        psx_rgba_lut                65536-entry u16 -> packed-RGBA LUT
-                                    (15-bit-zero entries -> alpha 0)
-        vram_region_decoder         Per-region 4bpp decoder
-        slot_region_deriver         Groups mesh faces by CLUT into SlotRegions
-        atlas_uv_mapper             Byte-space TextureLayout UVs -> normalized
-                                    atlas UVs
-        orbit_camera                Yaw/pitch camera + bbox fit + view matrices
-        ray_picker                  Möller-Trumbore ray/triangle picker
-                                    (eyedropper)
-
-    texture/
-        quantizer                   PIL RGBA -> PSX 4bpp + 16-color CLUT
-        importer                    PNG file + resize policy -> QuantizedTexture
-        four_bpp_codec              Pack / unpack 4bpp pixel buffers (two
-                                    indices per byte, low-nibble first)
-        rotator                     TextureRotator — 90/180/270 CW rotation
-                                    of a 4bpp pixel buffer; 90/270 require
-                                    a square source for the new dimensions
-                                    to round-trip the slot's VRAM rect
-
-    gui/
+    gui/                            All Qt code lives here.
         main_window.py              Top-level window. Owns the editor surface
                                     and orchestrates the controllers.
+        controller/                 Stateful coordinators between the data
+                                    model and the widgets — library CRUD,
+                                    asset selection, transform / animation
+                                    lifecycles, profile holder.
+        widget/                     Pure-presentation Qt widgets (kart
+                                    viewer, slot / vertex / orphan editors,
+                                    sidebars, color picker, etc.).
+            shaders/                GLSL source for the kart viewer.
+            filters/                Reusable filter / search building blocks
+                                    for the library sidebars.
+        dialog/                     Modal + modeless dialogs (character /
+                                    profile pickers, palette edit / apply,
+                                    gradient fill, edit metadata, multi-
+                                    region texture import, vertex transform).
+        handler/                    Headless services that mutate paintjobs
+                                    or characters and re-render the atlas
+                                    (character bring-up, color edits, project
+                                    I/O).
+        command/                    `QUndoCommand` subclasses for every
+                                    undoable mutation.
+        util/                       Thin wrappers around Qt dialogs +
+                                    library directory writer.
 
-        controller/
-            library_controller.py   Generic LibraryController[TItem, TLibrary]
-                                    base. Owns the shared signals
-                                    (selection_changed / library_changed /
-                                    mutated / library_reset) and the shared
-                                    delete-with-confirm + selection plumbing.
-            paintjob_library_controller.py
-                                    PaintjobLibraryController. CRUD + dialogs
-                                    + per-asset slot seeding.
-            skin_library_controller.py
-                                    SkinLibraryController. Same shape, skin
-                                    slots only, character-bound.
-            palette_library_controller.py
-                                    PaletteLibraryController. New / edit /
-                                    rename / apply.
-            character_picker.py     CharacterPicker — wraps PickCharacterDialog;
-                                    used by paintjob + skin "new" flows.
-            profile_holder.py       ProfileHolder — mutable cell carrying the
-                                    active Profile, plus display_name_for(id)
-                                    used by sidebars to render character names.
-            animation_controller.py AnimationController — owns the animation
-                                    panel widget + per-frame playback timer.
-            transform_panel_coordinator.py
-                                    TransformPanelCoordinator — owns the
-                                    Transform Colors panel + the snapshot /
-                                    preview / commit / restore lifecycle.
-                                    Operates on the active asset (paintjob OR
-                                    skin) via duck-typed `.slots[name]` access.
+    services.py                     DI container wiring — registers every
+                                    handler, controller, widget, and pure-
+                                    logic class so `MainWindow` is fully
+                                    constructor-injected.
 
-        widget/
-            kart_viewer.py          KartViewer (GL) + NullKartViewer (fallback
-                                    when GL init fails)
-            slot_editor.py          SlotEditor — top button strip
-                                    (Transform... + Reset all) over a grid of
-                                    SlotRow widgets
-            slot_row.py             SlotRow — 16 swatches + Highlight + Reset
-            color_swatch.py         ColorSwatch — single 5-5-5 PSX color cell
-            psx_color_button.py     PsxColorButton — labeled swatch + picker
-            color_picker.py         PsxColorPicker (alpha-aware)
-            vertex_slot_editor.py   VertexSlotEditor — per-vertex rows
-                                    (swatch + Highlight + Reset + override
-                                    marker) + top Transform / Reset all
-                                    strip; skin-only
-            transform_panel.py      TransformColorsPanel + TransformCandidate
-                                    + the shared `_OperationSection` that
-                                    backs both this panel and the vertex
-                                    transform dialog
-            preview_sidebar.py      PreviewSidebar — character/paintjob/skin
-                                    composition combos
-            library_sidebar.py      LibrarySidebar base + LibraryRowDelegate.
-                                    Owns the list + button row + selection
-                                    plumbing for paintjob/skin sidebars.
-            paintjob_library_sidebar.py
-                                    PaintjobLibrarySidebar (drag-reorder,
-                                    context menu, "(textured)" marker).
-            skin_library_sidebar.py SkinLibrarySidebar (parallel; no reorder).
-            palette_sidebar.py      PaletteSidebar (lives nested in the
-                                    Paintjobs tab).
-            shaders/                GLSL vert/frag
+schema/                             Pydantic-generated JSON Schemas for the
+                                    paintjob and skin library formats.
+                                    Regenerated by `tools/dump_schema.py`;
+                                    drift is enforced by tests.
 
-        dialog/
-            pick_character_dialog.py    Modal character picker
-            profile_picker_dialog.py    Modal profile switcher
-            palette_edit_dialog.py      Edit palette colors
-            palette_apply_dialog.py     Map palette → slot indices on apply
-            gradient_fill_dialog.py     Two-endpoint gradient builder
-            vertex_transform_dialog.py  Modeless vertex-color transform
-                                        panel — same Apply / Close lifecycle
-                                        and operation pipeline as the CLUT
-                                        TransformColorsPanel. Auto-restricts
-                                        the writable index set to gouraud
-                                        entries used only by untextured
-                                        triangles so paintjob surfaces don't
-                                        get tinted.
+tests/                              Mirrors the package layout; one test
+                                    package per source package. Headless —
+                                    no GL or ISO required.
 
-        handler/
-            character_handler.py    Character bring-up: .ctr parse + VRAM load
-                                    + slot derivation + atlas render
-            color_handler.py        Per-slot CLUT mutation + atlas patch
-            project_handler.py      Paintjob load/save (single + library)
+.github/workflows/                  CI: release build for Windows + Linux,
+                                    test runner.
 
-        command/
-            undo_command_base.py    UndoCommandBase — handles the shared
-                                    "first redo is a no-op" pattern
-            set_slot_color_command.py
-            reset_slot_command.py
-            bulk_transform_command.py
-                                    All three subclass UndoCommandBase.
-                                    BulkTransformCommand serves both
-                                    Transform Colors AND Apply Palette.
+launcher/                           Windows + Linux first-run scripts that
+                                    create a venv, install requirements, and
+                                    invoke `main.py`. Bundled into source
+                                    release archives.
 
-        util/
-            dialogs.py              MessageDialog (info/warn/error/confirm),
-                                    FilePicker (open/save/dir),
-                                    InputPrompt (get_text/get_item).
-                                    Three single-responsibility wrappers
-                                    around QMessageBox / QFileDialog /
-                                    QInputDialog so callers can be tested.
-            library_writer.py       LibraryWriter — directory-of-JSONs writer
-                                    used by both paintjob and skin save flows
-
-    services.py                     DI container wiring
-
-schema/
-    paintjobs_library_schema.json   Pydantic-generated JSON Schema for the
-                                    paintjob library format
-    skins_library_schema.json       Pydantic-generated JSON Schema for the
-                                    skin library format
-                                    Both regenerated by tools/dump_schema.py;
-                                    drift-checked by tests/{paintjob,skin}/
-                                    test_schema.py.
-
-tests/
-    gui/
-        controller/                 LibraryController + the three subclasses
-                                    + dialog-fake fixtures
-        command/                    Undo command behavior + UndoCommandBase
-        handler/                    CharacterHandler / ColorHandler / ProjectHandler
-        util/                       LibraryWriter
-    color/                          ColorConverter / ColorTransformer / GradientGenerator
-    config/                         IsoRootValidator / ConfigStore
-    core/                           Container / Slugifier / readers
-    ctr/                            CtrModelReader / VertexAssembler / AnimationDecoder
-    paintjob/                       Reader / Writer / schema drift
-    skin/                           Reader / Writer / library / schema drift
-    profile/                        Reader / Registry
-    render/                         Atlas / camera / ray-picker / decoders
-    texture/                        Quantizer / Importer
-    vram/                           Reader / Cache
-    models/                         Color / mesh / paintjob / palette / skin /
-                                    slot_regions / vram_page
-
-.github/
-    workflows/release.yml           Windows + Linux build + release workflow
-
-launcher/
-    run.bat                         Windows launcher — creates `.venv`,
-                                    installs requirements, runs `main.py`
-    run.sh                          Linux launcher — equivalent for POSIX
-                                    (workflow copies these to the archive
-                                    root on release)
-
-tools/
-    dump_schema.py                  Regenerate the JSON Schema files from
-                                    the pydantic models. Targets a list of
-                                    (model, filename) pairs — currently
-                                    Paintjob and Skin.
-    inspect_clut_palette.py         CLI: dump per-CLUT palette strips and
-                                    decoded region samples for any racer's
-                                    .ctr — used when adding new profile
-                                    entries.
-    populate_skin_slots.py          CLI: walk an ISO's racer .ctrs and
-                                    backfill `skin_slots` in a profile JSON
-                                    via SkinSlotDeriver. Run after adding a
-                                    new character or porting to a fresh
-                                    profile.
-    populate_skin_menu_cluts.py     CLI: locate each skin slot's menu CLUT
-                                    by signature-matching the race CLUT
-                                    against `bigfile/levels/menu_models/
-                                    data.vrm`. Skips low-entropy and
-                                    ambiguous matches with a per-slot
-                                    warning.
+tools/                              CLI utilities used outside the editor —
+                                    schema dump, CLUT inspection, profile
+                                    backfill scripts (skin slots, menu
+                                    CLUTs).
 ```
 
 # Architecture Overview
 
 ## Single editor + three tabs
 
-The right pane (3D viewer + slot editor + vertex editor tabs) is shared across the three sidebar tabs. Editor mode (`paintjob` / `skin` / `preview`) is set by the active sidebar tab; mode drives:
+The right pane (3D viewer + CLUT slot editor / Vertex slot editor / Orphan Slots editor tabs) is shared across the three sidebar tabs. Editor mode (`paintjob` / `skin` / `preview`) is set by the active sidebar tab; mode drives:
 
 - Which controller's signals feed the right pane (`paintjob_library_controller` vs `skin_library_controller`).
-- Which slot subset the slot editor shows (`character.kart_slots` vs `character.skin_slots`).
+- Which slot subset each editor shows (`character.kart_slots` vs `character.skin_slots`); orphan slots — profile slots whose CLUT isn't sampled by any mesh layout — are partitioned into the third tab.
 - Whether the vertex editor is editable (skin-only) or read-only.
 - Which scope the Transform Colors panel exposes (kart / skin / current — off-mode is disabled).
 - Whether the right pane responds to writes at all (preview mode is read-only).
@@ -301,7 +156,7 @@ The spec file lives at the repo root; it handles icon, data-file bundling, and t
 pytest
 ```
 
-468 tests, all headless — no GL context or ISO needed. Controller tests pull in a session-scoped `qapp` fixture from `tests/conftest.py` so the Qt-widget side compiles, but no event loop runs.
+All headless — no GL context or ISO needed. Controller tests pull in a session-scoped `qapp` fixture from `tests/conftest.py` so the Qt-widget side compiles, but no event loop runs.
 
 # Regenerating Schemas
 

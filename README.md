@@ -19,17 +19,20 @@ Each editing tab keeps its own state (selected asset, last-viewed character) so 
 ## Library-first editing
 
 - **Per-slot CLUT editing** — click any of the 16 color swatches to open a PSX-quantized color picker; edits snap to the PS1 5-5-5 color grid as you pick.
+- **Orphan Slots tab** — profile slots whose CLUT lives in VRAM but isn't sampled by any mesh triangle (menu screens, particles, etc.) appear in their own tab so you can edit the colors even though there's no mesh region to highlight.
 - **Vertex-color editing** (skins only) — the right pane has a Vertex Slots tab listing every entry in the character's gouraud-color table. Clicking a swatch opens an RGB picker; the override is saved on the skin and re-rendered live.
-- **Texture import** — replace a slot's pixels with a PNG. Quantized to 15 colors + transparent, packed 4bpp, baked into the asset's JSON. Available for both paintjobs and skins on slots whose VRAM rect is dim-invariant across characters.
+- **Texture import / export** — replace a slot's pixels with a PNG (quantized to 15 colors + transparent, packed 4bpp, baked into the asset JSON), or export the slot's current pixels back to PNG for round-tripping through an external editor. Both single-region and multi-region slots are supported.
+- **Library filter** — every library sidebar (paintjobs, skins, palettes) has a "Filter..." box at the top to narrow the visible rows by name.
 - **Transform Colors panel** — modeless panel with seven stackable modes (replace matching color, replace hue, shift hue, shift saturation, shift brightness, RGB delta, invert colors). Three scopes: Current slot / All kart slots / All skin slots — only the scope matching the active asset's kind is enabled. Slider changes stream into the 3D view live; Apply commits the full stack as a single undo entry.
 - **Vertex transform panel** — the same modeless panel applied to a skin's gouraud vertex colors. Auto-restricts itself to vertex indices used only by untextured triangles so `texture × vertex_color` modulation can't tint paintjob surfaces.
-- **Color Palettes** — save the 16 colors of a focused slot as a reusable palette and apply it to other slots later. Lives in the Paintjobs tab.
+- **Color Palettes** — save the 16 colors of a focused slot as a reusable palette, **build one from a quantized PNG** ("From Image..."), or hand-pick one. Apply to other slots later. Lives in the Paintjobs tab.
 
 ## 3D preview
 
 - **Orbit camera** — left-drag to rotate, wheel to zoom, **R** to recenter.
 - **Eyedropper** — Alt+click any surface on the kart to sample its slot + CLUT index and open the color picker pre-loaded with that color.
 - **PSX-accurate shading** — untextured faces use per-vertex Gouraud colors; textured faces modulate by `2 × vertex_color` like the real PS1 GPU, so greyscale texture templates tint correctly. Black pixels (`#0000`) render fully transparent — matching the in-game behavior of the PSX transparency sentinel.
+- **PSX semi-transparent blend modes** — the viewer reads each triangle's blend mode (Standard / Add / Subtract / Multiply) and renders semi-transparent surfaces (visors, glass, glows) in separate passes with the correct GPU blend equation, instead of drawing them all opaque.
 
 ## Profiles
 
