@@ -4,7 +4,11 @@ import pytest
 
 from paintjob_designer.models import KartType, Profile
 
-KART_SLOT_NAMES = {"front", "back", "floor", "brown", "motorside", "motortop", "bridge", "exhaust"}
+KART_SLOT_NAMES = {
+    "front", "back", "floor", "brown", "motorside", "motortop", "bridge", "exhaust",
+    "rearbase", "seattop", "exhaustholes", "seatside", "exhaustmount",
+    "underfloor", "steering",
+}
 HOVERCRAFT_SLOT_NAMES = {"hoverkart"}
 
 

@@ -44,23 +44,16 @@ class AtlasRenderer:
         rgba = bytearray(self.ATLAS_WIDTH * self.ATLAS_HEIGHT * self.BYTES_PER_PIXEL)
         self._decode_16bpp_baseline(vram, rgba)
 
-        for slot_name, slot in regions.slots.items():
+        # Profile slots and mesh-discovered unmatched palettes share the same
+        # rendering path — both resolve through the asset-override lookup so a
+        # paintjob/skin keyed under the unmatched's synthesized slot name takes
+        # effect just like a profile slot.
+        for slot_name, slot in regions.all_slots():
             clut = self._resolve_clut(vram, slot.clut, paintjob, slot_name)
             pixels_by_pos = self._paintjob_pixels_by_pos(paintjob, slot_name)
+
             for region in slot.regions:
                 self._decode_region(vram, region, clut, pixels_by_pos, rgba)
-
-        # Unmatched regions always use the default VRAM CLUT — they're the
-        # wheels, driver figures, and shared textures that aren't paintjob-
-        # editable but still need 4bpp decoding so the 3D preview doesn't
-        # fall back to baseline garbage in their place.
-        for unmatched in regions.unmatched_regions:
-            clut = [
-                vram.u16_at(unmatched.clut.x + i, unmatched.clut.y)
-                for i in range(16)
-            ]
-            for region in unmatched.regions:
-                self._decoder.decode_into(vram, region, clut, rgba)
 
         return rgba
 

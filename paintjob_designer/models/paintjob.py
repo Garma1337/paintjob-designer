@@ -10,7 +10,11 @@ from paintjob_designer.models.color import PsxColor
 from paintjob_designer.models.profile import KartType
 
 """Canonical paintjob slot names for `KartType.KART` characters."""
-KART_SLOT_NAMES = "front", "back", "floor", "brown", "motorside", "motortop", "bridge", "exhaust",
+KART_SLOT_NAMES = (
+    "front", "back", "floor", "brown", "motorside", "motortop", "bridge", "exhaust",
+    "rearbase", "seattop", "exhaustholes", "seatside", "exhaustmount",
+    "underfloor", "steering",
+)
 
 
 class SlotRegionPixels(BaseModel):

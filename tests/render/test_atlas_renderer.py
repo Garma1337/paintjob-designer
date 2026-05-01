@@ -179,7 +179,7 @@ class TestUnmatchedRegions:
         for atlas_x in range(800, 804):
             assert _atlas_pixel(rgba, atlas_x, 100) == (0, 255, 0, 255)
 
-    def test_paintjob_slots_dont_leak_into_unmatched(self, atlas_renderer):
+    def test_paintjob_overrides_for_other_slots_dont_leak_into_unmatched(self, atlas_renderer):
         vram = VramPage()
         _write_u16(vram, 5, 0, 0x03E0)  # VRAM default index 5 = green
         _write_u16(vram, 50, 10, 0x5555)
@@ -197,8 +197,8 @@ class TestUnmatchedRegions:
             )],
         )
 
-        # Paintjob puts red at index 5 under a matched slot — shouldn't affect
-        # the unmatched region, which reads its CLUT straight from VRAM.
+        # Paintjob puts red at index 5 under an unrelated slot name — name-based
+        # CLUT lookup means it shouldn't affect the unmatched region.
         red_colors = [PsxColor(value=0) for _ in range(16)]
         red_colors[5] = PsxColor(value=0x001F)
         paintjob = Paintjob(slots={"some_slot": SlotColors(colors=red_colors)})
@@ -206,6 +206,34 @@ class TestUnmatchedRegions:
         rgba = atlas_renderer.render_atlas(vram, paintjob, regions)
 
         assert _atlas_pixel(rgba, 200, 10) == (0, 255, 0, 255)
+
+    def test_paintjob_keyed_on_synthesized_name_overrides_unmatched(self, atlas_renderer):
+        vram = VramPage()
+        _write_u16(vram, 5, 0, 0x03E0)  # VRAM default index 5 = green
+        _write_u16(vram, 50, 10, 0x5555)
+
+        unmatched_region = SlotRegion(
+            vram_x=50, vram_y=10, vram_width=1, vram_height=1,
+            bpp=BitDepth.Bit4,
+        )
+        regions = CharacterSlotRegions(
+            character_id="crash",
+            unmatched_regions=[SlotRegions(
+                slot_name="unmatched@0,0",
+                clut=ClutCoord(x=0, y=0),
+                regions=[unmatched_region],
+            )],
+        )
+
+        # Paintjob keyed under the unmatched's synthesized name — this is how
+        # the orphan-slot editor persists edits to mesh-discovered palettes.
+        red_colors = [PsxColor(value=0) for _ in range(16)]
+        red_colors[5] = PsxColor(value=0x001F)
+        paintjob = Paintjob(slots={"unmatched@0,0": SlotColors(colors=red_colors)})
+
+        rgba = atlas_renderer.render_atlas(vram, paintjob, regions)
+
+        assert _atlas_pixel(rgba, 200, 10) == (255, 0, 0, 255)
 
 
 class TestBppFilter:

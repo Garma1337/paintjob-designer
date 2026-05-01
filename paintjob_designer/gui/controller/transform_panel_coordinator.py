@@ -98,7 +98,7 @@ class TransformPanelCoordinator(QObject):
         slot_name = slot_override or self._slot_editor_provider().focused_slot()
         slot_candidates: list[TransformCandidate] = []
         if slot_name is not None:
-            target_slot = bundle.slot_regions.slots.get(slot_name)
+            target_slot = bundle.slot_regions.find_slot(slot_name)
             if target_slot is not None:
                 slot_candidates = self._build_candidates([target_slot])
 

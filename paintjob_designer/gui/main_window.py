@@ -870,7 +870,7 @@ class MainWindow(QMainWindow):
 
             return
 
-        slot = self._current_bundle.slot_regions.slots.get(slot_name)
+        slot = self._current_bundle.slot_regions.find_slot(slot_name)
         if slot is None:
             return
 
@@ -889,7 +889,7 @@ class MainWindow(QMainWindow):
         if self._current_bundle is None or not self._require_active_asset():
             return
 
-        slot = self._current_bundle.slot_regions.slots.get(slot_name)
+        slot = self._current_bundle.slot_regions.find_slot(slot_name)
         if slot is None:
             return
 
@@ -1321,7 +1321,7 @@ class MainWindow(QMainWindow):
     ) -> dict[str, list[int]]:
         """Group triangles by the slot they belong to for highlight focus."""
         layout_to_slot: dict[int, str] = {}
-        for slot_name, regions in bundle.slot_regions.slots.items():
+        for slot_name, regions in bundle.slot_regions.all_slots():
             for region in regions.regions:
                 for layout_idx in region.texture_layout_indices:
                     layout_to_slot[layout_idx] = slot_name
@@ -1379,6 +1379,13 @@ class MainWindow(QMainWindow):
                 mesh_mapped[name] = regions
             else:
                 orphan[name] = regions
+
+        # Mesh-sampled CLUTs that don't correspond to any profile slot.
+        # The atlas decodes them but no profile entry claims them — surface
+        # them in the orphan tab in every editing mode so artists can recolor
+        # body palettes the profile didn't anticipate (e.g. Crash's back).
+        for unmatched in self._current_bundle.slot_regions.unmatched_regions:
+            orphan[unmatched.slot_name] = unmatched
 
         self._populate_one_slot_editor(self._slot_editor, mesh_mapped)
         self._populate_one_slot_editor(self._orphan_slot_editor, orphan)
@@ -1438,14 +1445,14 @@ class MainWindow(QMainWindow):
             slot_name: self._color_handler.default_slot_colors(
                 self._config.iso_root, slot,
             )
-            for slot_name, slot in self._current_bundle.slot_regions.slots.items()
+            for slot_name, slot in self._current_bundle.slot_regions.all_slots()
         }
 
     def _on_color_edit_requested(self, slot_name: str, color_index: int) -> None:
         if self._current_bundle is None or not self._require_active_asset():
             return
 
-        slot = self._current_bundle.slot_regions.slots.get(slot_name)
+        slot = self._current_bundle.slot_regions.find_slot(slot_name)
         if slot is None:
             return
 
@@ -1753,7 +1760,7 @@ class MainWindow(QMainWindow):
         if self._current_bundle is None or not self._require_active_asset():
             return
 
-        slot = self._current_bundle.slot_regions.slots.get(slot_name)
+        slot = self._current_bundle.slot_regions.find_slot(slot_name)
         if slot is None:
             return
 
@@ -1822,7 +1829,7 @@ class MainWindow(QMainWindow):
 
             return
 
-        slot = self._current_bundle.slot_regions.slots.get(slot_name)
+        slot = self._current_bundle.slot_regions.find_slot(slot_name)
         if slot is None:
             return
 
@@ -1892,7 +1899,7 @@ class MainWindow(QMainWindow):
         if self._current_bundle is None:
             return None
 
-        for slot_name, slot in self._current_bundle.slot_regions.slots.items():
+        for slot_name, slot in self._current_bundle.slot_regions.all_slots():
             for region in slot.regions:
                 if layout_index in region.texture_layout_indices:
                     return slot_name
@@ -1922,7 +1929,7 @@ class MainWindow(QMainWindow):
         if self._current_bundle is None or self._current_character is None:
             return
 
-        slot = self._current_bundle.slot_regions.slots.get(slot_name)
+        slot = self._current_bundle.slot_regions.find_slot(slot_name)
         if slot is None:
             return
 
@@ -2000,7 +2007,7 @@ class MainWindow(QMainWindow):
         if self._current_bundle is None or not self._require_active_asset():
             return
 
-        slot = self._current_bundle.slot_regions.slots.get(slot_name)
+        slot = self._current_bundle.slot_regions.find_slot(slot_name)
         if slot is None:
             return
 
@@ -2079,7 +2086,7 @@ class MainWindow(QMainWindow):
 
             return
 
-        slot_regions = self._current_bundle.slot_regions.slots.get(slot_name)
+        slot_regions = self._current_bundle.slot_regions.find_slot(slot_name)
         if slot_regions is None or not slot_regions.regions:
             return
 
@@ -2179,7 +2186,7 @@ class MainWindow(QMainWindow):
         if self._current_bundle is None or self._current_character is None:
             return
 
-        slot = self._current_bundle.slot_regions.slots.get(slot_name)
+        slot = self._current_bundle.slot_regions.find_slot(slot_name)
         if slot is None or not slot.regions:
             return
 

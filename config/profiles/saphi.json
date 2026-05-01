@@ -101,11 +101,9 @@
             "x": 592,
             "y": 503
           }
-        }
-      ],
-      "skin_slots": [
+        },
         {
-          "name": "extra_112_248",
+          "name": "rearbase",
           "clut_race": {
             "x": 112,
             "y": 248
@@ -116,7 +114,7 @@
           }
         },
         {
-          "name": "extra_128_248",
+          "name": "underfloor",
           "clut_race": {
             "x": 128,
             "y": 248
@@ -127,7 +125,7 @@
           }
         },
         {
-          "name": "extra_128_249",
+          "name": "seattop",
           "clut_race": {
             "x": 128,
             "y": 249
@@ -137,6 +135,52 @@
             "y": 251
           }
         },
+        {
+          "name": "exhaustmount",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "exhaustholes",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "seatside",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "steering",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 508
+          }
+        }
+      ],
+      "skin_slots": [
         {
           "name": "extra_128_250",
           "clut_race": {
@@ -237,17 +281,6 @@
           }
         },
         {
-          "name": "extra_976_255",
-          "clut_race": {
-            "x": 976,
-            "y": 255
-          },
-          "clut_menu": {
-            "x": 608,
-            "y": 223
-          }
-        },
-        {
           "name": "extra_480_258",
           "clut_race": {
             "x": 480,
@@ -259,17 +292,6 @@
           }
         },
         {
-          "name": "extra_480_259",
-          "clut_race": {
-            "x": 480,
-            "y": 259
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 507
-          }
-        },
-        {
           "name": "extra_480_260",
           "clut_race": {
             "x": 480,
@@ -278,28 +300,6 @@
           "clut_menu": {
             "x": 816,
             "y": 504
-          }
-        },
-        {
-          "name": "extra_480_261",
-          "clut_race": {
-            "x": 480,
-            "y": 261
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 509
-          }
-        },
-        {
-          "name": "extra_480_262",
-          "clut_race": {
-            "x": 480,
-            "y": 262
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 508
           }
         },
         {
@@ -409,11 +409,9 @@
             "x": 576,
             "y": 508
           }
-        }
-      ],
-      "skin_slots": [
+        },
         {
-          "name": "extra_112_248",
+          "name": "rearbase",
           "clut_race": {
             "x": 112,
             "y": 248
@@ -424,18 +422,7 @@
           }
         },
         {
-          "name": "extra_144_248",
-          "clut_race": {
-            "x": 144,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 784,
-            "y": 504
-          }
-        },
-        {
-          "name": "extra_128_249",
+          "name": "seattop",
           "clut_race": {
             "x": 128,
             "y": 249
@@ -446,7 +433,7 @@
           }
         },
         {
-          "name": "extra_976_255",
+          "name": "exhaustmount",
           "clut_race": {
             "x": 976,
             "y": 255
@@ -454,6 +441,55 @@
           "clut_menu": {
             "x": 608,
             "y": 223
+          }
+        },
+        {
+          "name": "exhaustholes",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "seatside",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "underfloor",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          }
+        },
+        {
+          "name": "steering",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          }
+        }
+      ],
+      "skin_slots": [
+        {
+          "name": "extra_144_248",
+          "clut_race": {
+            "x": 144,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 504
           }
         },
         {
@@ -501,17 +537,6 @@
           }
         },
         {
-          "name": "extra_480_259",
-          "clut_race": {
-            "x": 480,
-            "y": 259
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 507
-          }
-        },
-        {
           "name": "extra_384_260",
           "clut_race": {
             "x": 384,
@@ -531,17 +556,6 @@
           "clut_menu": {
             "x": 576,
             "y": 511
-          }
-        },
-        {
-          "name": "extra_480_261",
-          "clut_race": {
-            "x": 480,
-            "y": 261
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 509
           }
         }
       ]
@@ -640,6 +654,79 @@
             "x": 752,
             "y": 510
           }
+        },
+        {
+          "name": "rearbase",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "underfloor",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "seattop",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "exhaustmount",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "exhaustholes",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "seatside",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "steering",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          }
         }
       ],
       "skin_slots": [
@@ -696,39 +783,6 @@
           "clut_menu": {
             "x": 608,
             "y": 504
-          }
-        },
-        {
-          "name": "extra_112_248",
-          "clut_race": {
-            "x": 112,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 768,
-            "y": 251
-          }
-        },
-        {
-          "name": "extra_128_248",
-          "clut_race": {
-            "x": 128,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 768,
-            "y": 253
-          }
-        },
-        {
-          "name": "extra_128_249",
-          "clut_race": {
-            "x": 128,
-            "y": 249
-          },
-          "clut_menu": {
-            "x": 784,
-            "y": 251
           }
         },
         {
@@ -798,17 +852,6 @@
           }
         },
         {
-          "name": "extra_976_255",
-          "clut_race": {
-            "x": 976,
-            "y": 255
-          },
-          "clut_menu": {
-            "x": 608,
-            "y": 223
-          }
-        },
-        {
           "name": "extra_416_256",
           "clut_race": {
             "x": 416,
@@ -842,17 +885,6 @@
           }
         },
         {
-          "name": "extra_480_259",
-          "clut_race": {
-            "x": 480,
-            "y": 259
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 507
-          }
-        },
-        {
           "name": "extra_400_260",
           "clut_race": {
             "x": 400,
@@ -872,17 +904,6 @@
           "clut_menu": {
             "x": 576,
             "y": 503
-          }
-        },
-        {
-          "name": "extra_480_261",
-          "clut_race": {
-            "x": 480,
-            "y": 261
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 509
           }
         },
         {
@@ -1003,6 +1024,79 @@
             "x": 752,
             "y": 507
           }
+        },
+        {
+          "name": "rearbase",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "seattop",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "exhaustmount",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "exhaustholes",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "seatside",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "steering",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 508
+          }
+        },
+        {
+          "name": "underfloor",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          }
         }
       ],
       "skin_slots": [
@@ -1029,28 +1123,6 @@
           }
         },
         {
-          "name": "extra_112_248",
-          "clut_race": {
-            "x": 112,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 768,
-            "y": 251
-          }
-        },
-        {
-          "name": "extra_128_249",
-          "clut_race": {
-            "x": 128,
-            "y": 249
-          },
-          "clut_menu": {
-            "x": 784,
-            "y": 251
-          }
-        },
-        {
           "name": "extra_160_250",
           "clut_race": {
             "x": 160,
@@ -1073,17 +1145,6 @@
           }
         },
         {
-          "name": "extra_976_255",
-          "clut_race": {
-            "x": 976,
-            "y": 255
-          },
-          "clut_menu": {
-            "x": 608,
-            "y": 223
-          }
-        },
-        {
           "name": "extra_432_256",
           "clut_race": {
             "x": 432,
@@ -1092,17 +1153,6 @@
           "clut_menu": {
             "x": 752,
             "y": 508
-          }
-        },
-        {
-          "name": "extra_480_259",
-          "clut_race": {
-            "x": 480,
-            "y": 259
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 507
           }
         },
         {
@@ -1125,28 +1175,6 @@
           "clut_menu": {
             "x": 752,
             "y": 505
-          }
-        },
-        {
-          "name": "extra_480_261",
-          "clut_race": {
-            "x": 480,
-            "y": 261
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 509
-          }
-        },
-        {
-          "name": "extra_480_262",
-          "clut_race": {
-            "x": 480,
-            "y": 262
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 508
           }
         },
         {
@@ -1256,6 +1284,75 @@
             "x": 736,
             "y": 506
           }
+        },
+        {
+          "name": "rearbase",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "underfloor",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "exhaustmount",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "exhaustholes",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "seatside",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "seattop",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          }
+        },
+        {
+          "name": "steering",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          }
         }
       ],
       "skin_slots": [
@@ -1304,28 +1401,6 @@
           }
         },
         {
-          "name": "extra_112_248",
-          "clut_race": {
-            "x": 112,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 768,
-            "y": 251
-          }
-        },
-        {
-          "name": "extra_128_248",
-          "clut_race": {
-            "x": 128,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 768,
-            "y": 253
-          }
-        },
-        {
           "name": "extra_176_250",
           "clut_race": {
             "x": 176,
@@ -1348,17 +1423,6 @@
           }
         },
         {
-          "name": "extra_976_255",
-          "clut_race": {
-            "x": 976,
-            "y": 255
-          },
-          "clut_menu": {
-            "x": 608,
-            "y": 223
-          }
-        },
-        {
           "name": "extra_320_256",
           "clut_race": {
             "x": 320,
@@ -1378,17 +1442,6 @@
           "clut_menu": {
             "x": 736,
             "y": 504
-          }
-        },
-        {
-          "name": "extra_480_259",
-          "clut_race": {
-            "x": 480,
-            "y": 259
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 507
           }
         },
         {
@@ -1422,17 +1475,6 @@
           "clut_menu": {
             "x": 736,
             "y": 508
-          }
-        },
-        {
-          "name": "extra_480_261",
-          "clut_race": {
-            "x": 480,
-            "y": 261
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 509
           }
         },
         {
@@ -1553,6 +1595,83 @@
             "x": 720,
             "y": 507
           }
+        },
+        {
+          "name": "rearbase",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "underfloor",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "seattop",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "exhaustmount",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "exhaustholes",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "seatside",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "steering",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 508
+          }
         }
       ],
       "skin_slots": [
@@ -1590,39 +1709,6 @@
           }
         },
         {
-          "name": "extra_112_248",
-          "clut_race": {
-            "x": 112,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 768,
-            "y": 251
-          }
-        },
-        {
-          "name": "extra_128_248",
-          "clut_race": {
-            "x": 128,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 768,
-            "y": 253
-          }
-        },
-        {
-          "name": "extra_128_249",
-          "clut_race": {
-            "x": 128,
-            "y": 249
-          },
-          "clut_menu": {
-            "x": 784,
-            "y": 251
-          }
-        },
-        {
           "name": "extra_976_250",
           "clut_race": {
             "x": 976,
@@ -1645,17 +1731,6 @@
           }
         },
         {
-          "name": "extra_976_255",
-          "clut_race": {
-            "x": 976,
-            "y": 255
-          },
-          "clut_menu": {
-            "x": 608,
-            "y": 223
-          }
-        },
-        {
           "name": "extra_64_259",
           "clut_race": {
             "x": 64,
@@ -1664,17 +1739,6 @@
           "clut_menu": {
             "x": 944,
             "y": 508
-          }
-        },
-        {
-          "name": "extra_480_259",
-          "clut_race": {
-            "x": 480,
-            "y": 259
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 507
           }
         },
         {
@@ -1689,17 +1753,6 @@
           }
         },
         {
-          "name": "extra_480_261",
-          "clut_race": {
-            "x": 480,
-            "y": 261
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 509
-          }
-        },
-        {
           "name": "extra_320_262",
           "clut_race": {
             "x": 320,
@@ -1708,17 +1761,6 @@
           "clut_menu": {
             "x": 720,
             "y": 509
-          }
-        },
-        {
-          "name": "extra_480_262",
-          "clut_race": {
-            "x": 480,
-            "y": 262
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 508
           }
         },
         {
@@ -1839,6 +1881,79 @@
             "x": 704,
             "y": 509
           }
+        },
+        {
+          "name": "rearbase",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "underfloor",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "seattop",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "exhaustmount",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "exhaustholes",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "seatside",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "steering",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          }
         }
       ],
       "skin_slots": [
@@ -1854,50 +1969,6 @@
           }
         },
         {
-          "name": "extra_112_248",
-          "clut_race": {
-            "x": 112,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 768,
-            "y": 251
-          }
-        },
-        {
-          "name": "extra_128_248",
-          "clut_race": {
-            "x": 128,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 768,
-            "y": 253
-          }
-        },
-        {
-          "name": "extra_128_249",
-          "clut_race": {
-            "x": 128,
-            "y": 249
-          },
-          "clut_menu": {
-            "x": 784,
-            "y": 251
-          }
-        },
-        {
-          "name": "extra_976_255",
-          "clut_race": {
-            "x": 976,
-            "y": 255
-          },
-          "clut_menu": {
-            "x": 608,
-            "y": 223
-          }
-        },
-        {
           "name": "extra_336_259",
           "clut_race": {
             "x": 336,
@@ -1906,17 +1977,6 @@
           "clut_menu": {
             "x": 704,
             "y": 511
-          }
-        },
-        {
-          "name": "extra_480_259",
-          "clut_race": {
-            "x": 480,
-            "y": 259
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 507
           }
         },
         {
@@ -1939,17 +1999,6 @@
           "clut_menu": {
             "x": 720,
             "y": 505
-          }
-        },
-        {
-          "name": "extra_480_261",
-          "clut_race": {
-            "x": 480,
-            "y": 261
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 509
           }
         },
         {
@@ -2059,11 +2108,9 @@
             "x": 880,
             "y": 508
           }
-        }
-      ],
-      "skin_slots": [
+        },
         {
-          "name": "extra_112_248",
+          "name": "rearbase",
           "clut_race": {
             "x": 112,
             "y": 248
@@ -2074,7 +2121,7 @@
           }
         },
         {
-          "name": "extra_128_248",
+          "name": "underfloor",
           "clut_race": {
             "x": 128,
             "y": 248
@@ -2085,7 +2132,7 @@
           }
         },
         {
-          "name": "extra_128_249",
+          "name": "seattop",
           "clut_race": {
             "x": 128,
             "y": 249
@@ -2096,7 +2143,7 @@
           }
         },
         {
-          "name": "extra_976_255",
+          "name": "exhaustmount",
           "clut_race": {
             "x": 976,
             "y": 255
@@ -2106,6 +2153,37 @@
             "y": 223
           }
         },
+        {
+          "name": "exhaustholes",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "seatside",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "steering",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          }
+        }
+      ],
+      "skin_slots": [
         {
           "name": "extra_352_257",
           "clut_race": {
@@ -2140,17 +2218,6 @@
           }
         },
         {
-          "name": "extra_480_259",
-          "clut_race": {
-            "x": 480,
-            "y": 259
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 507
-          }
-        },
-        {
           "name": "extra_352_260",
           "clut_race": {
             "x": 352,
@@ -2170,17 +2237,6 @@
           "clut_menu": {
             "x": 704,
             "y": 506
-          }
-        },
-        {
-          "name": "extra_480_261",
-          "clut_race": {
-            "x": 480,
-            "y": 261
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 509
           }
         },
         {
@@ -2301,6 +2357,83 @@
             "x": 880,
             "y": 507
           }
+        },
+        {
+          "name": "rearbase",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "underfloor",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "seattop",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "exhaustmount",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "exhaustholes",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "seatside",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "steering",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 508
+          }
         }
       ],
       "skin_slots": [
@@ -2349,28 +2482,6 @@
           }
         },
         {
-          "name": "extra_112_248",
-          "clut_race": {
-            "x": 112,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 768,
-            "y": 251
-          }
-        },
-        {
-          "name": "extra_128_248",
-          "clut_race": {
-            "x": 128,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 768,
-            "y": 253
-          }
-        },
-        {
           "name": "extra_80_249",
           "clut_race": {
             "x": 80,
@@ -2382,28 +2493,6 @@
           }
         },
         {
-          "name": "extra_128_249",
-          "clut_race": {
-            "x": 128,
-            "y": 249
-          },
-          "clut_menu": {
-            "x": 784,
-            "y": 251
-          }
-        },
-        {
-          "name": "extra_976_255",
-          "clut_race": {
-            "x": 976,
-            "y": 255
-          },
-          "clut_menu": {
-            "x": 608,
-            "y": 223
-          }
-        },
-        {
           "name": "extra_368_259",
           "clut_race": {
             "x": 368,
@@ -2412,39 +2501,6 @@
           "clut_menu": {
             "x": 880,
             "y": 506
-          }
-        },
-        {
-          "name": "extra_480_259",
-          "clut_race": {
-            "x": 480,
-            "y": 259
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 507
-          }
-        },
-        {
-          "name": "extra_480_261",
-          "clut_race": {
-            "x": 480,
-            "y": 261
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 509
-          }
-        },
-        {
-          "name": "extra_480_262",
-          "clut_race": {
-            "x": 480,
-            "y": 262
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 508
           }
         },
         {
@@ -2554,6 +2610,79 @@
             "x": 864,
             "y": 508
           }
+        },
+        {
+          "name": "rearbase",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "underfloor",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "seattop",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "exhaustmount",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "exhaustholes",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "seatside",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "steering",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          }
         }
       ],
       "skin_slots": [
@@ -2646,39 +2775,6 @@
           }
         },
         {
-          "name": "extra_112_248",
-          "clut_race": {
-            "x": 112,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 768,
-            "y": 251
-          }
-        },
-        {
-          "name": "extra_128_248",
-          "clut_race": {
-            "x": 128,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 768,
-            "y": 253
-          }
-        },
-        {
-          "name": "extra_128_249",
-          "clut_race": {
-            "x": 128,
-            "y": 249
-          },
-          "clut_menu": {
-            "x": 784,
-            "y": 251
-          }
-        },
-        {
           "name": "extra_224_249",
           "clut_race": {
             "x": 224,
@@ -2709,39 +2805,6 @@
           "clut_menu": {
             "x": 928,
             "y": 510
-          }
-        },
-        {
-          "name": "extra_976_255",
-          "clut_race": {
-            "x": 976,
-            "y": 255
-          },
-          "clut_menu": {
-            "x": 608,
-            "y": 223
-          }
-        },
-        {
-          "name": "extra_480_259",
-          "clut_race": {
-            "x": 480,
-            "y": 259
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 507
-          }
-        },
-        {
-          "name": "extra_480_261",
-          "clut_race": {
-            "x": 480,
-            "y": 261
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 509
           }
         }
       ]
@@ -2840,6 +2903,79 @@
             "x": 864,
             "y": 505
           }
+        },
+        {
+          "name": "rearbase",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "underfloor",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "seattop",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "exhaustmount",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "exhaustholes",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "seatside",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "steering",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          }
         }
       ],
       "skin_slots": [
@@ -2866,39 +3002,6 @@
           }
         },
         {
-          "name": "extra_112_248",
-          "clut_race": {
-            "x": 112,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 768,
-            "y": 251
-          }
-        },
-        {
-          "name": "extra_128_248",
-          "clut_race": {
-            "x": 128,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 768,
-            "y": 253
-          }
-        },
-        {
-          "name": "extra_128_249",
-          "clut_race": {
-            "x": 128,
-            "y": 249
-          },
-          "clut_menu": {
-            "x": 784,
-            "y": 251
-          }
-        },
-        {
           "name": "extra_80_251",
           "clut_race": {
             "x": 80,
@@ -2921,17 +3024,6 @@
           }
         },
         {
-          "name": "extra_976_255",
-          "clut_race": {
-            "x": 976,
-            "y": 255
-          },
-          "clut_menu": {
-            "x": 608,
-            "y": 223
-          }
-        },
-        {
           "name": "extra_480_256",
           "clut_race": {
             "x": 480,
@@ -2939,28 +3031,6 @@
           },
           "clut_menu": {
             "x": 800,
-            "y": 509
-          }
-        },
-        {
-          "name": "extra_480_259",
-          "clut_race": {
-            "x": 480,
-            "y": 259
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 507
-          }
-        },
-        {
-          "name": "extra_480_261",
-          "clut_race": {
-            "x": 480,
-            "y": 261
-          },
-          "clut_menu": {
-            "x": 816,
             "y": 509
           }
         }
@@ -3060,6 +3130,83 @@
             "x": 848,
             "y": 510
           }
+        },
+        {
+          "name": "rearbase",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "underfloor",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "seattop",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "exhaustmount",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "exhaustholes",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "seatside",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "steering",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 508
+          }
         }
       ],
       "skin_slots": [
@@ -3108,28 +3255,6 @@
           }
         },
         {
-          "name": "extra_112_248",
-          "clut_race": {
-            "x": 112,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 768,
-            "y": 251
-          }
-        },
-        {
-          "name": "extra_128_248",
-          "clut_race": {
-            "x": 128,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 768,
-            "y": 253
-          }
-        },
-        {
           "name": "extra_992_248",
           "clut_race": {
             "x": 992,
@@ -3138,17 +3263,6 @@
           "clut_menu": {
             "x": 576,
             "y": 221
-          }
-        },
-        {
-          "name": "extra_128_249",
-          "clut_race": {
-            "x": 128,
-            "y": 249
-          },
-          "clut_menu": {
-            "x": 784,
-            "y": 251
           }
         },
         {
@@ -3182,50 +3296,6 @@
           "clut_menu": {
             "x": 608,
             "y": 503
-          }
-        },
-        {
-          "name": "extra_976_255",
-          "clut_race": {
-            "x": 976,
-            "y": 255
-          },
-          "clut_menu": {
-            "x": 608,
-            "y": 223
-          }
-        },
-        {
-          "name": "extra_480_259",
-          "clut_race": {
-            "x": 480,
-            "y": 259
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 507
-          }
-        },
-        {
-          "name": "extra_480_261",
-          "clut_race": {
-            "x": 480,
-            "y": 261
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 509
-          }
-        },
-        {
-          "name": "extra_480_262",
-          "clut_race": {
-            "x": 480,
-            "y": 262
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 508
           }
         }
       ]
@@ -3324,6 +3394,83 @@
             "x": 832,
             "y": 509
           }
+        },
+        {
+          "name": "rearbase",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "underfloor",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "seattop",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "exhaustmount",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "exhaustholes",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "seatside",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "steering",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 508
+          }
         }
       ],
       "skin_slots": [
@@ -3383,28 +3530,6 @@
           }
         },
         {
-          "name": "extra_112_248",
-          "clut_race": {
-            "x": 112,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 768,
-            "y": 251
-          }
-        },
-        {
-          "name": "extra_128_248",
-          "clut_race": {
-            "x": 128,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 768,
-            "y": 253
-          }
-        },
-        {
           "name": "extra_960_248",
           "clut_race": {
             "x": 960,
@@ -3413,17 +3538,6 @@
           "clut_menu": {
             "x": 624,
             "y": 509
-          }
-        },
-        {
-          "name": "extra_128_249",
-          "clut_race": {
-            "x": 128,
-            "y": 249
-          },
-          "clut_menu": {
-            "x": 784,
-            "y": 251
           }
         },
         {
@@ -3546,50 +3660,6 @@
             "x": 608,
             "y": 497
           }
-        },
-        {
-          "name": "extra_976_255",
-          "clut_race": {
-            "x": 976,
-            "y": 255
-          },
-          "clut_menu": {
-            "x": 608,
-            "y": 223
-          }
-        },
-        {
-          "name": "extra_480_259",
-          "clut_race": {
-            "x": 480,
-            "y": 259
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 507
-          }
-        },
-        {
-          "name": "extra_480_261",
-          "clut_race": {
-            "x": 480,
-            "y": 261
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 509
-          }
-        },
-        {
-          "name": "extra_480_262",
-          "clut_race": {
-            "x": 480,
-            "y": 262
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 508
-          }
         }
       ]
     },
@@ -3687,6 +3757,83 @@
             "x": 832,
             "y": 505
           }
+        },
+        {
+          "name": "rearbase",
+          "clut_race": {
+            "x": 112,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 251
+          }
+        },
+        {
+          "name": "underfloor",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "seattop",
+          "clut_race": {
+            "x": 128,
+            "y": 249
+          },
+          "clut_menu": {
+            "x": 784,
+            "y": 251
+          }
+        },
+        {
+          "name": "exhaustmount",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "exhaustholes",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "seatside",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "steering",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 508
+          }
         }
       ],
       "skin_slots": [
@@ -3702,28 +3849,6 @@
           }
         },
         {
-          "name": "extra_112_248",
-          "clut_race": {
-            "x": 112,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 768,
-            "y": 251
-          }
-        },
-        {
-          "name": "extra_128_248",
-          "clut_race": {
-            "x": 128,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 768,
-            "y": 253
-          }
-        },
-        {
           "name": "extra_256_248",
           "clut_race": {
             "x": 256,
@@ -3732,17 +3857,6 @@
           "clut_menu": {
             "x": 832,
             "y": 506
-          }
-        },
-        {
-          "name": "extra_128_249",
-          "clut_race": {
-            "x": 128,
-            "y": 249
-          },
-          "clut_menu": {
-            "x": 784,
-            "y": 251
           }
         },
         {
@@ -3765,50 +3879,6 @@
           "clut_menu": {
             "x": 592,
             "y": 230
-          }
-        },
-        {
-          "name": "extra_976_255",
-          "clut_race": {
-            "x": 976,
-            "y": 255
-          },
-          "clut_menu": {
-            "x": 608,
-            "y": 223
-          }
-        },
-        {
-          "name": "extra_480_259",
-          "clut_race": {
-            "x": 480,
-            "y": 259
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 507
-          }
-        },
-        {
-          "name": "extra_480_261",
-          "clut_race": {
-            "x": 480,
-            "y": 261
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 509
-          }
-        },
-        {
-          "name": "extra_480_262",
-          "clut_race": {
-            "x": 480,
-            "y": 262
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 508
           }
         }
       ]
@@ -3907,11 +3977,9 @@
             "x": 816,
             "y": 511
           }
-        }
-      ],
-      "skin_slots": [
+        },
         {
-          "name": "extra_112_248",
+          "name": "rearbase",
           "clut_race": {
             "x": 112,
             "y": 248
@@ -3922,7 +3990,7 @@
           }
         },
         {
-          "name": "extra_128_248",
+          "name": "underfloor",
           "clut_race": {
             "x": 128,
             "y": 248
@@ -3933,7 +4001,7 @@
           }
         },
         {
-          "name": "extra_128_249",
+          "name": "seattop",
           "clut_race": {
             "x": 128,
             "y": 249
@@ -3943,6 +4011,52 @@
             "y": 251
           }
         },
+        {
+          "name": "exhaustmount",
+          "clut_race": {
+            "x": 976,
+            "y": 255
+          },
+          "clut_menu": {
+            "x": 608,
+            "y": 223
+          }
+        },
+        {
+          "name": "exhaustholes",
+          "clut_race": {
+            "x": 480,
+            "y": 259
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 507
+          }
+        },
+        {
+          "name": "seatside",
+          "clut_race": {
+            "x": 480,
+            "y": 261
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 509
+          }
+        },
+        {
+          "name": "steering",
+          "clut_race": {
+            "x": 480,
+            "y": 262
+          },
+          "clut_menu": {
+            "x": 816,
+            "y": 508
+          }
+        }
+      ],
+      "skin_slots": [
         {
           "name": "extra_128_250",
           "clut_race": {
@@ -4032,17 +4146,6 @@
           }
         },
         {
-          "name": "extra_976_255",
-          "clut_race": {
-            "x": 976,
-            "y": 255
-          },
-          "clut_menu": {
-            "x": 608,
-            "y": 223
-          }
-        },
-        {
           "name": "extra_480_258",
           "clut_race": {
             "x": 480,
@@ -4054,17 +4157,6 @@
           }
         },
         {
-          "name": "extra_480_259",
-          "clut_race": {
-            "x": 480,
-            "y": 259
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 507
-          }
-        },
-        {
           "name": "extra_480_260",
           "clut_race": {
             "x": 480,
@@ -4073,28 +4165,6 @@
           "clut_menu": {
             "x": 816,
             "y": 504
-          }
-        },
-        {
-          "name": "extra_480_261",
-          "clut_race": {
-            "x": 480,
-            "y": 261
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 509
-          }
-        },
-        {
-          "name": "extra_480_262",
-          "clut_race": {
-            "x": 480,
-            "y": 262
-          },
-          "clut_menu": {
-            "x": 816,
-            "y": 508
           }
         },
         {
