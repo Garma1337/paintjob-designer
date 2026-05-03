@@ -6,26 +6,22 @@ Downstream mods (e.g. Saphi) own their own tools that consume the libraries and 
 
 # Features
 
-## Three sidebar tabs
+## Paintjob & skin authoring
 
-The left sidebar has three tabs that share the 3D viewer + slot editor on the right:
+- **Paintjobs** — author kart-side CLUT swaps and optional 4bpp textures. Kart-only and portable across every character of the same kart type (standard kart vs hovercraft).
+- **Skins** — author character-bound recolors that touch the character's own skin-side CLUTs and the gouraud vertex colors driving the driver body.
+- **Composed preview** — combine any character with a compatible paintjob and a compatible skin to see how they look together.
 
-- **Paintjobs** — kart-slot CLUTs (front, back, motor, exhaust, etc.) and optional 4bpp textures. Paintjobs are kart-only and portable across every character of the same kart type (kart vs hovercraft). Color Palettes are nested under this tab.
-- **Skins** — character-bound recolors. Edits the character's own skin-slot CLUTs and the gouraud vertex colors that drive the driver body. A skin only previews on its bound character.
-- **Preview** — pick any character + any compatible paintjob + any compatible skin and see them composed together. Read-only.
+## Editing
 
-Each editing tab keeps its own state (selected asset, last-viewed character) so switching back and forth restores what you were looking at.
-
-## Library-first editing
-
-- **Per-slot CLUT editing** — click any of the 16 color swatches to open a PSX-quantized color picker; edits snap to the PS1 5-5-5 color grid as you pick.
-- **Orphan Slots tab** — profile slots whose CLUT lives in VRAM but isn't sampled by any mesh triangle (menu screens, particles, etc.) appear in their own tab so you can edit the colors even though there's no mesh region to highlight.
-- **Vertex-color editing** (skins only) — the right pane has a Vertex Slots tab listing every entry in the character's gouraud-color table. Clicking a swatch opens an RGB picker; the override is saved on the skin and re-rendered live.
+- **Per-slot CLUT editing** — pick any of a slot's 16 colors through a PSX-quantized color picker; edits snap to the PS1 5-5-5 color grid as you pick.
+- **Orphan slots** — surfaces CLUTs that wouldn't otherwise be reachable: profile slots whose VRAM coord isn't sampled by any mesh triangle (menu screens, particles, etc.) and mesh-sampled CLUTs the profile doesn't categorize (under a synthesized `unmatched@x,y` name). Both flavors are editable.
+- **Vertex-color editing** (skins only) — every entry in the character's gouraud-color table is editable; the override is saved on the skin and re-rendered live.
 - **Texture import / export** — replace a slot's pixels with a PNG (quantized to 15 colors + transparent, packed 4bpp, baked into the asset JSON), or export the slot's current pixels back to PNG for round-tripping through an external editor. Both single-region and multi-region slots are supported.
-- **Library filter** — every library sidebar (paintjobs, skins, palettes) has a "Filter..." box at the top to narrow the visible rows by name.
-- **Transform Colors panel** — modeless panel with seven stackable modes (replace matching color, replace hue, shift hue, shift saturation, shift brightness, RGB delta, invert colors). Three scopes: Current slot / All kart slots / All skin slots — only the scope matching the active asset's kind is enabled. Slider changes stream into the 3D view live; Apply commits the full stack as a single undo entry.
-- **Vertex transform panel** — the same modeless panel applied to a skin's gouraud vertex colors. Auto-restricts itself to vertex indices used only by untextured triangles so `texture × vertex_color` modulation can't tint paintjob surfaces.
-- **Color Palettes** — save the 16 colors of a focused slot as a reusable palette, **build one from a quantized PNG** ("From Image..."), or hand-pick one. Apply to other slots later. Lives in the Paintjobs tab.
+- **Transform Colors** — seven stackable color operations (replace matching color, replace hue, shift hue, shift saturation, shift brightness, RGB delta, invert), scoped to the current slot or to every kart/skin slot at once. Changes stream into the 3D view live; the full stack commits as a single undo entry.
+- **Vertex transform** — the same color operations applied to a skin's gouraud vertex colors, auto-restricted to vertex indices used only by untextured triangles so `texture × vertex_color` modulation can't tint paintjob surfaces.
+- **Color Palettes** — save the 16 colors of a slot as a reusable palette, build one from a quantized PNG, or hand-pick one. Apply to other slots later.
+- **Library filter** — narrow the visible paintjobs, skins, or palettes by name.
 
 ## 3D preview
 
@@ -36,7 +32,7 @@ Each editing tab keeps its own state (selected asset, last-viewed character) so 
 
 ## Profiles
 
-Ships with `vanilla-ntsc-u` (base CTR) and `saphi`. The profile drives which characters populate the preview dropdowns, which CLUTs belong to the kart vs the skin side, and which slots are flagged as non-portable (e.g. `floor`). Switch Profile from the File menu.
+Ships with `vanilla-ntsc-u` (base CTR) and `saphi`. The profile drives which characters are available, which CLUTs belong to the kart vs the skin side, and which slots are flagged as non-portable (e.g. `floor`).
 
 See [documentation/paintjob_library_format.md](documentation/schema/paintjob_library_format.md) and [documentation/skin_library_format.md](documentation/schema/skin_library_format.md) for the on-disk JSON schemas consumer tools read, and [documentation/user-guide.md](documentation/user-guide.md) for everything else.
 

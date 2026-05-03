@@ -9,7 +9,9 @@ KART_SLOT_NAMES = {
     "rearbase", "seattop", "exhaustholes", "seatside", "exhaustmount",
     "underfloor", "steering",
 }
-HOVERCRAFT_SLOT_NAMES = {"hoverkart"}
+HOVERCRAFT_SLOT_NAMES = {
+    "hoverkart", "controlpanel", "lights", "floor", "seat", "exhaust", "pipes",
+}
 
 
 class TestAvailableProfiles:
@@ -65,22 +67,22 @@ class TestVanillaNtscUProfile:
             floor = next(s for s in c.kart_slots if s.name == "floor")
             assert floor.non_portable, f"{c.id}: floor slot not marked non_portable"
 
-    def test_oxide_is_hovercraft_with_single_kart_slot(self, profile):
+    def test_oxide_is_hovercraft_with_expected_kart_slots(self, profile):
         oxide = next(c for c in profile.characters if c.id == "oxide")
 
         assert oxide.kart_type == KartType.HOVERCRAFT
         assert {s.name for s in oxide.kart_slots} == HOVERCRAFT_SLOT_NAMES
 
-        hoverkart = oxide.kart_slots[0]
+        hoverkart = next(s for s in oxide.kart_slots if s.name == "hoverkart")
         assert (hoverkart.clut_race.x, hoverkart.clut_race.y) == (288, 248)
 
     def test_oxide_skin_slots_cover_remaining_character_cluts(self, profile):
         # Oxide's whole character is texture-mapped (driver is not Gouraud-
-        # colored like standard racers), so the 14 non-hoverkart CLUTs in
-        # his mesh land in skin_slots and become skin-editable.
+        # colored like standard racers), so every CLUT on his mesh lands in
+        # either kart_slots or skin_slots — none are gouraud.
         oxide = next(c for c in profile.characters if c.id == "oxide")
 
-        assert len(oxide.skin_slots) == 14
+        assert len(oxide.skin_slots) == 8
 
     def test_crash_front_slot_matches_saphi_coord(self, profile):
         crash = next(c for c in profile.characters if c.id == "crash")

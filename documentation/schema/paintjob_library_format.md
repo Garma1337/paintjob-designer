@@ -92,7 +92,7 @@ When present, each `pixels[]` entry describes one VRAM rectangle:
 | Field              | Type   | Meaning                                                                                                                                                                                                                                                                                                    |
 |--------------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `vram_x`, `vram_y` | int    | VRAM position (in 16bpp u16 units) the slot sampled from on the character the artist was previewing at import time. Informational — consumer tools should use each target character's own mesh-derived rect at runtime, not this field. Included to make the payload self-describing and to aid debugging. |
-| `width`, `height`  | int    | **Pixel-space** dimensions — the actual number of indexed pixels per row, not VRAM u16 units. For 4bpp payloads `width` is always a multiple of 4 (a VRAM u16 holds 4 nibbles). Consumer tools that emit PSX `RECT` structs must divide `width` by 4 before emitting `RECT.w`.                              |
+| `width`, `height`  | int    | **Pixel-space** dimensions — the actual number of indexed pixels per row, not VRAM u16 units. For 4bpp payloads `width` is always a multiple of 4 (a VRAM u16 holds 4 nibbles). Consumer tools that emit PSX `RECT` structs must divide `width` by 4 before emitting `RECT.w`.                             |
 | `data`             | string | Base64-encoded 4bpp packed pixel bytes. Two pixels per byte, **low nibble = left pixel**, matching the PSX GPU's sample order. Expected byte count = `width * height / 2`.                                                                                                                                 |
 
 ## Color format
@@ -121,12 +121,13 @@ To decode: iterate `data` byte-by-byte, each byte produces two pixel indices (lo
 
 ## Canonical slot names
 
-The designer uses a fixed kart-slot order for standard-kart characters that mirrors the PSX `Texture` union used by CTR's vanilla paintjob system:
+The designer's kart-slot list for standard-kart characters covers 15 CLUTs. The first 8 mirror the PSX `Texture` union used by CTR's vanilla paintjob system (the CLUTs `PAINTALL.BIN` carries per character); the remaining 7 are kart-shared CLUTs at fixed VRAM positions that the designer also exposes for editing:
 
 ```
-front, back, floor, brown, motorside, motortop, bridge, exhaust
+front, back, floor, brown, motorside, motortop, bridge, exhaust,
+rearbase, seattop, exhaustholes, seatside, exhaustmount, underfloor, steering
 ```
 
-For `hovercraft` paintjobs (Oxide), the kart-slot list collapses to a single hover-skirt CLUT — see the active profile's `kart_slots` entry for the exact name.
+For `hovercraft` paintjobs (Oxide), the kart-slot list is a different set of 7 names that mirror Oxide's hovercraft geometry — see the active profile's `kart_slots` entry for the exact names.
 
 Consumer tools should use these exact spellings when looking up entries in the `slots` map. Any slot name not in the active profile's kart_slots list is "unrecognized"; the designer may still preserve round-trip if the JSON has it, but consumers targeting CTR should ignore or error on unknown names.

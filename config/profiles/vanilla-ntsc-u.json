@@ -3716,6 +3716,56 @@
             "x": 288,
             "y": 248
           }
+        },
+        {
+          "name": "controlpanel",
+          "clut_race": {
+            "x": 480,
+            "y": 257
+          }
+        },
+        {
+          "name": "lights",
+          "clut_race": {
+            "x": 256,
+            "y": 253
+          }
+        },
+        {
+          "name": "floor",
+          "clut_race": {
+            "x": 128,
+            "y": 248
+          },
+          "clut_menu": {
+            "x": 768,
+            "y": 253
+          }
+        },
+        {
+          "name": "seat",
+          "clut_race": {
+            "x": 976,
+            "y": 240
+          }
+        },
+        {
+          "name": "exhaust",
+          "clut_race": {
+            "x": 496,
+            "y": 257
+          },
+          "clut_menu": {
+            "x": 592,
+            "y": 503
+          }
+        },
+        {
+          "name": "pipes",
+          "clut_race": {
+            "x": 976,
+            "y": 241
+          }
         }
       ],
       "skin_slots": [
@@ -3727,99 +3777,49 @@
           }
         },
         {
-          "name": "control_panel",
-          "clut_race": {
-            "x": 480,
-            "y": 257
-          }
-        },
-        {
-          "name": "cockpit_dome",
-          "clut_race": {
-            "x": 256,
-            "y": 253
-          }
-        },
-        {
-          "name": "cockpit_frame",
-          "clut_race": {
-            "x": 128,
-            "y": 248
-          },
-          "clut_menu": {
-            "x": 768,
-            "y": 253
-          }
-        },
-        {
-          "name": "head",
+          "name": "mouth",
           "clut_race": {
             "x": 96,
             "y": 248
           }
         },
         {
-          "name": "skin",
-          "clut_race": {
-            "x": 976,
-            "y": 240
-          }
-        },
-        {
-          "name": "engine_glow",
+          "name": "backside",
           "clut_race": {
             "x": 304,
             "y": 249
           }
         },
         {
-          "name": "suit_purple",
+          "name": "suit",
           "clut_race": {
             "x": 288,
             "y": 245
           }
         },
         {
-          "name": "trim_brown",
+          "name": "brown",
           "clut_race": {
             "x": 288,
             "y": 247
           }
         },
         {
-          "name": "cockpit_trim",
-          "clut_race": {
-            "x": 496,
-            "y": 257
-          },
-          "clut_menu": {
-            "x": 592,
-            "y": 503
-          }
-        },
-        {
-          "name": "accent_a",
+          "name": "eyebrows",
           "clut_race": {
             "x": 960,
             "y": 251
           }
         },
         {
-          "name": "accent_b",
-          "clut_race": {
-            "x": 976,
-            "y": 241
-          }
-        },
-        {
-          "name": "accent_c",
+          "name": "head",
           "clut_race": {
             "x": 976,
             "y": 249
           }
         },
         {
-          "name": "accent_d",
+          "name": "snout",
           "clut_race": {
             "x": 1008,
             "y": 234

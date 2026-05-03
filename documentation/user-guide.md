@@ -119,8 +119,8 @@ Right-click a paintjob row for:
 
 CTR's roster has standard-kart racers (15 characters in vanilla) and one hovercraft racer (Oxide). Their kart-side CLUTs are structured differently, so paintjobs are scoped to one or the other:
 
-- A **kart** paintjob has 8 slots (`front`, `back`, `floor`, `brown`, `motorside`, `motortop`, `bridge`, `exhaust`) and previews on any standard-kart character.
-- A **hovercraft** paintjob has 1 slot (the hover skirt CLUT) and only previews on Oxide.
+- A **kart** paintjob has 15 slots (`front`, `back`, `floor`, `brown`, `motorside`, `motortop`, `bridge`, `exhaust`, `rearbase`, `seattop`, `exhaustholes`, `seatside`, `exhaustmount`, `underfloor`, `steering`) and previews on any standard-kart character.
+- A **hovercraft** paintjob has 7 slots (`hoverkart`, `controlpanel`, `lights`, `floor`, `seat`, `exhaust`, `pipes`) and only previews on Oxide.
 
 The preview-character dropdown filters automatically by the active paintjob's kart type, so a hovercraft paintjob never lets you pick Crash and a kart paintjob never lets you pick Oxide.
 
@@ -165,14 +165,25 @@ The Vertex slots tab is disabled in paintjob mode (paintjobs can't carry vertex 
 
 ### Orphan Slots Tab
 
-The right pane has a third tab labeled **Orphan Slots** (after CLUT slots and Vertex slots). It lists every CLUT slot the active profile defines whose VRAM coord isn't actually sampled by any triangle in the character's mesh — typically slots whose colors are referenced from outside the racer mesh (menu screens, particles, hard-coded animation frames).
+The right pane has a third tab labeled **Orphan Slots** (after CLUT slots and Vertex slots). It collects two kinds of CLUTs that don't fit the regular slot tab:
 
-- The colors are read live from VRAM at the slot's profile-defined CLUT coord, just like regular slots.
-- Right-click → **Transform colors...**, **Gradient fill...**, and **Apply Color Palette** all work normally — they only need the 16 colors, not a mesh region.
-- **Import / Export texture...** are hidden — there's no VRAM rectangle to upload pixels into or dump out of.
-- Highlight on focus is a no-op for the same reason. The slot dimension hint next to the row name is empty.
+1. **Profile-defined slots with no mesh polys** — slots the active profile declares but whose VRAM coord isn't sampled by any triangle in the character's mesh. Typical sources: menu screens, particles, hard-coded animation frames.
+2. **Mesh-sampled CLUTs with no profile entry** — palettes the mesh samples that the profile didn't anticipate. They appear under a synthesized name like `unmatched@112,250` (the CLUT's VRAM coord). Body palettes the profile didn't categorize show up here until you add them to the profile properly.
 
-Orphan slots respect the active editor mode: a slot defined in a character's `kart_slots` only appears in the orphan tab while the Paintjobs tab is active, and a `skin_slots` orphan only appears in skin mode.
+For both kinds, colors are read live from VRAM at the slot's CLUT coord, and right-click → **Transform colors...**, **Gradient fill...**, and **Apply Color Palette** all work normally.
+
+The kinds differ on the mesh-region-dependent features:
+
+| Feature                    | Profile slot, no mesh polys | Mesh-sampled, no profile entry     |
+|----------------------------|-----------------------------|------------------------------------|
+| Highlight on focus         | No-op (no triangles)        | Dims everything except those polys |
+| Import / Export texture... | Hidden                      | Available                          |
+| Slot dimension hint        | Empty                       | Region size, like normal slots     |
+
+Editor-mode behavior:
+
+- **Profile slots with no mesh polys** respect the active editor mode: a `kart_slots` entry appears only in paintjob mode, a `skin_slots` entry only in skin mode.
+- **Mesh-sampled CLUTs with no profile entry** appear in both paintjob and skin modes — without a profile category there's no basis for hiding them, and edits flow into whichever asset (paintjob or skin) is active.
 
 ### Vertex Transform Panel
 
@@ -374,7 +385,7 @@ Right-click a slot row → **Export texture...** → pick a save path → the sl
 
 - Single-region slots write one file at the chosen path.
 - Multi-region slots write one file per region, suffixing `_0`, `_1`, ... before the `.png` extension.
-- Export is available even on `non_portable` slots — there's no cross-character upload concern when you're just saving what's already there. (Orphan slots can't export — there are no mesh regions to dump.)
+- Export is available even on `non_portable` slots — there's no cross-character upload concern when you're just saving what's already there. (Profile-defined orphan slots can't export — there are no mesh regions to dump. Mesh-sampled orphans do have regions and can export normally.)
 
 ### Rotate Texture
 
